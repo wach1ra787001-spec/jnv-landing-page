@@ -1,13 +1,19 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
-import { computeDirectionalBias, computeWinLossStreaks } from '@/lib/streaks-analysis-utils'
+import {
+  computeDirectionalBias,
+  computeWinLossStreaks,
+  computeDisciplineTracker,
+  computeRecoveryPatterns,
+} from '@/lib/streaks-analysis-utils'
 import { DirectionalBiasCard } from '@/components/advanced-stats/streaks/DirectionalBiasCard'
 import { WinLossStreaksCard } from '@/components/advanced-stats/streaks/WinLossStreaksCard'
+import { DisciplineTrackerCard } from '@/components/advanced-stats/streaks/DisciplineTrackerCard'
+import { RecoveryPatternsCard } from '@/components/advanced-stats/streaks/RecoveryPatternsCard'
 
 interface StreaksAnalysisClientProps {
   trades: any[]
@@ -18,6 +24,8 @@ export function StreaksAnalysisClient({ trades }: StreaksAnalysisClientProps) {
 
   const directionalBias = useMemo(() => computeDirectionalBias(trades), [trades])
   const winLossStreaks = useMemo(() => computeWinLossStreaks(trades), [trades])
+  const disciplineTracker = useMemo(() => computeDisciplineTracker(trades), [trades])
+  const recoveryPatterns = useMemo(() => computeRecoveryPatterns(trades), [trades])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -46,17 +54,9 @@ export function StreaksAnalysisClient({ trades }: StreaksAnalysisClientProps) {
           <DirectionalBiasCard data={directionalBias} />
         </div>
 
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Discipline Tracker</h3>
-          <p className="text-muted-foreground">Calendar heatmap of adherence to trading rules</p>
-          <p className="text-xs text-muted-foreground mt-2">Coming soon</p>
-        </Card>
+        <DisciplineTrackerCard data={disciplineTracker} />
 
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Recovery Patterns</h3>
-          <p className="text-muted-foreground">How you bounce back from losing sequences</p>
-          <p className="text-xs text-muted-foreground mt-2">Coming soon</p>
-        </Card>
+        <RecoveryPatternsCard data={recoveryPatterns} />
       </div>
     </div>
   )

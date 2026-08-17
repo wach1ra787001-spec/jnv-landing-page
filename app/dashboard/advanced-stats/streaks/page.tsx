@@ -15,9 +15,10 @@ export default async function StreaksAnalysisPage() {
     redirect('/auth/login')
   }
 
-  // Fetch all trades for the user
+  // Fetch all trades for the user, joined with journal data (followed_plan,
+  // discipline_rating, mistakes) for the Discipline Tracker module.
   const { data: trades } = await supabase
-    .from('trades')
+    .from('trades_with_journal')
     .select('*')
     .eq('user_id', user.id)
     .order('entry_time', { ascending: false })
