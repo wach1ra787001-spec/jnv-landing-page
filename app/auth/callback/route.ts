@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { Resend } from "resend"
 import { WelcomeEmailTemplate } from "@/lib/email-templates/welcome-email"
 import { detectUserTimezone } from "@/lib/timezone-utils"
-import { getAppOrigin, getSafeNextPath } from "@/lib/domain-routing"
+import { getAppOrigin, getSafeNextPath, isProductionDomainHost } from "@/lib/domain-routing"
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
@@ -112,7 +112,10 @@ export async function GET(request: NextRequest) {
         }
       }
 
-      const redirectUrl = new URL(redirectPath, getAppOrigin(request.nextUrl.hostname))
+      const authOrigin = isProductionDomainHost(request.nextUrl.hostname)
+        ? getAppOrigin(request.nextUrl.hostname)
+        : request.nextUrl.origin
+      const redirectUrl = new URL(redirectPath, authOrigin)
       return NextResponse.redirect(redirectUrl)
     }
 

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
-import { getAppOrigin } from "@/lib/domain-routing"
+import { getAppOrigin, isProductionDomainHost } from "@/lib/domain-routing"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -28,10 +28,13 @@ export default function LoginPage() {
   const handleOAuth = async (provider: "google" | "apple") => {
     setIsLoading(true)
     setError(null)
+    const authOrigin = isProductionDomainHost(window.location.hostname)
+      ? getAppOrigin(window.location.hostname)
+      : window.location.origin
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${getAppOrigin(window.location.hostname)}/auth/callback?next=/dashboard`,
+        redirectTo: `${authOrigin}/auth/callback?next=/dashboard`,
       },
     })
     if (error) {
@@ -61,7 +64,10 @@ export default function LoginPage() {
       return
     }
 
-    window.location.assign(`${getAppOrigin(window.location.hostname)}/dashboard`)
+    const appOrigin = isProductionDomainHost(window.location.hostname)
+      ? getAppOrigin(window.location.hostname)
+      : window.location.origin
+    window.location.assign(`${appOrigin}/dashboard`)
   }
 
   return (

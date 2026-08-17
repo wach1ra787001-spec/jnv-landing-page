@@ -12,7 +12,18 @@ export function isAppHost(hostname: string) {
 
 export function getAppOrigin(hostname?: string) {
   if (hostname && isProductionDomainHost(hostname)) return APP_ORIGIN
-  return process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+
+  const configuredOrigin = process.env.NEXT_PUBLIC_BASE_URL?.trim()
+  if (!configuredOrigin || configuredOrigin.includes('NEXT_PUBLIC_BASE_URL=')) {
+    return "http://localhost:3000"
+  }
+
+  try {
+    const url = new URL(configuredOrigin)
+    return url.origin
+  } catch {
+    return "http://localhost:3000"
+  }
 }
 
 export function getAuthCookieOptions(hostname?: string) {
