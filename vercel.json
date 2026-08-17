@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/economic-calendar/sync",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/economic-calendar/update-actuals",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}
