@@ -74,7 +74,7 @@ export function KPICards({
           <div className="min-w-0">
             <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Consistency</p>
             <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
-              {consistency}%
+              {Math.round(consistency ?? 0)}%
             </p>
             <p className="text-[9px] sm:text-xs text-muted-foreground mt-1 sm:mt-2 truncate">
               {documentedTrades} documented

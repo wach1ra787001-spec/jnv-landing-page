@@ -7,6 +7,11 @@ import { OpenPositionsWidget } from "@/components/OpenPositionsWidget"
 import { AccountRequiredPrompt } from "@/components/dashboard/account-required-prompt"
 import { PnLChart } from "@/components/PnLChart"
 import { calculateMetricsFromTrades } from "@/lib/calculate-metrics"
+import {
+  calculateAverageConsistencyScore,
+  hasMeaningfulJournalNotes,
+  type ConsistencyScoreInputs,
+} from "@/lib/consistency-score"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -85,21 +90,61 @@ export default async function DashboardPage() {
   const userName = profile?.full_name?.split(" ")[0] || "Trader"
   const currency = profile?.currency || 'USD'
 
-  // Calculate consistency: wins with documented trades (notes + screenshots) / total trades
-  const documentedWins = (allTrades || []).filter(trade => {
-    const isWinningTrade = (trade.net_pnl || 0) > 0
-    const hasNotes = trade.notes && trade.notes.trim().length > 0
-    const hasScreenshots = trade.screenshot_urls && Array.isArray(trade.screenshot_urls) && trade.screenshot_urls.length > 0
-    return isWinningTrade && hasNotes && hasScreenshots
-  }).length
+  // Consistency score: weighted average across all trades.
+  //   30% rules followed + 20% followed risk model + 20% followed trade model + 30% journaled
+  // See lib/consistency-score.ts for the full breakdown and data-availability notes.
+  const tradeIds = (allTrades || []).map((trade) => trade.id)
 
-  const totalDocumentedTrades = (allTrades || []).filter(trade => {
-    const hasNotes = trade.notes && trade.notes.trim().length > 0
-    const hasScreenshots = trade.screenshot_urls && Array.isArray(trade.screenshot_urls) && trade.screenshot_urls.length > 0
-    return hasNotes && hasScreenshots
-  }).length
+  const [{ data: journalRows }, { data: tradeNotesRows }, { count: activeRulesCount }] =
+    await Promise.all([
+      tradeIds.length > 0
+        ? supabase
+            .from("trade_journal")
+            .select("trade_id, discipline_rating, followed_plan, content, session_notes, lessons_learned, mistakes, what_went_well")
+            .eq("user_id", user?.id)
+            .in("trade_id", tradeIds)
+        : Promise.resolve({ data: [] }),
+      tradeIds.length > 0
+        ? supabase
+            .from("trade_notes")
+            .select("trade_id, note")
+            .eq("user_id", user?.id)
+            .in("trade_id", tradeIds)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from("user_rules")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user?.id)
+        .eq("is_active", true),
+    ])
 
-  const consistency = totalDocumentedTrades > 0 ? Math.round((documentedWins / totalDocumentedTrades) * 100) : 0
+  const hasActiveRules = (activeRulesCount || 0) > 0
+
+  const journalByTradeId = new Map((journalRows || []).map((row) => [row.trade_id, row]))
+  const notesByTradeId = new Map<string, string[]>()
+  for (const row of tradeNotesRows || []) {
+    const existing = notesByTradeId.get(row.trade_id) || []
+    existing.push(row.note || "")
+    notesByTradeId.set(row.trade_id, existing)
+  }
+
+  const consistencyInputs: ConsistencyScoreInputs[] = (allTrades || []).map((trade) => {
+    const journal = journalByTradeId.get(trade.id)
+    const extraNotes = notesByTradeId.get(trade.id) || []
+
+    return {
+      hasActiveRules,
+      disciplineRating: journal?.discipline_rating,
+      followedPlan: journal?.followed_plan,
+      hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, extraNotes),
+    }
+  })
+
+  const consistency = calculateAverageConsistencyScore(consistencyInputs)
+
+  const totalDocumentedTrades = (journalRows || []).filter((row) =>
+    hasMeaningfulJournalNotes(row, notesByTradeId.get(row.trade_id) || []),
+  ).length
 
   // Transform trades data for the table component
   const formattedTrades = (recentTrades || []).map(trade => ({
