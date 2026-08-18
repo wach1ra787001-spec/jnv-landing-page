@@ -17,6 +17,8 @@ interface Trade {
   swap: number
   exit_time: string
   status: string
+  volume?: number
+  entry_time?: string
 }
 
 interface DayData {
@@ -54,6 +56,20 @@ export default function MonthlyPage() {
   })
   const [hoveredDayIdx, setHoveredDayIdx] = useState<number | null>(null)
   const [selectedDay, setSelectedDay] = useState<DayData | null>(null)
+  const [tradeSort, setTradeSort] = useState<'time' | 'pnl' | 'volume'>('time')
+
+  const sortedSelectedTrades = useMemo(() => {
+    if (!selectedDay) return []
+    return [...selectedDay.trades].sort((a, b) => {
+      if (tradeSort === 'pnl') {
+        const aPnl = a.net_pnl ?? (a.pnl - a.commission - a.swap)
+        const bPnl = b.net_pnl ?? (b.pnl - b.commission - b.swap)
+        return bPnl - aPnl
+      }
+      if (tradeSort === 'volume') return (b.volume ?? 0) - (a.volume ?? 0)
+      return new Date(a.exit_time).getTime() - new Date(b.exit_time).getTime()
+    })
+  }, [selectedDay, tradeSort])
 
   // Cache to avoid redundant fetches
   const monthCacheRef = useRef<Record<string, Trade[]>>({})
@@ -115,7 +131,7 @@ export default function MonthlyPage() {
 
       let query = supabase
         .from('trades')
-        .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, status')
+        .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, entry_time, volume, status')
         .eq('user_id', user.id)
         .eq('status', 'closed')
         .gte('exit_time', startIso)
@@ -577,14 +593,24 @@ export default function MonthlyPage() {
               </Button>
             </header>
 
-            <div className="flex items-center gap-5 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground">
-              <span className="rounded-md bg-primary/15 px-3 py-1.5 text-primary">Time</span>
-              <span>P&amp;L</span>
-              <span>Volume</span>
+            <div className="flex items-center gap-2 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground">
+              {(['time', 'pnl', 'volume'] as const).map((sort) => (
+                <button
+                  key={sort}
+                  type="button"
+                  onClick={() => setTradeSort(sort)}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 transition-colors',
+                    tradeSort === sort ? 'bg-primary/15 text-primary' : 'hover:bg-muted hover:text-foreground',
+                  )}
+                >
+                  {sort === 'pnl' ? 'P&L' : sort[0].toUpperCase() + sort.slice(1)}
+                </button>
+              ))}
             </div>
 
             <div className="flex-1 overflow-y-auto px-5">
-              {selectedDay.trades.map((trade) => {
+              {sortedSelectedTrades.map((trade) => {
                 const netPnl = trade.net_pnl ?? (trade.pnl - trade.commission - trade.swap)
                 const exitTime = new Date(trade.exit_time)
                 return (
@@ -599,7 +625,10 @@ export default function MonthlyPage() {
                           {netPnl >= 0 ? '+' : ''}{netPnl.toFixed(2)}R
                         </span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">Closed at {exitTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {trade.entry_time ? `${new Date(trade.entry_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} → ` : ''}
+                        {exitTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · vol {trade.volume ?? '—'}
+                      </p>
                     </div>
                     <p className={`text-sm font-bold ${netPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
                       {netPnl >= 0 ? '+' : '-'}${Math.abs(netPnl).toFixed(2)}
