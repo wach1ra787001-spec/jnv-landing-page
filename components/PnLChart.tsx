@@ -230,17 +230,14 @@ export function PnLChart({
 
   // Determine colors
   let lineColor = '#94a3b8'
-  let topColor = 'rgba(148, 163, 184, 0.35)'
-  let bottomColor = 'rgba(148, 163, 184, 0.0)'
+  let gradientColor = '#94a3b8'
 
   if (isPositive) {
     lineColor = '#16a34a'
-    topColor = 'rgba(22, 163, 74, 0.35)'
-    bottomColor = 'rgba(22, 163, 74, 0.0)'
+    gradientColor = '#16a34a'
   } else if (isNegative) {
     lineColor = '#dc2626'
-    topColor = 'rgba(220, 38, 38, 0.35)'
-    bottomColor = 'rgba(220, 38, 38, 0.0)'
+    gradientColor = '#dc2626'
   }
 
   // Calculate Y axis domain
@@ -292,13 +289,36 @@ export function PnLChart({
 
   if (chartData.length === 0) {
     return (
-      <Card className="p-6 bg-card border border-border/50 flex flex-col items-center justify-center gap-3" style={{ height }}>
-        <TrendingDown className="w-10 h-10 text-muted-foreground" />
-        <div className="text-center">
-          <p className="font-medium text-foreground">Your P&L curve will appear here</p>
-          <p className="text-sm text-muted-foreground">
-            Close your first trade to see your performance
-          </p>
+      <Card className="p-4 sm:p-6 bg-card border border-border/50" style={{ minHeight: height }}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+          <div>
+            <h3 className="text-base sm:text-lg font-semibold text-foreground">P&L Tracking</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {period === '1W' ? 'No trades this week' : `No trades in the ${period} period`}
+            </p>
+          </div>
+          <div className="flex gap-1 overflow-x-auto flex-nowrap pb-1">
+            {periodButtons.map((btn) => (
+              <Button
+                key={btn}
+                variant={period === btn ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handlePeriodChange(btn)}
+                className={cn(
+                  'text-xs flex-shrink-0',
+                  period === btn
+                    ? 'bg-slate-900 dark:bg-slate-900 text-white'
+                    : 'bg-transparent',
+                )}
+              >
+                {btn}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center gap-3" style={{ height: Math.max(height - 86, 180) }}>
+          <TrendingDown className="w-10 h-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Choose another timeframe or close a trade to see your curve.</p>
         </div>
       </Card>
     )
@@ -365,8 +385,8 @@ export function PnLChart({
             <AreaChart data={chartData} margin={{ left: 16, right: 16, top: 8, bottom: 8 }}>
               <defs>
                 <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={topColor.split(',')[0] + ','} stopOpacity={0.35} />
-                  <stop offset="95%" stopColor={bottomColor.split(',')[0] + ','} stopOpacity={0} />
+                  <stop offset="0%" stopColor={gradientColor} stopOpacity={0.38} />
+                  <stop offset="100%" stopColor={gradientColor} stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />

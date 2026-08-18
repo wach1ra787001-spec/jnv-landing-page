@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { HeroCard } from "@/components/dashboard/hero-card"
 import { KPICards } from "@/components/dashboard/kpi-cards"
-import { AnalysisGrid } from "@/components/dashboard/analysis-grid"
 import { TradesTable } from "@/components/dashboard/trades-table"
 import { OpenPositionsWidget } from "@/components/OpenPositionsWidget"
 import { AccountRequiredPrompt } from "@/components/dashboard/account-required-prompt"
@@ -12,7 +11,11 @@ import {
   hasMeaningfulJournalNotes,
   type ConsistencyScoreInputs,
 } from "@/lib/consistency-score"
-
+import {
+  computeDayToDaySnapshot,
+  computeSevenDayTrend,
+} from "@/lib/day-to-day-analysis"
+import { DayToDayCard } from "@/components/dashboard/day-to-day-card"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -147,7 +150,18 @@ export default async function DashboardPage() {
     hasMeaningfulJournalNotes(row, notesByTradeId.get(row.trade_id) || []),
   ).length
 
-
+  const dayToDaySnapshot = computeDayToDaySnapshot(
+    allTrades || [],
+    journalByTradeId,
+    notesByTradeId,
+    hasActiveRules,
+  )
+  const sevenDayTrend = computeSevenDayTrend(
+    allTrades || [],
+    journalByTradeId,
+    notesByTradeId,
+    hasActiveRules,
+  )
 
   // Transform trades data for the table component
   const formattedTrades = (recentTrades || []).map(trade => ({
@@ -188,6 +202,15 @@ export default async function DashboardPage() {
         />
       </div>
 
+      {/* Day-to-Day - Fast daily health check */}
+      <div>
+        <DayToDayCard
+          snapshot={dayToDaySnapshot}
+          trend={sevenDayTrend}
+          currency={currency}
+        />
+      </div>
+
       {/* P&L Chart - Full Width */}
       <div>
         <PnLChart 
@@ -197,13 +220,6 @@ export default async function DashboardPage() {
           accountId={accountId}
         />
       </div>
-
-      {/* Main Analysis Row - 66% / 33% Split with premium spacing */}
-      <AnalysisGrid 
-        userId={user?.id || ''}
-        currency={currency}
-        trades={allTrades || []}
-      />
 
       {/* Bottom Row - 2 Column Equal Split */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
