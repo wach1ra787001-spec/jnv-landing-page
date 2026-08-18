@@ -56,24 +56,48 @@ export function KPICards({
       </Card>
 
       {/* Growth Card - Clickable */}
-      <Link href="/dashboard/advanced-stats/time">
-        <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-          <div className="flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Growth</p>
-              <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
-                {growthPercent}%
-              </p>
-              <p className="text-[9px] sm:text-xs text-chart-1 mt-1 sm:mt-2 font-medium truncate">
-                +{growthVsLastMonth}% vs last month
-              </p>
+      <div>
+        <Link href="/dashboard/advanced-stats/time" className="block">
+          <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Growth</p>
+                <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
+                  {growthPercent}%
+                </p>
+                <p className="text-[9px] sm:text-xs text-chart-1 mt-1 sm:mt-2 font-medium truncate">
+                  +{growthVsLastMonth}% vs last month
+                </p>
+              </div>
+              <div className="p-1.5 sm:p-2.5 rounded-lg bg-primary/10 flex-shrink-0">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              </div>
             </div>
-            <div className="p-1.5 sm:p-2.5 rounded-lg bg-primary/10 flex-shrink-0">
-              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-            </div>
+          </Card>
+        </Link>
+        {monthlyGrowthTimeline.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1">
+            {monthlyGrowthTimeline.slice(1).map((month, index) => (
+              <Link key={`${month.month}-${index}`} href="/dashboard/advanced-stats/time" className="block">
+                <div className="rounded-md border border-border/30 bg-muted/40 px-2 py-1.5 transition-colors hover:bg-muted/60 sm:px-3 sm:py-2">
+                  <p className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap sm:text-[9px]">
+                    {month.month}
+                  </p>
+                  {month.hasTrades ? (
+                    <p className={`text-[10px] font-bold whitespace-nowrap sm:text-xs ${month.growthPercent >= 0 ? "text-chart-1" : "text-chart-2"}`}>
+                      {month.growthPercent >= 0 ? "+" : ""}{month.growthPercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}%
+                    </p>
+                  ) : (
+                    <p className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap sm:text-xs">
+                      No trades
+                    </p>
+                  )}
+                </div>
+              </Link>
+            ))}
           </div>
-        </Card>
-      </Link>
+        )}
+      </div>
 
       {/* Consistency Card */}
       <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
