@@ -12,41 +12,34 @@ export function MonthlyGrowthTimeline({ timeline }: MonthlyGrowthTimelineProps) 
     return null
   }
 
-  const currentMonth = timeline[0]
   const previousMonths = timeline.slice(1)
+
+  if (previousMonths.length === 0) {
+    return null
+  }
 
   return (
     <Link href="/dashboard/advanced-stats/time" className="block">
-      <div className="rounded-xl border border-border/50 bg-card/50 px-4 py-5 sm:px-6 sm:py-6 transition-colors hover:border-border hover:bg-card/70">
-        <div className="flex min-h-32 flex-col items-center justify-center gap-4 sm:min-h-36">
-          {currentMonth?.hasTrades ? (
-            <div className="text-center">
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Current month</p>
-              <p className={`mt-1 text-lg font-bold ${currentMonth.growthPercent >= 0 ? "text-chart-1" : "text-chart-2"}`}>
-                {currentMonth.growthPercent >= 0 ? "+" : ""}{currentMonth.growthPercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}% MoM
+      <div className="flex gap-2 overflow-x-auto pb-1 group cursor-pointer">
+        {previousMonths.map((month, index) => (
+          <div
+            key={`${month.month}-${index}`}
+            className="flex-shrink-0 rounded-md border border-border/30 bg-muted/40 px-2 py-1.5 transition-colors hover:bg-muted/60 group-hover:shadow-sm sm:px-3 sm:py-2"
+          >
+            <p className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap sm:text-[9px]">
+              {month.month}
+            </p>
+            {month.hasTrades ? (
+              <p className={`text-[10px] font-bold whitespace-nowrap sm:text-xs ${month.growthPercent >= 0 ? "text-chart-1" : "text-chart-2"}`}>
+                {month.growthPercent >= 0 ? "+" : ""}{month.growthPercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}%
               </p>
-            </div>
-          ) : (
-            <p className="text-center text-sm font-medium text-muted-foreground">No trades this month</p>
-          )}
-
-          <div className="flex w-full flex-col items-center gap-2 sm:gap-3">
-            {previousMonths.map((month, index) => (
-              <div
-                key={`${month.month}-${index}`}
-                className={`flex min-h-12 items-center justify-center rounded-lg border border-border/50 bg-background/60 px-4 py-2 text-center transition-colors hover:bg-background/90 ${
-                  index === 0 ? "w-4/5 sm:w-3/4" : "w-3/5 sm:w-1/2"
-                }`}
-              >
-                <p className={`text-xs sm:text-sm font-semibold ${month.hasTrades ? (month.growthPercent >= 0 ? "text-chart-1" : "text-chart-2") : "text-muted-foreground"}`}>
-                  {month.hasTrades
-                    ? `${month.month} ${month.growthPercent >= 0 ? "+" : ""}${month.growthPercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}%`
-                    : `${month.month} — No trades taken yet`}
-                </p>
-              </div>
-            ))}
+            ) : (
+              <p className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap sm:text-xs">
+                No trades
+              </p>
+            )}
           </div>
-        </div>
+        ))}
       </div>
     </Link>
   )
