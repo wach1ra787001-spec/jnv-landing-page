@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ChevronLeft, ChevronRight, ArrowLeft, AlertCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowLeft, AlertCircle, X, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 
@@ -53,6 +53,7 @@ export default function MonthlyPage() {
     lossDays: 0,
   })
   const [hoveredDayIdx, setHoveredDayIdx] = useState<number | null>(null)
+  const [selectedDay, setSelectedDay] = useState<DayData | null>(null)
 
   // Cache to avoid redundant fetches
   const monthCacheRef = useRef<Record<string, Trade[]>>({})
@@ -412,7 +413,7 @@ export default function MonthlyPage() {
                   >
                     <div
                       className={cn(
-                        'relative rounded-lg border transition-all p-1 sm:p-2 min-h-[52px] cursor-default',
+                        'relative rounded-lg border transition-all p-1 sm:p-2 min-h-[52px] cursor-pointer hover:ring-2 hover:ring-primary/50',
                         isPaddingDay
                           ? 'bg-muted border-muted opacity-30'
                           : dayData
@@ -423,6 +424,15 @@ export default function MonthlyPage() {
                             : 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300 dark:border-yellow-900'
                           : 'bg-card border-border'
                       )}
+                      onClick={() => !isPaddingDay && dayData && setSelectedDay(dayData)}
+                      role={!isPaddingDay && dayData ? 'button' : undefined}
+                      tabIndex={!isPaddingDay && dayData ? 0 : undefined}
+                      onKeyDown={(event) => {
+                        if (!isPaddingDay && dayData && (event.key === 'Enter' || event.key === ' ')) {
+                          event.preventDefault()
+                          setSelectedDay(dayData)
+                        }
+                      }}
                     >
                       <div className="h-full flex flex-col justify-between">
                         <div className="calendar-day-number text-foreground">{dayObj.date}</div>
@@ -543,6 +553,73 @@ export default function MonthlyPage() {
           </div>
         )}
       </div>
+
+      {selectedDay && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
+          <aside
+            className="flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="selected-day-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 id="selected-day-title" className="text-base font-bold text-foreground">
+                  {new Date(currentYear, currentMonth, selectedDay.date).toLocaleDateString('en-US', {
+                    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+                  })}
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground">{selectedDay.tradeCount} trades</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedDay(null)} aria-label="Close day trades">
+                <X className="h-5 w-5" />
+              </Button>
+            </header>
+
+            <div className="flex items-center gap-5 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground">
+              <span className="rounded-md bg-primary/15 px-3 py-1.5 text-primary">Time</span>
+              <span>P&amp;L</span>
+              <span>Volume</span>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5">
+              {selectedDay.trades.map((trade) => {
+                const netPnl = trade.net_pnl ?? (trade.pnl - trade.commission - trade.swap)
+                const exitTime = new Date(trade.exit_time)
+                return (
+                  <div key={trade.id} className="flex items-center gap-3 border-b border-border/60 py-4">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-500">
+                      <ArrowUpRight className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-foreground">{trade.symbol}</p>
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                          {netPnl >= 0 ? '+' : ''}{netPnl.toFixed(2)}R
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Closed at {exitTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</p>
+                    </div>
+                    <p className={`text-sm font-bold ${netPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {netPnl >= 0 ? '+' : '-'}${Math.abs(netPnl).toFixed(2)}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+
+            <footer className="border-t border-border px-5 py-4">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>Win Rate <strong className="text-foreground">{selectedDay.winRate.toFixed(2)}%</strong> · <span className="text-emerald-500">{selectedDay.winCount}W</span> / <span className="text-red-500">{selectedDay.tradeCount - selectedDay.winCount}L</span></span>
+                <strong className={selectedDay.totalPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+                  {selectedDay.totalPnL >= 0 ? '+' : '-'}${Math.abs(selectedDay.totalPnL).toFixed(2)}
+                </strong>
+              </div>
+            </footer>
+          </aside>
+        </div>
+      )}
     </div>
   )
 }
