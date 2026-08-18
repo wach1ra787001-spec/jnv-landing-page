@@ -274,6 +274,45 @@ export default function MonthlyPage() {
     })
   }, [trades])
 
+  const monthlyPerformanceStats = useMemo(() => {
+    const dayValues = Array.from(dayMap.values())
+    const profitableDays = dayValues.filter((day) => day.isProfit).length
+    const winningTrades = trades.filter((trade) => (trade.net_pnl ?? (trade.pnl - trade.commission - trade.swap)) > 0).length
+    const dailyPnl = dayValues.map((day) => ({ date: day.date, pnl: day.totalPnL, trades: day.tradeCount }))
+    const bestWeek = dailyPnl.reduce((sum, day) => sum + (day.pnl > 0 ? day.pnl : 0), 0)
+    const worstWeek = dailyPnl.reduce((sum, day) => sum + (day.pnl < 0 ? day.pnl : 0), 0)
+
+    let winStreak = 0
+    let lossStreak = 0
+    let currentWin = 0
+    let currentLoss = 0
+    for (const day of dailyPnl.sort((a, b) => a.date - b.date)) {
+      if (day.pnl > 0) {
+        currentWin++
+        currentLoss = 0
+        winStreak = Math.max(winStreak, currentWin)
+      } else if (day.pnl < 0) {
+        currentLoss++
+        currentWin = 0
+        lossStreak = Math.max(lossStreak, currentLoss)
+      } else {
+        currentWin = 0
+        currentLoss = 0
+      }
+    }
+
+    return {
+      bestWeek,
+      worstWeek,
+      winStreak,
+      lossStreak,
+      profitableDays,
+      profitableDaysPercent: monthlyStats.tradingDays ? (profitableDays / monthlyStats.tradingDays) * 100 : 0,
+      avgTradesPerDay: monthlyStats.tradingDays ? monthlyStats.totalTrades / monthlyStats.tradingDays : 0,
+      winRate: monthlyStats.totalTrades ? (winningTrades / monthlyStats.totalTrades) * 100 : 0,
+    }
+  }, [dayMap, monthlyStats, trades])
+
   // Navigation handlers
   const previousMonth = () => {
     if (currentMonth === 0) {
@@ -540,6 +579,28 @@ export default function MonthlyPage() {
             </div>
           </div>
         </Card>
+
+        {/* Monthly performance tabs — intentionally excludes Best Month and Worst Month */}
+        {!isLoading && trades.length > 0 && (
+          <div className="mt-4 sm:mt-6 mx-4 sm:mx-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+              {[
+                { label: 'Best Week', value: `$${monthlyPerformanceStats.bestWeek.toFixed(2)}`, tone: 'text-emerald-400', detail: 'profitable days combined' },
+                { label: 'Worst Week', value: `-$${Math.abs(monthlyPerformanceStats.worstWeek).toFixed(2)}`, tone: 'text-red-400', detail: 'losing days combined' },
+                { label: 'Win Streak', value: `${monthlyPerformanceStats.winStreak} days`, tone: 'text-foreground', detail: 'longest winning streak' },
+                { label: 'Loss Streak', value: `${monthlyPerformanceStats.lossStreak} days`, tone: 'text-foreground', detail: 'longest losing streak' },
+                { label: 'Profitable Days', value: `${monthlyPerformanceStats.profitableDaysPercent.toFixed(1)}%`, tone: 'text-foreground', detail: `${monthlyPerformanceStats.profitableDays} of ${monthlyStats.tradingDays} days` },
+                { label: 'Avg Trades/Day', value: monthlyPerformanceStats.avgTradesPerDay.toFixed(1), tone: 'text-foreground', detail: `${monthlyStats.tradingDays} trading days` },
+              ].map((stat) => (
+                <Card key={stat.label} className="p-3 sm:p-4 bg-card border border-border/50">
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">{stat.label}</p>
+                  <p className={cn('mt-2 text-lg sm:text-xl font-bold truncate', stat.tone)}>{stat.value}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground truncate">{stat.detail}</p>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Stats Summary */}
         {!isLoading && trades.length > 0 && (
