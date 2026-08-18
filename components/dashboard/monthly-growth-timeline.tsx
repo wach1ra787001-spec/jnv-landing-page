@@ -38,20 +38,28 @@ export function MonthlyGrowthTimeline({ timeline }: MonthlyGrowthTimelineProps) 
                     <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
                       {month.month}
                     </p>
-                    <p className={`text-sm sm:text-base md:text-lg font-bold truncate ${isPos ? 'text-chart-1' : 'text-chart-2'}`}>
-                      {isPos ? '+' : ''}{month.pnl.toLocaleString('en-US', { maximumFractionDigits: 2 })}
-                    </p>
+                    {month.hasTrades ? (
+                      <p className={`text-sm sm:text-base md:text-lg font-bold truncate ${isPos ? 'text-chart-1' : 'text-chart-2'}`}>
+                        {isPos ? '+' : ''}{month.growthPercent.toLocaleString('en-US', { maximumFractionDigits: 2 })}% MoM
+                      </p>
+                    ) : (
+                      <p className="text-sm sm:text-base md:text-lg font-semibold text-muted-foreground truncate">
+                        No trades taken yet
+                      </p>
+                    )}
                     <p className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 truncate">
                       {month.date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
                     </p>
                   </div>
-                  <div className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${isPos ? 'bg-chart-1/10' : 'bg-chart-2/10'}`}>
-                    {isPos ? (
-                      <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-chart-1" />
-                    ) : (
-                      <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-chart-2" />
-                    )}
-                  </div>
+                  {month.hasTrades && (
+                    <div className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${isPos ? 'bg-chart-1/10' : 'bg-chart-2/10'}`}>
+                      {isPos ? (
+                        <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-chart-1" />
+                      ) : (
+                        <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-chart-2" />
+                      )}
+                    </div>
+                  )}
                 </div>
               </Card>
             </div>

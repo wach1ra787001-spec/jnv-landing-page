@@ -7,6 +7,7 @@ export interface MonthlyGrowth {
   date: Date
   growthPercent: number
   pnl: number
+  hasTrades: boolean
 }
 
 /**
@@ -67,16 +68,18 @@ export function calculateMonthlyGrowthTimeline(
       return sum + pnl
     }, 0)
 
-    // Calculate growth percentage (PnL as % of previous month's end balance or base unit)
-    // For simplicity, we'll express it as just the PnL value
-    // If you want percentage vs. starting balance, you'd need account balance data
-    const growthPercent = totalPnL > 0 ? Math.min(totalPnL, 999.99) : totalPnL
+    // An empty month has no month-over-month growth value. Keep it distinct
+    // from a real losing month so the UI can say "No trades taken yet".
+    const growthPercent = monthTrades.length > 0
+      ? totalPnL > 0 ? Math.min(totalPnL, 999.99) : totalPnL
+      : 0
 
     return {
       month: monthInfo.label,
       date: monthInfo.date,
       growthPercent,
       pnl: totalPnL,
+      hasTrades: monthTrades.length > 0,
     }
   })
 }
