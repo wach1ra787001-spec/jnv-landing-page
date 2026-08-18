@@ -131,7 +131,7 @@ export default function MonthlyPage() {
 
       let query = supabase
         .from('trades')
-        .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, entry_time, volume, status')
+        .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, entry_time, status')
         .eq('user_id', user.id)
         .eq('status', 'closed')
         .gte('exit_time', startIso)
