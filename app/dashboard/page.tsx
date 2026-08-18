@@ -16,6 +16,8 @@ import {
   computeSevenDayTrend,
 } from "@/lib/day-to-day-analysis"
 import { DayToDayCard } from "@/components/dashboard/day-to-day-card"
+import { MonthlyGrowthTimeline } from "@/components/dashboard/monthly-growth-timeline"
+import { calculateMonthlyGrowthTimeline } from "@/lib/monthly-growth-analysis"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -163,6 +165,9 @@ export default async function DashboardPage() {
     hasActiveRules,
   )
 
+  // Calculate monthly growth timeline for current and previous 2 months
+  const monthlyGrowthTimeline = calculateMonthlyGrowthTimeline(allTrades || [])
+
   // Transform trades data for the table component
   const formattedTrades = (recentTrades || []).map(trade => ({
     id: trade.id,
@@ -199,7 +204,13 @@ export default async function DashboardPage() {
           riskExposure={metrics?.risk_exposure || 0}
           consistency={consistency}
           documentedTrades={totalDocumentedTrades}
+          monthlyGrowthTimeline={monthlyGrowthTimeline}
         />
+      </div>
+
+      {/* Monthly Growth Timeline - 3-Month Comparison */}
+      <div className="pt-2">
+        <MonthlyGrowthTimeline timeline={monthlyGrowthTimeline} />
       </div>
 
       {/* Day-to-Day - Fast daily health check */}

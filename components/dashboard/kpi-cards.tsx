@@ -2,7 +2,10 @@
 
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { TrendingUp, TrendingDown, BarChart3, CheckCircle2 } from "lucide-react"
+import Link from "next/link"
+import type { MonthlyGrowth } from "@/lib/monthly-growth-analysis"
 
 interface KPICardsProps {
   pnl?: number
@@ -14,6 +17,7 @@ interface KPICardsProps {
   riskExposure?: number
   consistency?: number
   documentedTrades?: number
+  monthlyGrowthTimeline?: MonthlyGrowth[]
 }
 
 export function KPICards({
@@ -25,9 +29,10 @@ export function KPICards({
   winRate,
   riskExposure,
   consistency,
-  documentedTrades
+  documentedTrades,
+  monthlyGrowthTimeline = []
 }: KPICardsProps) {
-  const isProfit = pnl >= 0
+  const isProfit = (pnl ?? 0) >= 0
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-5">
@@ -37,7 +42,7 @@ export function KPICards({
           <div className="min-w-0">
             <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Total PnL</p>
             <p className={`text-lg sm:text-2xl md:text-3xl font-bold ${isProfit ? 'text-chart-1' : 'text-chart-2'} truncate`}>
-              {isProfit ? '+' : ''}{`$${Math.abs(pnl).toLocaleString()}`}
+              {isProfit ? '+' : ''}{`$${Math.abs(pnl ?? 0).toLocaleString()}`}
             </p>
           </div>
           <div className={`p-1.5 sm:p-2.5 rounded-lg flex-shrink-0 ${isProfit ? 'bg-chart-1/10' : 'bg-chart-2/10'}`}>
@@ -50,23 +55,25 @@ export function KPICards({
         </div>
       </Card>
 
-      {/* Growth Card */}
-      <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Growth</p>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
-              {growthPercent}%
-            </p>
-            <p className="text-[9px] sm:text-xs text-chart-1 mt-1 sm:mt-2 font-medium truncate">
-              +{growthVsLastMonth}% vs last month
-            </p>
+      {/* Growth Card - Clickable */}
+      <Link href="/dashboard/advanced-stats/time-analysis">
+        <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Growth</p>
+              <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
+                {growthPercent}%
+              </p>
+              <p className="text-[9px] sm:text-xs text-chart-1 mt-1 sm:mt-2 font-medium truncate">
+                +{growthVsLastMonth}% vs last month
+              </p>
+            </div>
+            <div className="p-1.5 sm:p-2.5 rounded-lg bg-primary/10 flex-shrink-0">
+              <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+            </div>
           </div>
-          <div className="p-1.5 sm:p-2.5 rounded-lg bg-primary/10 flex-shrink-0">
-            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </Link>
 
       {/* Consistency Card */}
       <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
@@ -93,7 +100,7 @@ export function KPICards({
             <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Win Rate</p>
             <div className="flex items-end gap-2">
               <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
-                {winRate}%
+                {(winRate ?? 0)}%
               </p>
             </div>
             
@@ -125,10 +132,10 @@ export function KPICards({
               stroke="url(#gaugeGradient)"
               strokeWidth="8"
               strokeLinecap="round"
-              strokeDasharray={`${(winRate / 100) * 157} 157`}
+              strokeDasharray={`${(((winRate ?? 0) / 100) * 157)} 157`}
             />
             {/* Needle */}
-            <g transform={`rotate(${-90 + (winRate / 100) * 180}, 60, 60)`}>
+              <g transform={`rotate(${-90 + (((winRate ?? 0) / 100) * 180)}, 60, 60)`}>
               <line
                 x1="60"
                 y1="60"
