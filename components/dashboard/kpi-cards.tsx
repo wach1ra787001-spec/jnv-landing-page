@@ -33,6 +33,7 @@ export function KPICards({
   monthlyGrowthTimeline = []
 }: KPICardsProps) {
   const isProfit = (pnl ?? 0) >= 0
+  const currentMonthHasTrades = monthlyGrowthTimeline[0]?.hasTrades ?? (totalTrades ?? 0) > 0
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-5">
@@ -62,12 +63,20 @@ export function KPICards({
             <div className="flex items-start justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Growth</p>
-                <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
-                  {growthPercent}%
-                </p>
-                <p className="text-[9px] sm:text-xs text-chart-1 mt-1 sm:mt-2 font-medium truncate">
-                  +{growthVsLastMonth}% vs last month
-                </p>
+                {currentMonthHasTrades ? (
+                  <>
+                    <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
+                      {growthPercent ?? 0}%
+                    </p>
+                    <p className="text-[9px] sm:text-xs text-chart-1 mt-1 sm:mt-2 font-medium truncate">
+                      +{growthVsLastMonth ?? 0}% vs last month
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm sm:text-base md:text-lg font-semibold text-muted-foreground leading-tight">
+                    No trades taken yet
+                  </p>
+                )}
               </div>
               <div className="p-1.5 sm:p-2.5 rounded-lg bg-primary/10 flex-shrink-0">
                 <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
