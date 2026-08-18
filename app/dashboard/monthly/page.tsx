@@ -417,7 +417,7 @@ export default function MonthlyPage() {
               <div className="h-4 w-32 bg-muted rounded animate-pulse" />
             </div>
           ) : trades.length === 0 ? (
-            <div className="text-right text-muted-foreground text-sm">
+            <div className="text-right text-muted-foreground/90 text-sm">
               No trades this month
             </div>
           ) : (
@@ -425,7 +425,7 @@ export default function MonthlyPage() {
               <div className={cn('text-2xl sm:text-3xl font-bold', isProfit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
                 {isProfit ? '+' : ''}{monthlyStats.totalPnL.toFixed(2)}
               </div>
-              <div className="text-xs sm:text-sm text-muted-foreground">
+              <div className="text-xs sm:text-sm text-muted-foreground/90">
                 {monthlyStats.tradingDays} trading day{monthlyStats.tradingDays !== 1 ? 's' : ''}
               </div>
             </div>
@@ -443,10 +443,10 @@ export default function MonthlyPage() {
         {/* Calendar Card */}
         <Card className="p-3 sm:p-6 bg-card border-border mx-4 sm:mx-0">
           <div className="mb-4">
-            <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground mb-2 sm:mb-3 pl-4 sm:pl-0">Monthly stats:</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground/90 mb-2 sm:mb-3 pl-4 sm:pl-0">Monthly stats:</h3>
             <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-3 sm:mb-4">
               {weekDays.map((day) => (
-                <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-muted-foreground py-1 sm:py-2">
+                <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-muted-foreground/90 py-1 sm:py-2">
                   {day}
                 </div>
               ))}
@@ -509,7 +509,7 @@ export default function MonthlyPage() {
                             >
                               {dayData.totalPnL > 0 ? '+' : ''}{dayData.totalPnL.toFixed(0)}
                             </div>
-                            <div className="text-xs sm:text-sm text-muted-foreground lg:hidden">
+                            <div className="text-xs sm:text-sm text-muted-foreground/90 lg:hidden">
                               {dayData.tradeCount}T
                             </div>
 
@@ -593,9 +593,9 @@ export default function MonthlyPage() {
                 { label: 'Avg Trades/Day', value: monthlyPerformanceStats.avgTradesPerDay.toFixed(1), tone: 'text-foreground', detail: `${monthlyStats.tradingDays} trading days` },
               ].map((stat) => (
                 <Card key={stat.label} className="p-3 sm:p-4 bg-card border border-border/50">
-                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground truncate">{stat.label}</p>
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground/90 truncate">{stat.label}</p>
                   <p className={cn('mt-2 text-lg sm:text-xl font-bold truncate', stat.tone)}>{stat.value}</p>
-                  <p className="mt-1 text-[10px] text-muted-foreground truncate">{stat.detail}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground/90 truncate">{stat.detail}</p>
                 </Card>
               ))}
             </div>
@@ -606,23 +606,23 @@ export default function MonthlyPage() {
         {!isLoading && trades.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mt-4 sm:mt-6 mx-4 sm:mx-0">
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Total Trades</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Total Trades</p>
               <p className="text-base sm:text-lg font-bold text-foreground">{monthlyStats.totalTrades}</p>
             </Card>
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Trading Days</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Trading Days</p>
               <p className="text-base sm:text-lg font-bold text-foreground">{monthlyStats.tradingDays}</p>
             </Card>
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Win Days</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Win Days</p>
               <p className="text-base sm:text-lg font-bold text-green-600 dark:text-green-400">{monthlyStats.winDays}</p>
             </Card>
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Loss Days</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Loss Days</p>
               <p className="text-base sm:text-lg font-bold text-red-600 dark:text-red-400">{monthlyStats.lossDays}</p>
             </Card>
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Breakeven Days</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Breakeven Days</p>
               <p className="text-base sm:text-lg font-bold text-yellow-600 dark:text-yellow-400">
                 {monthlyStats.tradingDays - monthlyStats.winDays - monthlyStats.lossDays}
               </p>
@@ -647,14 +647,14 @@ export default function MonthlyPage() {
                     weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
                   })}
                 </h2>
-                <p className="mt-1 text-xs text-muted-foreground">{selectedDay.tradeCount} trades</p>
+                <p className="mt-1 text-xs text-muted-foreground/90">{selectedDay.tradeCount} trades</p>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setSelectedDay(null)} aria-label="Close day trades">
                 <X className="h-5 w-5" />
               </Button>
             </header>
 
-            <div className="flex items-center gap-2 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground">
+            <div className="flex items-center gap-2 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground/90">
               {(['time', 'pnl', 'volume'] as const).map((sort) => (
                 <button
                   key={sort}
@@ -682,11 +682,11 @@ export default function MonthlyPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <p className="truncate text-sm font-semibold text-foreground">{trade.symbol}</p>
-                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/90">
                           {netPnl >= 0 ? '+' : ''}{netPnl.toFixed(2)}R
                         </span>
                       </div>
-                      <p className="text-[10px] text-muted-foreground">
+                      <p className="text-[10px] text-muted-foreground/90">
                         {trade.entry_time ? `${new Date(trade.entry_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} → ` : ''}
                         {exitTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · vol {trade.volume ?? '—'}
                       </p>
@@ -700,7 +700,7 @@ export default function MonthlyPage() {
             </div>
 
             <footer className="border-t border-border px-5 py-4">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div className="flex items-center justify-between text-xs text-muted-foreground/90">
                 <span>Win Rate <strong className="text-foreground">{selectedDay.winRate.toFixed(2)}%</strong> · <span className="text-emerald-500">{selectedDay.winCount}W</span> / <span className="text-red-500">{selectedDay.tradeCount - selectedDay.winCount}L</span></span>
                 <strong className={selectedDay.totalPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
                   {selectedDay.totalPnL >= 0 ? '+' : '-'}${Math.abs(selectedDay.totalPnL).toFixed(2)}
