@@ -20,7 +20,7 @@ export function MonthlyGrowthTimeline({ timeline }: MonthlyGrowthTimelineProps) 
 
   return (
     <Link href="/dashboard/advanced-stats/time" className="block">
-      <div className="flex gap-2 overflow-x-auto pb-1 group cursor-pointer">
+      <div className="flex flex-col gap-2 w-[17px] group cursor-pointer">
         {previousMonths.map((month, index) => (
           <div
             key={`${month.month}-${index}`}
