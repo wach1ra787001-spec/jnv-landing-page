@@ -385,8 +385,8 @@ export function PnLChart({
             <AreaChart data={chartData} margin={{ left: 16, right: 16, top: 8, bottom: 8 }}>
               <defs>
                 <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={gradientColor} stopOpacity={0.38} />
-                  <stop offset="100%" stopColor={gradientColor} stopOpacity={0.02} />
+                  <stop offset="0%" stopColor={gradientColor} stopOpacity={0.52} />
+                  <stop offset="100%" stopColor={gradientColor} stopOpacity={0.06} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
