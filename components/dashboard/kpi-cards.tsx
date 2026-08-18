@@ -56,7 +56,7 @@ export function KPICards({
       </Card>
 
       {/* Growth Card - Clickable */}
-      <Link href="/dashboard/advanced-stats/time-analysis">
+      <Link href="/dashboard/advanced-stats/time">
         <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">

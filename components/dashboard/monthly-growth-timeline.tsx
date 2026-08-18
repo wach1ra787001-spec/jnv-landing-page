@@ -24,7 +24,7 @@ export function MonthlyGrowthTimeline({ timeline }: MonthlyGrowthTimelineProps) 
   const isPositive = (value: number) => value >= 0
 
   return (
-    <Link href="/dashboard/advanced-stats/time-analysis">
+    <Link href="/dashboard/advanced-stats/time">
       <div className="space-y-3 cursor-pointer group">
         {timeline.map((month, index) => {
           const isPos = isPositive(month.pnl)
