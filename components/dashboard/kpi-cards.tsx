@@ -109,10 +109,10 @@ export function KPICards({
         )}
       </div>
 
-      {/* Consistency Card - Radial gauge, clickable */}
-      <Link href="/dashboard/advanced-stats/consistency" className="block">
-        <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
-          <div className="flex items-center justify-between gap-3">
+      {/* Consistency Card - Radial gauge, clickable, height matches Win Rate card */}
+      <Link href="/dashboard/advanced-stats/consistency" className="block h-full">
+        <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full flex flex-col">
+          <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Consistency</p>
               {hasAnyTrades ? (
@@ -130,16 +130,20 @@ export function KPICards({
                 </p>
               )}
             </div>
+          </div>
+
+          {/* Radial gauge - fills remaining space to match Win Rate card's semi-circle gauge area */}
+          <div className="mt-3 sm:mt-4 flex-1 flex items-center justify-center">
             {(() => {
               const consistencyPercent = hasAnyTrades ? Math.min(Math.max(consistency ?? 0, 0), 100) : 0
-              const size = 44
-              const stroke = 5
+              const size = 96
+              const stroke = 9
               const radius = (size - stroke) / 2
               const circumference = 2 * Math.PI * radius
               const offset = circumference - (consistencyPercent / 100) * circumference
               const color = consistencyPercent >= 80 ? "#059669" : consistencyPercent >= 50 ? "#F59E0B" : "#DC2626"
               return (
-                <div className="relative flex-shrink-0 sm:w-12 sm:h-12 w-10 h-10">
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20">
                   <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
                     <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
                     {hasAnyTrades && (
@@ -156,6 +160,11 @@ export function KPICards({
                       />
                     )}
                   </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs sm:text-sm font-bold text-foreground">
+                      {hasAnyTrades ? `${Math.round(consistency ?? 0)}%` : "—"}
+                    </span>
+                  </div>
                 </div>
               )
             })()}
