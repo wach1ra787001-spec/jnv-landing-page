@@ -14,54 +14,38 @@ export function MonthlyGrowthTimeline({ timeline }: MonthlyGrowthTimelineProps) 
     return null
   }
 
-  // Determine sizes: current (100%), previous (80%), 2 months ago (60%)
-  const sizeClasses = [
-    "w-full sm:w-4/5 md:w-full", // Current month - full width on desktop
-    "w-4/5 sm:w-3/5 md:w-4/5",   // Previous month - 80% on desktop, 60% on tablet
-    "w-3/5 sm:w-1/2 md:w-3/5",   // 2 months ago - 60% on desktop, 50% on tablet
-  ]
-
   const isPositive = (value: number) => value >= 0
+
+  // Skip the current month and show previous months as compact indicators
+  const previousMonths = timeline.slice(1)
+
+  if (previousMonths.length === 0) {
+    return null
+  }
 
   return (
     <Link href="/dashboard/advanced-stats/time">
-      <div className="space-y-3 cursor-pointer group">
-        {timeline.map((month, index) => {
+      <div className="flex gap-2 overflow-x-auto pb-1 group cursor-pointer">
+        {previousMonths.map((month, index) => {
           const isPos = isPositive(month.pnl)
-          const sizeClass = sizeClasses[index] || "w-full"
 
           return (
-            <div key={`${month.month}-${index}`} className={`${sizeClass} transition-transform group-hover:scale-105 origin-left`}>
-              <Card className="p-3 sm:p-4 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
-                <div className="flex items-center justify-between gap-2 sm:gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide truncate">
-                      {month.month}
-                    </p>
-                    {month.hasTrades ? (
-                      <p className={`text-sm sm:text-base md:text-lg font-bold truncate ${isPos ? 'text-chart-1' : 'text-chart-2'}`}>
-                        {isPos ? '+' : ''}{month.growthPercent.toLocaleString('en-US', { maximumFractionDigits: 2 })}% MoM
-                      </p>
-                    ) : (
-                      <p className="text-sm sm:text-base md:text-lg font-semibold text-muted-foreground truncate">
-                        No trades taken yet
-                      </p>
-                    )}
-                    <p className="text-[9px] sm:text-xs text-muted-foreground mt-0.5 truncate">
-                      {month.date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
-                    </p>
-                  </div>
-                  {month.hasTrades && (
-                    <div className={`p-1.5 sm:p-2 rounded-lg flex-shrink-0 ${isPos ? 'bg-chart-1/10' : 'bg-chart-2/10'}`}>
-                      {isPos ? (
-                        <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-chart-1" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-chart-2" />
-                      )}
-                    </div>
-                  )}
-                </div>
-              </Card>
+            <div
+              key={`${month.month}-${index}`}
+              className="flex-shrink-0 px-2 sm:px-3 py-1 sm:py-1.5 rounded-md bg-muted/40 border border-border/30 hover:bg-muted/60 transition-colors group-hover:shadow-sm"
+            >
+              <p className="text-[8px] sm:text-[9px] font-semibold text-muted-foreground uppercase tracking-wider whitespace-nowrap">
+                {month.month}
+              </p>
+              {month.hasTrades ? (
+                <p className={`text-[10px] sm:text-xs font-bold whitespace-nowrap ${isPos ? 'text-chart-1' : 'text-chart-2'}`}>
+                  {isPos ? '+' : ''}{month.growthPercent.toLocaleString('en-US', { maximumFractionDigits: 1 })}%
+                </p>
+              ) : (
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground whitespace-nowrap">
+                  No trades
+                </p>
+              )}
             </div>
           )
         })}
