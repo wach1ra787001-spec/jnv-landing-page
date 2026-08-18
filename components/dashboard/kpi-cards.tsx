@@ -3,7 +3,7 @@
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { TrendingUp, TrendingDown, BarChart3, CheckCircle2 } from "lucide-react"
+import { TrendingUp, TrendingDown, BarChart3 } from "lucide-react"
 import Link from "next/link"
 import type { MonthlyGrowth } from "@/lib/monthly-growth-analysis"
 
@@ -34,6 +34,7 @@ export function KPICards({
 }: KPICardsProps) {
   const isProfit = (pnl ?? 0) >= 0
   const currentMonthHasTrades = monthlyGrowthTimeline[0]?.hasTrades ?? (totalTrades ?? 0) > 0
+  const hasAnyTrades = (totalTrades ?? 0) > 0
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-5">
@@ -108,23 +109,59 @@ export function KPICards({
         )}
       </div>
 
-      {/* Consistency Card */}
-      <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Consistency</p>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
-              {Math.round(consistency ?? 0)}%
-            </p>
-            <p className="text-[9px] sm:text-xs text-muted-foreground mt-1 sm:mt-2 truncate">
-              {documentedTrades} documented
-            </p>
+      {/* Consistency Card - Radial gauge, clickable */}
+      <Link href="/dashboard/advanced-stats/consistency" className="block">
+        <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Consistency</p>
+              {hasAnyTrades ? (
+                <>
+                  <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
+                    {Math.round(consistency ?? 0)}%
+                  </p>
+                  <p className="text-[9px] sm:text-xs text-muted-foreground mt-1 sm:mt-2 truncate">
+                    {documentedTrades} documented
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm sm:text-base md:text-lg font-semibold text-muted-foreground leading-tight">
+                  No trades taken yet
+                </p>
+              )}
+            </div>
+            {(() => {
+              const consistencyPercent = hasAnyTrades ? Math.min(Math.max(consistency ?? 0, 0), 100) : 0
+              const size = 44
+              const stroke = 5
+              const radius = (size - stroke) / 2
+              const circumference = 2 * Math.PI * radius
+              const offset = circumference - (consistencyPercent / 100) * circumference
+              const color = consistencyPercent >= 80 ? "#059669" : consistencyPercent >= 50 ? "#F59E0B" : "#DC2626"
+              return (
+                <div className="relative flex-shrink-0 sm:w-12 sm:h-12 w-10 h-10">
+                  <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+                    <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
+                    {hasAnyTrades && (
+                      <circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth={stroke}
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                      />
+                    )}
+                  </svg>
+                </div>
+              )
+            })()}
           </div>
-          <div className="p-1.5 sm:p-2.5 rounded-lg bg-primary/10 flex-shrink-0">
-            <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-          </div>
-        </div>
-      </Card>
+        </Card>
+      </Link>
 
       {/* Win Rate Gauge Card */}
       <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow relative col-span-1">

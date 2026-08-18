@@ -106,6 +106,78 @@ export function calculateAverageConsistencyScore(
   return Math.round((totalScore / trades.length) * 100) / 100
 }
 
+export interface ConsistencyAverageBreakdown {
+  rulesScore: number
+  riskModelScore: number
+  tradeModelScore: number
+  journalingScore: number
+  /** Each category expressed as a % of its own max weight (0-100), for progress bars. */
+  rulesPercent: number
+  riskModelPercent: number
+  tradeModelPercent: number
+  journalingPercent: number
+  total: number
+  tradeCount: number
+}
+
+/**
+ * Calculates the average consistency score AND the per-category breakdown
+ * across a set of trades, so the UI can render a component-level view
+ * (e.g. Rules / Risk Model / Trade Model / Journaling bars) instead of just
+ * the single blended total.
+ */
+export function calculateAverageConsistencyBreakdown(
+  trades: ConsistencyScoreInputs[],
+): ConsistencyAverageBreakdown {
+  if (!trades || trades.length === 0) {
+    return {
+      rulesScore: 0,
+      riskModelScore: 0,
+      tradeModelScore: 0,
+      journalingScore: 0,
+      rulesPercent: 0,
+      riskModelPercent: 0,
+      tradeModelPercent: 0,
+      journalingPercent: 0,
+      total: 0,
+      tradeCount: 0,
+    }
+  }
+
+  const totals = trades.reduce(
+    (acc, trade) => {
+      const score = calculateTradeConsistencyScore(trade)
+      acc.rulesScore += score.rulesScore
+      acc.riskModelScore += score.riskModelScore
+      acc.tradeModelScore += score.tradeModelScore
+      acc.journalingScore += score.journalingScore
+      acc.total += score.total
+      return acc
+    },
+    { rulesScore: 0, riskModelScore: 0, tradeModelScore: 0, journalingScore: 0, total: 0 },
+  )
+
+  const count = trades.length
+  const rulesScore = Math.round((totals.rulesScore / count) * 100) / 100
+  const riskModelScore = Math.round((totals.riskModelScore / count) * 100) / 100
+  const tradeModelScore = Math.round((totals.tradeModelScore / count) * 100) / 100
+  const journalingScore = Math.round((totals.journalingScore / count) * 100) / 100
+  const total = Math.round((totals.total / count) * 100) / 100
+
+  return {
+    rulesScore,
+    riskModelScore,
+    tradeModelScore,
+    journalingScore,
+    rulesPercent: Math.round((rulesScore / CONSISTENCY_WEIGHTS.rules) * 100),
+    riskModelPercent: Math.round((riskModelScore / CONSISTENCY_WEIGHTS.riskModel) * 100),
+    tradeModelPercent: Math.round((tradeModelScore / CONSISTENCY_WEIGHTS.tradeModel) * 100),
+    journalingPercent: Math.round((journalingScore / CONSISTENCY_WEIGHTS.journaling) * 100),
+    total,
+    tradeCount: count,
+  }
+}
+
 /**
  * Helper: determines whether a trade has "meaningful" journal notes, i.e.
  * any non-empty text across the journal's note fields.
