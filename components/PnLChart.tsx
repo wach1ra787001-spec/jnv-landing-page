@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/currency'
 import { Card } from '@/components/ui/card'
@@ -86,10 +86,19 @@ export function PnLChart({
     peakPnL: 0,
     maxDrawdown: 0,
   })
+  // Tracks whether the user has manually picked a period. Until they do,
+  // the chart auto-escalates past empty windows (e.g. no trades this month)
+  // so the P&L curve always has something to show.
+  const userSelectedPeriod = useRef(false)
 
   useEffect(() => {
     fetchAndProcessTrades()
   }, [userId, period, accountId])
+
+  const handlePeriodChange = (value: string) => {
+    userSelectedPeriod.current = true
+    setPeriod(value)
+  }
 
   const fetchAndProcessTrades = async () => {
     try {
@@ -121,29 +130,56 @@ export function PnLChart({
 
       // Filter by period
       const now = new Date()
-      const filteredTrades = trades.filter((trade) => {
-        const tradeDate = new Date(trade.exit_time)
-        const daysAgo = Math.floor(
-          (now.getTime() - tradeDate.getTime()) / (1000 * 60 * 60 * 24)
-        )
-
-        switch (period) {
+      const daysAgoFor = (windowPeriod: string) => {
+        switch (windowPeriod) {
           case '1W':
-            return daysAgo <= 7
+            return 7
           case '1M':
-            return daysAgo <= 30
+            return 30
           case '3M':
-            return daysAgo <= 90
+            return 90
           case '6M':
-            return daysAgo <= 180
+            return 180
           case '1Y':
-            return daysAgo <= 365
-          case 'All':
-            return true
+            return 365
           default:
-            return true
+            return Infinity
         }
-      })
+      }
+
+      const filterByPeriod = (windowPeriod: string) => {
+        const maxDaysAgo = daysAgoFor(windowPeriod)
+        return trades.filter((trade) => {
+          const tradeDate = new Date(trade.exit_time)
+          const daysAgo = Math.floor(
+            (now.getTime() - tradeDate.getTime()) / (1000 * 60 * 60 * 24)
+          )
+          return daysAgo <= maxDaysAgo
+        })
+      }
+
+      let effectivePeriod = period
+      let filteredTrades = filterByPeriod(effectivePeriod)
+
+      // The P&L curve should always show something. If the selected window
+      // (e.g. this month) has no trades and the user hasn't manually chosen
+      // a period, keep widening the window until one has data.
+      if (filteredTrades.length === 0 && !userSelectedPeriod.current) {
+        const escalationOrder = ['1M', '3M', '6M', '1Y', 'All']
+        const startIndex = Math.max(escalationOrder.indexOf(effectivePeriod), 0)
+        for (let i = startIndex + 1; i < escalationOrder.length; i++) {
+          const candidatePeriod = escalationOrder[i]
+          const candidateTrades = filterByPeriod(candidatePeriod)
+          if (candidateTrades.length > 0) {
+            effectivePeriod = candidatePeriod
+            filteredTrades = candidateTrades
+            break
+          }
+        }
+        if (effectivePeriod !== period) {
+          setPeriod(effectivePeriod)
+        }
+      }
 
       // Transform into cumulative P&L
       let cumulative = 0
@@ -279,7 +315,7 @@ export function PnLChart({
               key={btn}
               variant={period === btn ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setPeriod(btn)}
+              onClick={() => handlePeriodChange(btn)}
               className={cn(
                 'text-xs flex-shrink-0',
                 period === btn

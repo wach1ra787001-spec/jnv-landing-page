@@ -12,6 +12,11 @@ import {
   hasMeaningfulJournalNotes,
   type ConsistencyScoreInputs,
 } from "@/lib/consistency-score"
+import {
+  computeDayToDaySnapshot,
+  computeSevenDayTrend,
+} from "@/lib/day-to-day-analysis"
+import { DayToDayCard } from "@/components/dashboard/day-to-day-card"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -146,6 +151,20 @@ export default async function DashboardPage() {
     hasMeaningfulJournalNotes(row, notesByTradeId.get(row.trade_id) || []),
   ).length
 
+  // Day-to-Day: fast daily health check (Results -> Risk -> Discipline -> Insight).
+  const dayToDaySnapshot = computeDayToDaySnapshot(
+    allTrades || [],
+    journalByTradeId,
+    notesByTradeId,
+    hasActiveRules,
+  )
+  const sevenDayTrend = computeSevenDayTrend(
+    allTrades || [],
+    journalByTradeId,
+    notesByTradeId,
+    hasActiveRules,
+  )
+
   // Transform trades data for the table component
   const formattedTrades = (recentTrades || []).map(trade => ({
     id: trade.id,
@@ -182,6 +201,15 @@ export default async function DashboardPage() {
           riskExposure={metrics?.risk_exposure || 0}
           consistency={consistency}
           documentedTrades={totalDocumentedTrades}
+        />
+      </div>
+
+      {/* Day-to-Day - Fast daily health check: Results -> Risk -> Discipline -> Insight */}
+      <div>
+        <DayToDayCard
+          snapshot={dayToDaySnapshot}
+          trend={sevenDayTrend}
+          currency={currency}
         />
       </div>
 
