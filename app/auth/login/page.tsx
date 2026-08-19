@@ -53,21 +53,28 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+      const result = await response.json()
 
-    if (error) {
-      setError(error.message)
+      if (!response.ok) {
+        setError(result.error ?? "Unable to sign in. Please try again.")
+        setIsLoading(false)
+        return
+      }
+
+      const appOrigin = isProductionDomainHost(window.location.hostname)
+        ? getAppOrigin(window.location.hostname)
+        : window.location.origin
+      window.location.assign(`${appOrigin}${result.redirectTo ?? "/dashboard"}`)
+    } catch {
+      setError("Unable to sign in. Please try again.")
       setIsLoading(false)
-      return
     }
-
-    const appOrigin = isProductionDomainHost(window.location.hostname)
-      ? getAppOrigin(window.location.hostname)
-      : window.location.origin
-    window.location.assign(`${appOrigin}/dashboard`)
   }
 
   return (
