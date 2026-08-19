@@ -52,44 +52,54 @@
 }
 
 .dark {
-  /* Dark Mode - JnV | Pro Premium Trading Dashboard - Blue Gradient Palette */
-  --background: #021024;
-  --foreground: #C1E8FF;
-  --card: #052659;
-  --card-foreground: #C1E8FF;
-  --popover: #052659;
-  --popover-foreground: #C1E8FF;
-  --primary: #7DA0CA;
+  /* Dark Mode - near-black elevation system with electric blue actions */
+  --bg-base: #05070C;
+  --bg-surface: #0A1628;
+  --bg-surface-2: #0F1B30;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.14);
+  --accent-blue: #3B7BF8;
+  --accent-blue-strong: #2563EB;
+  --accent-blue-subtle: rgba(59, 123, 248, 0.12);
+  --text-primary: #F5F7FA;
+  --text-secondary: #8B93A6;
+  --background: var(--bg-base);
+  --foreground: var(--text-primary);
+  --card: var(--bg-surface);
+  --card-foreground: var(--text-primary);
+  --popover: var(--bg-surface-2);
+  --popover-foreground: var(--text-primary);
+  --primary: var(--accent-blue);
   --primary-foreground: #FFFFFF;
-  --secondary: #5483B3;
-  --secondary-foreground: #FFFFFF;
-  --muted: #052659;
-  --muted-foreground: #7DA0CA;
-  --accent: #0F1F3A;
-  --accent-foreground: #C1E8FF;
+  --secondary: var(--bg-surface-2);
+  --secondary-foreground: var(--text-primary);
+  --muted: var(--bg-surface-2);
+  --muted-foreground: var(--text-secondary);
+  --accent: var(--accent-blue-subtle);
+  --accent-foreground: var(--text-primary);
   --destructive: #f87171;
   --destructive-foreground: #FFFFFF;
-  --border: #052659;
-  --input: #052659;
-  --ring: #7DA0CA;
+  --border: var(--border-subtle);
+  --input: var(--bg-surface-2);
+  --ring: var(--accent-blue);
   --chart-1: #10b981;
   --chart-2: #ef4444;
-  --chart-3: #0ea5e9;
+  --chart-3: var(--accent-blue);
   --chart-4: #f59e0b;
   --chart-5: #8b5cf6;
-  --sidebar: #021024;
-  --sidebar-foreground: #C1E8FF;
-  --sidebar-primary: #7DA0CA;
+  --sidebar: var(--bg-base);
+  --sidebar-foreground: var(--text-primary);
+  --sidebar-primary: var(--accent-blue);
   --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: #052659;
-  --sidebar-accent-foreground: #C1E8FF;
-  --sidebar-border: #052659;
-  --sidebar-ring: #7DA0CA;
+  --sidebar-accent: var(--bg-surface-2);
+  --sidebar-accent-foreground: var(--text-primary);
+  --sidebar-border: var(--border-subtle);
+  --sidebar-ring: var(--accent-blue);
   --profit: #10b981;
   --loss: #ef4444;
   --profit-light: #064e3b;
   --loss-light: #7f1d1d;
-  --border-light: #052659;
+  --border-light: var(--border-subtle);
 }
 
 @theme inline {
@@ -131,6 +141,14 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-bg-base: var(--bg-base);
+  --color-bg-surface: var(--bg-surface);
+  --color-bg-surface-2: var(--bg-surface-2);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-blue-strong: var(--accent-blue-strong);
+  --color-accent-blue-subtle: var(--accent-blue-subtle);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
 }
 
 @layer base {

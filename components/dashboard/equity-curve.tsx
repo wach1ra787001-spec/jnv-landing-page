@@ -17,7 +17,7 @@ import { EquityCurveDataPoint } from "@/lib/generate-chart-data"
 const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; payload: { label: string } }>; label?: string }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-[#1E293B] text-white px-3 py-2 rounded-lg shadow-lg text-sm">
+      <div className="bg-bg-surface-2 text-foreground border border-border px-3 py-2 rounded-lg shadow-lg text-sm">
         <p className="font-medium">{payload[0].payload.label}</p>
         <p className="text-[#0EA5E9]">${payload[0].value.toLocaleString()}</p>
       </div>
@@ -64,7 +64,7 @@ export function EquityCurve({ data = [], period = "monthly", onPeriodChange }: E
         <h3 className="text-lg font-semibold text-[#1E293B] dark:text-foreground">
           Equity Curve
         </h3>
-        <div className="flex gap-1 bg-[#F1F5F9] dark:bg-secondary p-1 rounded-lg">
+        <div className="flex gap-1 bg-[#F1F5F9] dark:bg-bg-surface-2 p-1 rounded-lg">
           {periods.map((p) => (
             <Button
               key={p.key}
@@ -72,7 +72,7 @@ export function EquityCurve({ data = [], period = "monthly", onPeriodChange }: E
               size="sm"
               className={`text-xs px-3 py-1.5 rounded-md transition-all ${
                 localPeriod === p.key 
-                  ? 'bg-white dark:bg-card text-[#1E293B] dark:text-foreground shadow-sm' 
+                  ? 'bg-white dark:bg-accent-blue text-[#1E293B] dark:text-primary-foreground shadow-sm' 
                   : 'text-[#64748B] hover:bg-[#F8FAFC] dark:hover:bg-muted'
               }`}
               onClick={() => handlePeriodChange(p.key)}
@@ -92,7 +92,7 @@ export function EquityCurve({ data = [], period = "monthly", onPeriodChange }: E
                 <stop offset="95%" stopColor="#0EA5E9" stopOpacity={0} />
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="#E2E8F0" vertical={false} />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
             <XAxis 
               dataKey="time" 
               axisLine={false} 

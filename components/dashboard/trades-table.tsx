@@ -65,7 +65,7 @@ export function TradesTable({ title, trades }: TradesTableProps) {
               return (
                 <tr 
                   key={trade.id} 
-                  className="border-b border-[#E2E8F0] last:border-0 hover:bg-[#F8FAFC] dark:hover:bg-secondary transition-colors cursor-pointer"
+                  className="border-b border-[#E2E8F0] last:border-0 hover:bg-[#F8FAFC] dark:hover:bg-accent-blue-subtle transition-colors cursor-pointer"
                 >
                   <td className="py-3 px-2">
                     <span className="font-medium text-[#1E293B] dark:text-foreground">

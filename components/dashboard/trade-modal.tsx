@@ -703,7 +703,7 @@ export function TradeModal({ isOpen, onClose, onSubmit, editingTrade }: TradeMod
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="bg-[#0A1F44] hover:bg-[#071530] min-w-[120px]"
+              className="bg-accent-blue hover:bg-accent-blue-strong min-w-[120px]"
             >
               {isSubmitting
                 ? 'Saving…'
