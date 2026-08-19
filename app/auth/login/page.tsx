@@ -19,10 +19,12 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [honeypot, setHoneypot] = useState("")
+  const [isDark, setIsDark] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     setStartedAt(Date.now())
+    setIsDark(document.documentElement.classList.contains('dark'))
   }, [])
 
   const handleOAuth = async (provider: "google" | "apple") => {
@@ -83,7 +85,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center justify-center mb-8 gap-4">
           <div className="w-20 h-20 relative">
             <Image
-              src="/logo-jnv.png"
+              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv.png"}
               alt="JnV Journal Logo"
               width={80}
               height={80}
