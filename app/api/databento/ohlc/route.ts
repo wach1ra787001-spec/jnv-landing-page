@@ -47,7 +47,10 @@ export async function GET(request: NextRequest) {
   // Historical datasets trail wall-clock time. Keep the default and explicit
   // end inside the currently available range instead of sending `now`, which
   // Databento rejects while the latest bars are still being published.
-  const latestAvailable = Math.floor(Date.now() / 1000) - 15 * 60
+  // CME historical availability can trail UTC by several hours depending on
+  // the session and subscription. Use a conservative buffer so the request
+  // does not include the provider's unpublished tail.
+  const latestAvailable = Math.floor(Date.now() / 1000) - 12 * 60 * 60
   const requestedEnd = toUnixSeconds(params.get('end'), latestAvailable)
   const end = Math.min(requestedEnd, latestAvailable)
   const start = toUnixSeconds(params.get('start'), end - 30 * 24 * 60 * 60)
@@ -56,6 +59,7 @@ export async function GET(request: NextRequest) {
   const url = new URL('https://hist.databento.com/v0/timeseries.get_range')
   url.searchParams.set('dataset', DATASET)
   url.searchParams.set('symbols', symbol)
+  url.searchParams.set('stype_in', symbol.includes('.') ? 'continuous' : 'raw_symbol')
   url.searchParams.set('schema', schema)
   url.searchParams.set('start', new Date(start * 1000).toISOString())
   url.searchParams.set('end', new Date(end * 1000).toISOString())
