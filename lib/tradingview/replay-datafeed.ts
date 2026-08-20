@@ -14,9 +14,19 @@
 
 import { getSymbolMeta, generateMockBars, resolutionToSeconds, isValidBar } from './replay-utils'
 
+export interface ReplayBar {
+  time: number
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+}
+
 export interface ReplayDatafeedOptions {
   symbol: string
   interval: string
+  bars?: ReplayBar[]
   /** Called when cursor moves forward (play / step) — chart appends via realtime callback */
   onTick?: (currentTime: number, barIndex: number, totalBars: number) => void
   /** Called when cursor jumps backward or scrubs — chart must call resetData() */
@@ -39,12 +49,22 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
   datafeed: object
   controller: ReplayController
 } {
-  const { symbol, interval, onTick, onNeedReset } = options
+  const { symbol, interval, bars: providedBars, onTick, onNeedReset } = options
 
-  // Pre-generate ~6 months of bars (seeded, deterministic)
+  // Prefer server-backed normalized bars. Keep deterministic mock generation as
+  // an explicit fallback so the chart remains usable when a provider request
+  // fails, but never silently replace valid provider data.
   const now = Math.floor(Date.now() / 1000)
   const sixMonthsAgo = now - 60 * 60 * 24 * 180
-  const allBars = generateMockBars(symbol, sixMonthsAgo, now, interval)
+  const allBars = providedBars?.length
+    ? providedBars
+    : generateMockBars(symbol, sixMonthsAgo, now, interval)
+  console.log('[v0] Replay datafeed initialized', {
+    providerBars: Boolean(providedBars?.length),
+    count: allBars.length,
+    firstTime: allBars[0]?.time ?? null,
+    lastTime: allBars[allBars.length - 1]?.time ?? null,
+  })
   const total = allBars.length
 
   // Start at 20% in so there's something to see immediately
