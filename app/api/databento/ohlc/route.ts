@@ -23,10 +23,17 @@ function parseRecords(payload: string) {
   })
 }
 
+// With pretty_ts=true, Databento's CSV encoding returns ISO-8601 timestamps
+// (e.g. "2024-06-01T13:45:00.000000000Z") instead of raw nanosecond integers,
+// and with pretty_px=true it returns plain decimal prices instead of
+// fixed-point integers scaled by 1e-9. Parsing those raw values without the
+// pretty flags is what previously produced billion-scale prices and
+// epoch-1970 dates.
 function normalizeRecord(record: Record<string, string>) {
-  const timestamp = Number(record.ts_event ?? record.ts_recv ?? record.timestamp)
-  const divisor = timestamp > 10_000_000_000_000 ? 1_000_000_000 : timestamp > 10_000_000_000 ? 1_000 : 1
-  const time = Math.floor(timestamp / divisor)
+  const rawTs = record.ts_event ?? record.ts_recv ?? record.timestamp
+  const parsedTs = Date.parse(rawTs)
+  if (!Number.isFinite(parsedTs)) return null
+  const time = Math.floor(parsedTs / 1000)
   const open = Number(record.open)
   const high = Number(record.high)
   const low = Number(record.low)
@@ -95,6 +102,8 @@ export async function GET(request: NextRequest) {
   url.searchParams.set('start', new Date(start * 1000).toISOString())
   url.searchParams.set('end', new Date(end * 1000).toISOString())
   url.searchParams.set('encoding', 'csv')
+  url.searchParams.set('pretty_px', 'true')
+  url.searchParams.set('pretty_ts', 'true')
   url.searchParams.set('limit', String(limit))
 
   console.log('[v0] Databento request params', {
