@@ -39,9 +39,21 @@ function normalizeRecord(record: Record<string, string>) {
 
 export async function GET(request: NextRequest) {
   const requestId = crypto.randomUUID()
-  const apiKey = process.env.DATABENTO_API_KEY
-  console.log('[v0] Databento request start', { requestId, path: request.nextUrl.pathname })
-  if (!apiKey) return NextResponse.json({ error: 'Databento is not configured' }, { status: 503 })
+  const apiKey = process.env.DATABENTO_API_KEY?.trim()
+  const config = {
+    hasDatabentoApiKey: Boolean(apiKey),
+    runtime: process.env.VERCEL_ENV ?? 'local',
+  }
+  console.log('[v0] Databento request start', { requestId, path: request.nextUrl.pathname, ...config })
+  if (!apiKey) {
+    console.error('[v0] Databento configuration missing', { requestId, ...config })
+    return NextResponse.json({
+      error: 'Databento is not configured in this deployment',
+      code: 'DATABENTO_API_KEY_MISSING',
+      requestId,
+      ...config,
+    }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+  }
 
   const params = request.nextUrl.searchParams
   const symbol = params.get('symbol') || DEFAULT_SYMBOL
