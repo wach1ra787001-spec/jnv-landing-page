@@ -40,6 +40,7 @@ const policies: Array<[string, RateLimitPolicy]> = [
   ['/api/import/', { name: 'import', requests: 5, window: '10 m' }],
   ['/api/upload/', { name: 'upload', requests: 20, window: '10 m' }],
   ['/api/admin/', { name: 'admin', requests: 30, window: '1 m' }],
+  ['/api/backtest/', { name: 'backtesting', requests: 30, window: '1 m' }],
   ['/api/backtesting/', { name: 'backtesting', requests: 30, window: '1 m' }],
   ['/api/waitlist/', { name: 'waitlist', requests: 3, window: '1 h' }],
   ['/api/trades/', { name: 'trades', requests: 120, window: '1 m' }],
@@ -86,12 +87,14 @@ function usageKindForPath(pathname: string): UsageKind | null {
   if (pathname.startsWith('/api/mt5/') || pathname.startsWith('/api/ctrader/')) return 'sync'
   return null
 }
-export async function checkRateLimit({ pathname, ip, userId, plan = 'basic' }: { pathname: string; ip: string; userId?: string | null; plan?: Plan }) {
+export async function checkRateLimit({ pathname, ip, userId, plan = 'basic', method = 'GET' }: { pathname: string; ip: string; userId?: string | null; plan?: Plan; method?: string }) {
   const policy = getPolicy(pathname)
   const identity = userId ? `user:${userId}:ip:${ip}` : `ip:${ip}`
   const result = await getLimiter(policy).limit(identity)
   const kind = usageKindForPath(pathname)
-  const quota = userId && kind ? await getMonthlyLimiter(kind, PLAN_LIMITS[plan][kind]).limit(`user:${userId}:${new Date().toISOString().slice(0, 7)}`) : null
+  const quota = userId && kind && method !== 'GET'
+    ? await getMonthlyLimiter(kind, PLAN_LIMITS[plan][kind]).limit(`user:${userId}:${new Date().toISOString().slice(0, 7)}`)
+    : null
   return { ...result, policy, identity, quota, quotaKind: kind, plan }
 }
 export function getConcurrencyLimit(plan: Plan, kind: ConcurrencyKind) { return CONCURRENCY_LIMITS[plan][kind] }

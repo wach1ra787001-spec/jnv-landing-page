@@ -56,6 +56,30 @@ export function isValidBar(b: any): boolean {
   return true
 }
 
+export function normalizeExternalBars(rawBars: any[]) {
+  const sorted = rawBars
+    .map((bar) => ({
+      time: Number(bar.time ?? bar.timestamp ?? bar.ts_event),
+      open: Number(bar.open),
+      high: Number(bar.high),
+      low: Number(bar.low),
+      close: Number(bar.close),
+      volume: Number(bar.volume ?? 0),
+    }))
+    .filter(isValidBar)
+    .sort((a, b) => a.time - b.time)
+
+  const bars = sorted.filter((bar, index) => index === 0 || bar.time !== sorted[index - 1].time)
+  console.log('[v0] OHLC pipeline normalized', {
+    inputCount: rawBars.length,
+    validCount: sorted.length,
+    outputCount: bars.length,
+    firstTime: bars[0]?.time ?? null,
+    lastTime: bars[bars.length - 1]?.time ?? null,
+  })
+  return bars
+}
+
 export function generateMockBars(
   symbolName: string,
   from: number,

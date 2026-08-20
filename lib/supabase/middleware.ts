@@ -71,6 +71,7 @@ export async function updateSession(request: NextRequest) {
         ip,
         userId: user?.id,
         plan,
+        method: request.method,
       })
 
       if (user?.id && request.method !== 'GET' && (request.nextUrl.pathname.startsWith('/api/ai/') || request.nextUrl.pathname.startsWith('/api/backtest'))) {

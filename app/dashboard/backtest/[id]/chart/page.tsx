@@ -33,10 +33,12 @@ import {
   ChevronFirst,
   ChevronLast,
   Gauge,
+  BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TradingViewChart } from "@/components/tradingview-chart"
 import { createReplayDatafeed, type ReplayController } from "@/lib/tradingview/replay-datafeed"
+import { normalizeExternalBars } from "@/lib/tradingview/replay-utils"
 import type { TradingViewInterval } from "@/lib/tradingview/utils"
 
 interface Session {
@@ -93,6 +95,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   // ── Session ───────────────────────────────────────────────────────────────
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [interval, setInterval] = useState<TradingViewInterval>("60")
 
   // ── Replay state ──────────────────────────────────────────────────────────
@@ -108,6 +111,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   const widgetRef = useRef<any>(null)
   // The datafeed object is kept stable for the life of symbol+interval
   const datafeedRef = useRef<object | null>(null)
+  const barsRef = useRef<any[]>([])
   // Key forces TradingViewChart to fully remount when symbol/interval changes
   const [chartKey, setChartKey] = useState(0)
 
@@ -124,26 +128,69 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
 
   // ── Load session ──────────────────────────────────────────────────────────
   useEffect(() => {
-    fetch(`/api/backtest/sessions/${id}`)
-      .then(r => r.json())
-      .then(({ session: s }) => {
+    let cancelled = false
+    async function loadSessionAndBars() {
+      try {
+        setLoadError(null)
+        const sessionResponse = await fetch(`/api/backtest/sessions/${id}`)
+        const sessionPayload = await sessionResponse.json().catch(() => null)
+        if (!sessionResponse.ok) throw new Error(sessionPayload?.error || "Could not load this backtest session")
+        const { session: s } = sessionPayload
+        if (cancelled) return
         setSession(s)
         const tvInterval = DB_TO_TV[s?.timeframe] ?? "60"
         setInterval(tvInterval)
-        initDatafeed(s?.symbol ?? "EURUSD", tvInterval)
-      })
-      .finally(() => setLoading(false))
+
+        const start = Math.floor(new Date(s?.date_from ?? Date.now() - 30 * 86400000).getTime() / 1000)
+        const end = Math.floor(new Date(s?.date_to ?? Date.now()).getTime() / 1000)
+        const params = new URLSearchParams({
+          symbol: s?.symbol === "EURUSD" ? "6E.c.0" : s?.symbol ?? "6E.c.0",
+          schema: "ohlcv-1m",
+          start: String(start),
+          end: String(end),
+          limit: "5000",
+        })
+        const response = await fetch(`/api/databento/ohlc?${params.toString()}`, { cache: "no-store" })
+        const payload = await response.json().catch(() => null)
+        if (!response.ok) {
+          if (response.status === 503) {
+            throw new Error("Databento is not configured in this deployment. Add DATABENTO_API_KEY to the Vercel Preview/Production environment, then redeploy.")
+          }
+          throw new Error(payload?.error || "Could not load market data")
+        }
+        const bars = normalizeExternalBars(payload?.bars ?? [])
+        if (!bars.length) throw new Error("Databento returned no valid OHLC bars")
+        if (cancelled) return
+        console.log('[v0] Databento bars ready for replay', {
+          symbol: s?.symbol,
+          providerSymbol: params.get('symbol'),
+          count: bars.length,
+          firstTime: bars[0]?.time,
+          lastTime: bars[bars.length - 1]?.time,
+        })
+        barsRef.current = bars
+        initDatafeed(s?.symbol ?? "EURUSD", tvInterval, bars)
+      } catch (error) {
+        console.error('[v0] Backtest OHLC pipeline failed', error)
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : "Could not load this backtest")
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    loadSessionAndBars()
+    return () => { cancelled = true }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
   // ── Init / reinit datafeed ────────────────────────────────────────────────
-  function initDatafeed(sym: string, ivl: string) {
+  function initDatafeed(sym: string, ivl: string, bars = barsRef.current) {
     // Pause any existing controller
     controllerRef.current?.pause()
 
     const { datafeed, controller } = createReplayDatafeed({
       symbol: sym,
       interval: ivl,
+      bars,
       onTick: (time, idx, total) => {
         setCurrentTime(time)
         setBarIndex(idx)
@@ -224,7 +271,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
     setIsPlaying(false)
     setInterval(tvValue)
     if (session?.symbol) {
-      initDatafeed(session.symbol, tvValue)
+      initDatafeed(session.symbol, tvValue, barsRef.current)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.symbol])
@@ -286,6 +333,24 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background p-6">
+        <div className="flex max-w-lg flex-col items-center gap-4 rounded-xl border border-destructive/30 bg-card p-8 text-center shadow-lg">
+          <div className="rounded-full bg-destructive/10 p-3 text-destructive">
+            <BarChart3 className="h-8 w-8" />
+          </div>
+          <h1 className="text-xl font-semibold text-foreground">Unable to load market data</h1>
+          <p className="text-sm leading-relaxed text-muted-foreground">{loadError}</p>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => router.push(`/dashboard/backtest/${id}`)}>Back to session</Button>
+            <Button onClick={() => window.location.reload()}>Try again</Button>
+          </div>
+        </div>
       </div>
     )
   }

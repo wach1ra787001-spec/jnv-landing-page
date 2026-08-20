@@ -231,6 +231,7 @@ function SessionCard({ session, onDelete }: { session: BacktestSession; onDelete
 export default function BacktestPage() {
   const [sessions, setSessions] = useState<BacktestSession[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [selectedDuration, setSelectedDuration] = useState<number | null>(null)
@@ -248,9 +249,24 @@ export default function BacktestPage() {
 
   const fetchSessions = useCallback(async () => {
     setLoading(true)
+    setLoadError(null)
     try {
-      const res = await fetch("/api/backtest/sessions")
-      if (res.ok) setSessions(await res.json())
+      const res = await fetch("/api/backtest/sessions", { cache: "no-store" })
+      const payload = await res.json().catch(() => null)
+      if (!res.ok) {
+        if (res.status === 401) throw new Error("Your session has expired. Sign in again to view your backtests.")
+        if (res.status === 429) {
+          const retryAfter = Number(res.headers.get("Retry-After"))
+          const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? ` Try again in about ${Math.ceil(retryAfter / 60)} minute${Math.ceil(retryAfter / 60) === 1 ? "" : "s"}.` : ""
+          throw new Error(`The request limit was reached.${wait}`)
+        }
+        throw new Error(payload?.error || "We couldn't load your backtest sessions.")
+      }
+      setSessions(Array.isArray(payload) ? payload : [])
+    } catch (error) {
+      console.error("[v0] Backtest sessions load failed", error)
+      setLoadError(error instanceof Error ? error.message : "We couldn't load your backtest sessions.")
+      setSessions([])
     } finally {
       setLoading(false)
     }
@@ -306,7 +322,7 @@ export default function BacktestPage() {
     setSessions(s => s.filter(x => x.id !== id))
   }
 
-  const isEmpty = !loading && sessions.length === 0
+  const isEmpty = !loading && !loadError && sessions.length === 0
 
   return (
     <div className="space-y-6">
@@ -318,13 +334,27 @@ export default function BacktestPage() {
             Practice your strategy against real historical price action before risking real capital.
           </p>
         </div>
-        {!isEmpty && (
+        {!isEmpty && !loadError && (
           <Button onClick={() => setModalOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />
             Add New Session
           </Button>
         )}
       </div>
+
+      {/* Load failure */}
+      {!loading && loadError && (
+        <div className="flex min-h-[45vh] flex-col items-center justify-center gap-4 rounded-xl border border-destructive/30 bg-destructive/5 p-8 text-center">
+          <div className="rounded-full bg-destructive/10 p-3 text-destructive">
+            <BarChart3 className="h-8 w-8" />
+          </div>
+          <div className="max-w-md space-y-1">
+            <h2 className="text-lg font-semibold text-foreground">Your backtests couldn&apos;t be loaded</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">{loadError}</p>
+          </div>
+          <Button variant="outline" onClick={fetchSessions}>Try again</Button>
+        </div>
+      )}
 
       {/* Empty state */}
       {isEmpty && (
