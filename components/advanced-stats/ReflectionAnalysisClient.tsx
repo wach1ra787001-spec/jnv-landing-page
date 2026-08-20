@@ -1,16 +1,29 @@
 'use client'
 
-import { Card } from '@/components/ui/card'
+import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import { JournalEffectCard } from '@/components/advanced-stats/reflection/JournalEffectCard'
+import { NoteCorrelationCard } from '@/components/advanced-stats/reflection/NoteCorrelationCard'
+import { PreMarketPlanningCard } from '@/components/advanced-stats/reflection/PreMarketPlanningCard'
+import {
+  computeLossJournalEffect,
+  computeNoteCorrelation,
+  computeWinJournalEffect,
+  ReflectionTrade,
+} from '@/lib/reflection-analysis-utils'
 
 interface ReflectionAnalysisClientProps {
-  trades: any[]
+  trades: ReflectionTrade[]
 }
 
 export function ReflectionAnalysisClient({ trades }: ReflectionAnalysisClientProps) {
   const router = useRouter()
+
+  const winJournalEffect = useMemo(() => computeWinJournalEffect(trades), [trades])
+  const lossJournalEffect = useMemo(() => computeLossJournalEffect(trades), [trades])
+  const noteCorrelation = useMemo(() => computeNoteCorrelation(trades), [trades])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -34,29 +47,25 @@ export function ReflectionAnalysisClient({ trades }: ReflectionAnalysisClientPro
 
       {/* Content */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Win Journal Effect</h3>
-          <p className="text-muted-foreground">How journalling winning trades impacts future performance</p>
-          <p className="text-xs text-muted-foreground mt-2">Total trades: {trades.length}</p>
-        </Card>
+        <JournalEffectCard
+          title="Win Journal Effect"
+          description="How journalling a winning trade impacts the next trade's outcome"
+          data={winJournalEffect}
+          leftLabel="Not journaled"
+          rightLabel="Journaled"
+        />
 
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Loss Journal Effect</h3>
-          <p className="text-muted-foreground">Impact of post-loss journalling on recovery trades</p>
-          <p className="text-xs text-muted-foreground mt-2">Analyzing {trades.length} trades</p>
-        </Card>
+        <JournalEffectCard
+          title="Loss Journal Effect"
+          description="How journalling a losing trade impacts the recovery trade's outcome"
+          data={lossJournalEffect}
+          leftLabel="Not journaled"
+          rightLabel="Journaled"
+        />
 
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Pre-Market Planning</h3>
-          <p className="text-muted-foreground">Performance improvement from pre-market preparation</p>
-          <p className="text-xs text-muted-foreground mt-2">Coming soon</p>
-        </Card>
+        <PreMarketPlanningCard />
 
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Note Correlation</h3>
-          <p className="text-muted-foreground">How detailed notes correlate with profitable trades</p>
-          <p className="text-xs text-muted-foreground mt-2">Coming soon</p>
-        </Card>
+        <NoteCorrelationCard data={noteCorrelation} />
       </div>
     </div>
   )
