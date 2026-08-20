@@ -255,6 +255,11 @@ export default function BacktestPage() {
       const payload = await res.json().catch(() => null)
       if (!res.ok) {
         if (res.status === 401) throw new Error("Your session has expired. Sign in again to view your backtests.")
+        if (res.status === 429) {
+          const retryAfter = Number(res.headers.get("Retry-After"))
+          const wait = Number.isFinite(retryAfter) && retryAfter > 0 ? ` Try again in about ${Math.ceil(retryAfter / 60)} minute${Math.ceil(retryAfter / 60) === 1 ? "" : "s"}.` : ""
+          throw new Error(`The request limit was reached.${wait}`)
+        }
         throw new Error(payload?.error || "We couldn't load your backtest sessions.")
       }
       setSessions(Array.isArray(payload) ? payload : [])
