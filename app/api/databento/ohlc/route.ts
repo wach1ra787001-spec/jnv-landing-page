@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { normalizeMarketSymbol, resolveMarketDataInstrument } from '@/lib/market-data/instruments'
 
-const DATASET = 'GLBX.MDP3'
-const DEFAULT_SYMBOL = '6E.c.0'
+const DEFAULT_SYMBOL = 'EURUSD'
 const DEFAULT_SCHEMA = 'ohlcv-1m'
 const DEFAULT_LIMIT = 500
 
@@ -56,8 +56,20 @@ export async function GET(request: NextRequest) {
   }
 
   const params = request.nextUrl.searchParams
-  const symbol = params.get('symbol') || DEFAULT_SYMBOL
-  const schema = params.get('schema') || DEFAULT_SCHEMA
+  const symbol = normalizeMarketSymbol(params.get('symbol') || DEFAULT_SYMBOL)
+  const instrument = await resolveMarketDataInstrument(symbol)
+  if (!instrument) {
+    return NextResponse.json({
+      error: `No Databento mapping is configured for ${symbol}`,
+      code: 'INSTRUMENT_MAPPING_MISSING',
+      symbol,
+      requestId,
+    }, { status: 422, headers: { 'Cache-Control': 'no-store' } })
+  }
+  const dataset = instrument.dataset
+  const providerSymbol = instrument.provider_symbol
+  const providerStypeIn = instrument.provider_stype_in
+  const schema = params.get('schema') || instrument.schema || DEFAULT_SCHEMA
   // Historical datasets trail wall-clock time. Keep the default and explicit
   // end inside the currently available range instead of sending `now`, which
   // Databento rejects while the latest bars are still being published.
@@ -76,9 +88,9 @@ export async function GET(request: NextRequest) {
   const limit = Math.min(Math.max(Number(params.get('limit') || DEFAULT_LIMIT), 1), 5_000)
 
   const url = new URL('https://hist.databento.com/v0/timeseries.get_range')
-  url.searchParams.set('dataset', DATASET)
-  url.searchParams.set('symbols', symbol)
-  url.searchParams.set('stype_in', symbol.includes('.') ? 'continuous' : 'raw_symbol')
+  url.searchParams.set('dataset', dataset)
+  url.searchParams.set('symbols', providerSymbol)
+  url.searchParams.set('stype_in', providerStypeIn)
   url.searchParams.set('schema', schema)
   url.searchParams.set('start', new Date(start * 1000).toISOString())
   url.searchParams.set('end', new Date(end * 1000).toISOString())
@@ -86,7 +98,7 @@ export async function GET(request: NextRequest) {
   url.searchParams.set('limit', String(limit))
 
   console.log('[v0] Databento request params', {
-    requestId, dataset: DATASET, symbol, schema, stypeIn: url.searchParams.get('stype_in'),
+    requestId, symbol, providerSymbol, dataset, schema, stypeIn: providerStypeIn,
     start: url.searchParams.get('start'), end: url.searchParams.get('end'), limit,
   })
 
@@ -119,8 +131,9 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     provider: 'databento',
-    dataset: DATASET,
+    dataset,
     symbol,
+    providerSymbol,
     schema,
     start,
     end,

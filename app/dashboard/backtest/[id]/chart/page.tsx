@@ -144,7 +144,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
         const start = Math.floor(new Date(s?.date_from ?? Date.now() - 30 * 86400000).getTime() / 1000)
         const end = Math.floor(new Date(s?.date_to ?? Date.now()).getTime() / 1000)
         const params = new URLSearchParams({
-          symbol: s?.symbol === "EURUSD" ? "6E.c.0" : s?.symbol ?? "6E.c.0",
+          symbol: s?.symbol ?? "EURUSD",
           schema: "ohlcv-1m",
           start: String(start),
           end: String(end),
@@ -164,6 +164,9 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
         if (!response.ok) {
           if (response.status === 503) {
             throw new Error("Databento is not configured in this deployment. Add DATABENTO_API_KEY to the Vercel Preview/Production environment, then redeploy.")
+          }
+          if (response.status === 422 && payload?.code === "INSTRUMENT_MAPPING_MISSING") {
+            throw new Error(`No Databento market mapping is configured for ${payload.symbol}.`)
           }
           throw new Error(payload?.error || "Could not load market data")
         }
