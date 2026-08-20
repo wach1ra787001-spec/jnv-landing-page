@@ -10,9 +10,10 @@ import type { OpenPositionEnriched } from '@/types/positions'
 interface OpenPositionsWidgetProps {
   userId: string
   currency?: string
+  accountId?: string | null
 }
 
-export function OpenPositionsWidget({ userId, currency = 'USD' }: OpenPositionsWidgetProps) {
+export function OpenPositionsWidget({ userId, currency = 'USD', accountId }: OpenPositionsWidgetProps) {
   const [positions, setPositions] = useState<OpenPositionEnriched[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
@@ -23,9 +24,10 @@ export function OpenPositionsWidget({ userId, currency = 'USD' }: OpenPositionsW
     else setLoading(true)
 
     try {
-      // In a real app, this would be a server action or API call
-      // For now, return empty since no positions are synced yet
-      const response = await fetch(`/api/open-positions?userId=${userId}`)
+      const params = new URLSearchParams({ userId })
+      if (accountId) params.set('accountId', accountId)
+
+      const response = await fetch(`/api/open-positions?${params.toString()}`)
       if (response.ok) {
         const data = await response.json()
         setPositions(data)
@@ -45,7 +47,7 @@ export function OpenPositionsWidget({ userId, currency = 'USD' }: OpenPositionsW
     // Poll every 30 seconds
     const interval = setInterval(() => fetchPositions(true), 30000)
     return () => clearInterval(interval)
-  }, [userId])
+  }, [userId, accountId])
 
   const handleRefresh = () => {
     fetchPositions(true)

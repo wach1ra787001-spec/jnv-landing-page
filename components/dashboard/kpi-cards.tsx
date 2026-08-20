@@ -2,7 +2,10 @@
 
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { TrendingUp, TrendingDown, BarChart3, CheckCircle2 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { TrendingUp, TrendingDown, BarChart3 } from "lucide-react"
+import Link from "next/link"
+import type { MonthlyGrowth } from "@/lib/monthly-growth-analysis"
 
 interface KPICardsProps {
   pnl?: number
@@ -14,6 +17,7 @@ interface KPICardsProps {
   riskExposure?: number
   consistency?: number
   documentedTrades?: number
+  monthlyGrowthTimeline?: MonthlyGrowth[]
 }
 
 export function KPICards({
@@ -25,9 +29,12 @@ export function KPICards({
   winRate,
   riskExposure,
   consistency,
-  documentedTrades
+  documentedTrades,
+  monthlyGrowthTimeline = []
 }: KPICardsProps) {
-  const isProfit = pnl >= 0
+  const isProfit = (pnl ?? 0) >= 0
+  const currentMonthHasTrades = monthlyGrowthTimeline[0]?.hasTrades ?? (totalTrades ?? 0) > 0
+  const hasAnyTrades = (totalTrades ?? 0) > 0
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-5">
@@ -37,7 +44,7 @@ export function KPICards({
           <div className="min-w-0">
             <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Total PnL</p>
             <p className={`text-lg sm:text-2xl md:text-3xl font-bold ${isProfit ? 'text-chart-1' : 'text-chart-2'} truncate`}>
-              {isProfit ? '+' : ''}{`$${Math.abs(pnl).toLocaleString()}`}
+              {isProfit ? '+' : ''}{`$${Math.abs(pnl ?? 0).toLocaleString()}`}
             </p>
           </div>
           <div className={`p-1.5 sm:p-2.5 rounded-lg flex-shrink-0 ${isProfit ? 'bg-chart-1/10' : 'bg-chart-2/10'}`}>
@@ -50,41 +57,120 @@ export function KPICards({
         </div>
       </Card>
 
-      {/* Growth Card */}
-      <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Growth</p>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
-              {growthPercent}%
-            </p>
-            <p className="text-[9px] sm:text-xs text-chart-1 mt-1 sm:mt-2 font-medium truncate">
-              +{growthVsLastMonth}% vs last month
-            </p>
+      {/* Growth Card - Clickable */}
+      <div>
+        <Link href="/dashboard/advanced-stats/time" className="block">
+          <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Growth</p>
+                {currentMonthHasTrades ? (
+                  <>
+                    <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
+                      {growthPercent ?? 0}%
+                    </p>
+                    <p className="text-[9px] sm:text-xs text-chart-1 mt-1 sm:mt-2 font-medium truncate">
+                      +{growthVsLastMonth ?? 0}% vs last month
+                    </p>
+                  </>
+                ) : (
+                  <p className="text-sm sm:text-base md:text-lg font-semibold text-muted-foreground leading-tight">
+                    No trades taken yet
+                  </p>
+                )}
+              </div>
+              <div className="p-1.5 sm:p-2.5 rounded-lg bg-primary/10 flex-shrink-0">
+                <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+              </div>
+            </div>
+          </Card>
+        </Link>
+        {monthlyGrowthTimeline.length > 0 && (
+          <div className="mt-2 flex flex-col gap-1">
+            {monthlyGrowthTimeline.slice(1).map((month, index) => (
+              <Link key={`${month.month}-${index}`} href="/dashboard/advanced-stats/time" className="block">
+                <div className="rounded-md border border-border/30 bg-muted/40 px-2 py-1.5 transition-colors hover:bg-muted/60 sm:px-3 sm:py-2">
+                  <p className="text-[8px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap sm:text-[9px]">
+                    {month.month}
+                  </p>
+                  {month.hasTrades ? (
+                    <p className={`text-[10px] font-bold whitespace-nowrap sm:text-xs ${month.growthPercent >= 0 ? "text-chart-1" : "text-chart-2"}`}>
+                      {month.growthPercent >= 0 ? "+" : ""}{month.growthPercent.toLocaleString("en-US", { maximumFractionDigits: 1 })}%
+                    </p>
+                  ) : (
+                    <p className="text-[10px] font-semibold text-muted-foreground whitespace-nowrap sm:text-xs">
+                      No trades
+                    </p>
+                  )}
+                </div>
+              </Link>
+            ))}
           </div>
-          <div className="p-1.5 sm:p-2.5 rounded-lg bg-primary/10 flex-shrink-0">
-            <BarChart3 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
-          </div>
-        </div>
-      </Card>
+        )}
+      </div>
 
-      {/* Consistency Card */}
-      <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Consistency</p>
-            <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
-              {consistency}%
-            </p>
-            <p className="text-[9px] sm:text-xs text-muted-foreground mt-1 sm:mt-2 truncate">
-              {documentedTrades} documented
-            </p>
+      {/* Consistency Card - Radial gauge, clickable, height matches Win Rate card */}
+      <Link href="/dashboard/advanced-stats/consistency" className="block h-full">
+        <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow cursor-pointer h-full flex flex-col">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Consistency</p>
+              {hasAnyTrades ? (
+                <>
+                  <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
+                    {Math.round(consistency ?? 0)}%
+                  </p>
+                  <p className="text-[9px] sm:text-xs text-muted-foreground mt-1 sm:mt-2 truncate">
+                    {documentedTrades} documented
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm sm:text-base md:text-lg font-semibold text-muted-foreground leading-tight">
+                  No trades taken yet
+                </p>
+              )}
+            </div>
           </div>
-          <div className="p-1.5 sm:p-2.5 rounded-lg bg-primary/10 flex-shrink-0">
-            <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+
+          {/* Radial gauge - fills remaining space to match Win Rate card's semi-circle gauge area */}
+          <div className="mt-3 sm:mt-4 flex-1 flex items-center justify-center">
+            {(() => {
+              const consistencyPercent = hasAnyTrades ? Math.min(Math.max(consistency ?? 0, 0), 100) : 0
+              const size = 96
+              const stroke = 9
+              const radius = (size - stroke) / 2
+              const circumference = 2 * Math.PI * radius
+              const offset = circumference - (consistencyPercent / 100) * circumference
+              const color = consistencyPercent >= 80 ? "#059669" : consistencyPercent >= 50 ? "#F59E0B" : "#DC2626"
+              return (
+                <div className="relative w-16 h-16 sm:w-20 sm:h-20">
+                  <svg width="100%" height="100%" viewBox={`0 0 ${size} ${size}`} className="-rotate-90">
+                    <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth={stroke} />
+                    {hasAnyTrades && (
+                      <circle
+                        cx={size / 2}
+                        cy={size / 2}
+                        r={radius}
+                        fill="none"
+                        stroke={color}
+                        strokeWidth={stroke}
+                        strokeLinecap="round"
+                        strokeDasharray={circumference}
+                        strokeDashoffset={offset}
+                      />
+                    )}
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-xs sm:text-sm font-bold text-foreground">
+                      {hasAnyTrades ? `${Math.round(consistency ?? 0)}%` : "—"}
+                    </span>
+                  </div>
+                </div>
+              )
+            })()}
           </div>
-        </div>
-      </Card>
+        </Card>
+      </Link>
 
       {/* Win Rate Gauge Card */}
       <Card className="p-3 sm:p-4 md:p-6 bg-card border border-border/50 shadow-sm hover:shadow-md transition-shadow relative col-span-1">
@@ -93,7 +179,7 @@ export function KPICards({
             <p className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1 sm:mb-2 truncate">Win Rate</p>
             <div className="flex items-end gap-2">
               <p className="text-lg sm:text-2xl md:text-3xl font-bold text-foreground truncate">
-                {winRate}%
+                {(winRate ?? 0)}%
               </p>
             </div>
             
@@ -125,10 +211,10 @@ export function KPICards({
               stroke="url(#gaugeGradient)"
               strokeWidth="8"
               strokeLinecap="round"
-              strokeDasharray={`${(winRate / 100) * 157} 157`}
+              strokeDasharray={`${(((winRate ?? 0) / 100) * 157)} 157`}
             />
             {/* Needle */}
-            <g transform={`rotate(${-90 + (winRate / 100) * 180}, 60, 60)`}>
+              <g transform={`rotate(${-90 + (((winRate ?? 0) / 100) * 180)}, 60, 60)`}>
               <line
                 x1="60"
                 y1="60"

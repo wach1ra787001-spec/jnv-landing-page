@@ -12,7 +12,7 @@ import { PlaybookEmptyState } from '@/components/playbooks/empty-state'
 interface Playbook {
   id: string
   title: string
-  description: string
+  description: string | { id?: string; title?: string; description?: string }
   strategy_type: string
   rules: { entry?: string[]; exit?: string[] }
   tags: (string | { id?: string; title?: string; description?: string })[]
@@ -87,7 +87,7 @@ export default function PlaybooksPage() {
   }
 
   const handleEdit = (p: Playbook) => {
-    setForm({ title: p.title, description: p.description, strategy_type: p.strategy_type || '' })
+    setForm({ title: p.title, description: getDisplayText(p.description), strategy_type: p.strategy_type || '' })
     setEditingId(p.id)
     setShowModal(true)
   }
@@ -96,6 +96,17 @@ export default function PlaybooksPage() {
     const next = activeId === id ? null : id
     setActiveId(next)
     toast.success(next ? 'Playbook activated — new trades will use this playbook' : 'Playbook deactivated')
+  }
+
+  const getDisplayText = (value: unknown): string => {
+    if (typeof value === 'string' || typeof value === 'number') return String(value)
+    if (value && typeof value === 'object') {
+      const item = value as { title?: unknown; description?: unknown; id?: unknown }
+      if (typeof item.description === 'string') return item.description
+      if (typeof item.title === 'string') return item.title
+      if (typeof item.id === 'string') return item.id
+    }
+    return ''
   }
 
   const closeModal = () => {
@@ -176,7 +187,7 @@ export default function PlaybooksPage() {
                       )}
                     </div>
                     {!isExpanded && (
-                      <p className="text-sm text-muted-foreground mt-0.5 truncate">{p.description}</p>
+                      <p className="text-sm text-muted-foreground mt-0.5 truncate">{getDisplayText(p.description)}</p>
                     )}
                   </div>
 
@@ -209,7 +220,7 @@ export default function PlaybooksPage() {
                     <div className="pt-4 space-y-4">
                       <div>
                         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Description</h4>
-                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{p.description}</p>
+                        <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{getDisplayText(p.description)}</p>
                       </div>
 
                       {p.rules?.entry && p.rules.entry.length > 0 && (
@@ -243,7 +254,7 @@ export default function PlaybooksPage() {
                       {p.tags && p.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {p.tags.map((t, i) => {
-                            const tagText = typeof t === 'string' ? t : (typeof t === 'object' && t !== null && 'title' in t) ? t.title : String(t)
+                            const tagText = getDisplayText(t)
                             return (
                               <span key={i} className="px-2 py-0.5 rounded-full bg-muted text-muted-foreground text-xs">{tagText}</span>
                             )

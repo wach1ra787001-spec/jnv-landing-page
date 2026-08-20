@@ -9,6 +9,7 @@ import {
   Zap,
   BarChart3,
   ChevronRight,
+  ClipboardCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +49,14 @@ const statsMenus = [
     icon: BarChart3,
     href: '/dashboard/advanced-stats/models',
     color: 'from-green-500 to-emerald-500',
+  },
+  {
+    id: 'consistency',
+    label: 'Consistency Analysis',
+    description: 'Rules adherence, risk model, trade model, and journaling breakdown',
+    icon: ClipboardCheck,
+    href: '/dashboard/advanced-stats/consistency',
+    color: 'from-teal-500 to-cyan-600',
   },
 ]
 

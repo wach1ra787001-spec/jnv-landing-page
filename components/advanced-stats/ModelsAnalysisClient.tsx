@@ -1,16 +1,30 @@
 'use client'
 
-import { Card } from '@/components/ui/card'
+import { useMemo } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { useRouter } from 'next/navigation'
+import {
+  computeSetupPerformance,
+  computeBiasEffects,
+  computeProfitFactorAnalysis,
+  ModelTrade,
+} from '@/lib/models-analysis-utils'
+import { SetupPerformanceCard } from '@/components/advanced-stats/models/SetupPerformanceCard'
+import { WinLossDistributionCard } from '@/components/advanced-stats/models/WinLossDistributionCard'
+import { BiasEffectsCard } from '@/components/advanced-stats/models/BiasEffectsCard'
+import { ProfitFactorAnalysisCard } from '@/components/advanced-stats/models/ProfitFactorAnalysisCard'
 
 interface ModelsAnalysisClientProps {
-  trades: any[]
+  trades: ModelTrade[]
 }
 
 export function ModelsAnalysisClient({ trades }: ModelsAnalysisClientProps) {
   const router = useRouter()
+
+  const setupPerformance = useMemo(() => computeSetupPerformance(trades), [trades])
+  const biasEffects = useMemo(() => computeBiasEffects(trades), [trades])
+  const profitFactor = useMemo(() => computeProfitFactorAnalysis(trades), [trades])
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -33,30 +47,15 @@ export function ModelsAnalysisClient({ trades }: ModelsAnalysisClientProps) {
       </div>
 
       {/* Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Setup Performance</h3>
-          <p className="text-muted-foreground">Radar chart showing performance by setup type</p>
-          <p className="text-xs text-muted-foreground mt-2">Total trades: {trades.length}</p>
-        </Card>
+      <div className="grid grid-cols-1 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <SetupPerformanceCard data={setupPerformance} />
+          <WinLossDistributionCard trades={trades} />
+        </div>
 
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Win-Loss Distribution</h3>
-          <p className="text-muted-foreground">Histogram of profit and loss distributions</p>
-          <p className="text-xs text-muted-foreground mt-2">Analyzing {trades.length} trades</p>
-        </Card>
+        <BiasEffectsCard data={biasEffects} />
 
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Bias Effects</h3>
-          <p className="text-muted-foreground">How bias patterns affect setup profitability</p>
-          <p className="text-xs text-muted-foreground mt-2">Coming soon</p>
-        </Card>
-
-        <Card className="p-6 bg-card border border-border/50">
-          <h3 className="text-lg font-semibold text-foreground mb-4">Profit Factor Analysis</h3>
-          <p className="text-muted-foreground">Profitability metrics by strategy</p>
-          <p className="text-xs text-muted-foreground mt-2">Coming soon</p>
-        </Card>
+        <ProfitFactorAnalysisCard data={profitFactor} />
       </div>
     </div>
   )

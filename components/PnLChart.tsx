@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { formatCurrency } from '@/lib/currency'
 import { Card } from '@/components/ui/card'
@@ -86,10 +86,19 @@ export function PnLChart({
     peakPnL: 0,
     maxDrawdown: 0,
   })
+  // Tracks whether the user has manually picked a period. Until they do,
+  // the chart auto-escalates past empty windows (e.g. no trades this month)
+  // so the P&L curve always has something to show.
+  const userSelectedPeriod = useRef(false)
 
   useEffect(() => {
     fetchAndProcessTrades()
   }, [userId, period, accountId])
+
+  const handlePeriodChange = (value: string) => {
+    userSelectedPeriod.current = true
+    setPeriod(value)
+  }
 
   const fetchAndProcessTrades = async () => {
     try {
@@ -121,29 +130,56 @@ export function PnLChart({
 
       // Filter by period
       const now = new Date()
-      const filteredTrades = trades.filter((trade) => {
-        const tradeDate = new Date(trade.exit_time)
-        const daysAgo = Math.floor(
-          (now.getTime() - tradeDate.getTime()) / (1000 * 60 * 60 * 24)
-        )
-
-        switch (period) {
+      const daysAgoFor = (windowPeriod: string) => {
+        switch (windowPeriod) {
           case '1W':
-            return daysAgo <= 7
+            return 7
           case '1M':
-            return daysAgo <= 30
+            return 30
           case '3M':
-            return daysAgo <= 90
+            return 90
           case '6M':
-            return daysAgo <= 180
+            return 180
           case '1Y':
-            return daysAgo <= 365
-          case 'All':
-            return true
+            return 365
           default:
-            return true
+            return Infinity
         }
-      })
+      }
+
+      const filterByPeriod = (windowPeriod: string) => {
+        const maxDaysAgo = daysAgoFor(windowPeriod)
+        return trades.filter((trade) => {
+          const tradeDate = new Date(trade.exit_time)
+          const daysAgo = Math.floor(
+            (now.getTime() - tradeDate.getTime()) / (1000 * 60 * 60 * 24)
+          )
+          return daysAgo <= maxDaysAgo
+        })
+      }
+
+      let effectivePeriod = period
+      let filteredTrades = filterByPeriod(effectivePeriod)
+
+      // The P&L curve should always show something. If the selected window
+      // (e.g. this month) has no trades and the user hasn't manually chosen
+      // a period, keep widening the window until one has data.
+      if (filteredTrades.length === 0 && !userSelectedPeriod.current) {
+        const escalationOrder = ['1M', '3M', '6M', '1Y', 'All']
+        const startIndex = Math.max(escalationOrder.indexOf(effectivePeriod), 0)
+        for (let i = startIndex + 1; i < escalationOrder.length; i++) {
+          const candidatePeriod = escalationOrder[i]
+          const candidateTrades = filterByPeriod(candidatePeriod)
+          if (candidateTrades.length > 0) {
+            effectivePeriod = candidatePeriod
+            filteredTrades = candidateTrades
+            break
+          }
+        }
+        if (effectivePeriod !== period) {
+          setPeriod(effectivePeriod)
+        }
+      }
 
       // Transform into cumulative P&L
       let cumulative = 0
@@ -194,17 +230,14 @@ export function PnLChart({
 
   // Determine colors
   let lineColor = '#94a3b8'
-  let topColor = 'rgba(148, 163, 184, 0.35)'
-  let bottomColor = 'rgba(148, 163, 184, 0.0)'
+  let gradientColor = '#94a3b8'
 
   if (isPositive) {
     lineColor = '#16a34a'
-    topColor = 'rgba(22, 163, 74, 0.35)'
-    bottomColor = 'rgba(22, 163, 74, 0.0)'
+    gradientColor = '#16a34a'
   } else if (isNegative) {
     lineColor = '#dc2626'
-    topColor = 'rgba(220, 38, 38, 0.35)'
-    bottomColor = 'rgba(220, 38, 38, 0.0)'
+    gradientColor = '#dc2626'
   }
 
   // Calculate Y axis domain
@@ -256,13 +289,36 @@ export function PnLChart({
 
   if (chartData.length === 0) {
     return (
-      <Card className="p-6 bg-card border border-border/50 flex flex-col items-center justify-center gap-3" style={{ height }}>
-        <TrendingDown className="w-10 h-10 text-muted-foreground" />
-        <div className="text-center">
-          <p className="font-medium text-foreground">Your P&L curve will appear here</p>
-          <p className="text-sm text-muted-foreground">
-            Close your first trade to see your performance
-          </p>
+      <Card className="p-4 sm:p-6 bg-card border border-border/50" style={{ minHeight: height }}>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
+          <div>
+            <h3 className="text-base sm:text-lg font-semibold text-foreground">P&L Tracking</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              {period === '1W' ? 'No trades this week' : `No trades in the ${period} period`}
+            </p>
+          </div>
+          <div className="flex gap-1 overflow-x-auto flex-nowrap pb-1">
+            {periodButtons.map((btn) => (
+              <Button
+                key={btn}
+                variant={period === btn ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handlePeriodChange(btn)}
+                className={cn(
+                  'text-xs flex-shrink-0',
+                  period === btn
+                    ? 'bg-slate-900 dark:bg-slate-900 text-white'
+                    : 'bg-transparent',
+                )}
+              >
+                {btn}
+              </Button>
+            ))}
+          </div>
+        </div>
+        <div className="flex flex-col items-center justify-center gap-3" style={{ height: Math.max(height - 86, 180) }}>
+          <TrendingDown className="w-10 h-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">Choose another timeframe or close a trade to see your curve.</p>
         </div>
       </Card>
     )
@@ -279,7 +335,7 @@ export function PnLChart({
               key={btn}
               variant={period === btn ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setPeriod(btn)}
+              onClick={() => handlePeriodChange(btn)}
               className={cn(
                 'text-xs flex-shrink-0',
                 period === btn
@@ -329,8 +385,8 @@ export function PnLChart({
             <AreaChart data={chartData} margin={{ left: 16, right: 16, top: 8, bottom: 8 }}>
               <defs>
                 <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={topColor.split(',')[0] + ','} stopOpacity={0.35} />
-                  <stop offset="95%" stopColor={bottomColor.split(',')[0] + ','} stopOpacity={0} />
+                  <stop offset="0%" stopColor={gradientColor} stopOpacity={0.52} />
+                  <stop offset="100%" stopColor={gradientColor} stopOpacity={0.06} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />

@@ -1,12 +1,23 @@
 import { createClient } from "@/lib/supabase/server"
 import { HeroCard } from "@/components/dashboard/hero-card"
 import { KPICards } from "@/components/dashboard/kpi-cards"
-import { AnalysisGrid } from "@/components/dashboard/analysis-grid"
 import { TradesTable } from "@/components/dashboard/trades-table"
 import { OpenPositionsWidget } from "@/components/OpenPositionsWidget"
 import { AccountRequiredPrompt } from "@/components/dashboard/account-required-prompt"
 import { PnLChart } from "@/components/PnLChart"
 import { calculateMetricsFromTrades } from "@/lib/calculate-metrics"
+import {
+  calculateAverageConsistencyScore,
+  hasMeaningfulJournalNotes,
+  type ConsistencyScoreInputs,
+} from "@/lib/consistency-score"
+import {
+  computeDayToDaySnapshot,
+  computeSevenDayTrend,
+} from "@/lib/day-to-day-analysis"
+import { DayToDayCard } from "@/components/dashboard/day-to-day-card"
+import { calculateMonthlyGrowthTimeline } from "@/lib/monthly-growth-analysis"
+import { getSelectedAccountId } from "@/lib/get-selected-account"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -19,15 +30,7 @@ export default async function DashboardPage() {
     .eq("id", user?.id)
     .single()
 
-  // Fetch default account
-  const { data: defaultAccount } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", user?.id)
-    .eq("is_active", true)
-    .single()
-
-  const accountId = profile?.default_account_id || defaultAccount?.id
+  const accountId = user ? await getSelectedAccountId(supabase, user.id) : null
 
   // Fetch all trades for metric calculation - filtered by account
   const tradesQuery = supabase
@@ -85,21 +88,77 @@ export default async function DashboardPage() {
   const userName = profile?.full_name?.split(" ")[0] || "Trader"
   const currency = profile?.currency || 'USD'
 
-  // Calculate consistency: wins with documented trades (notes + screenshots) / total trades
-  const documentedWins = (allTrades || []).filter(trade => {
-    const isWinningTrade = (trade.net_pnl || 0) > 0
-    const hasNotes = trade.notes && trade.notes.trim().length > 0
-    const hasScreenshots = trade.screenshot_urls && Array.isArray(trade.screenshot_urls) && trade.screenshot_urls.length > 0
-    return isWinningTrade && hasNotes && hasScreenshots
-  }).length
+  // Consistency score: weighted average across all trades.
+  //   30% rules followed + 20% followed risk model + 20% followed trade model + 30% journaled
+  // See lib/consistency-score.ts for the full breakdown and data-availability notes.
+  const tradeIds = (allTrades || []).map((trade) => trade.id)
 
-  const totalDocumentedTrades = (allTrades || []).filter(trade => {
-    const hasNotes = trade.notes && trade.notes.trim().length > 0
-    const hasScreenshots = trade.screenshot_urls && Array.isArray(trade.screenshot_urls) && trade.screenshot_urls.length > 0
-    return hasNotes && hasScreenshots
-  }).length
+  const [{ data: journalRows }, { data: tradeNotesRows }, { count: activeRulesCount }] =
+    await Promise.all([
+      tradeIds.length > 0
+        ? supabase
+            .from("trade_journal")
+            .select("trade_id, discipline_rating, followed_plan, content, session_notes, lessons_learned, mistakes, what_went_well")
+            .eq("user_id", user?.id)
+            .in("trade_id", tradeIds)
+        : Promise.resolve({ data: [] }),
+      tradeIds.length > 0
+        ? supabase
+            .from("trade_notes")
+            .select("trade_id, note")
+            .eq("user_id", user?.id)
+            .in("trade_id", tradeIds)
+        : Promise.resolve({ data: [] }),
+      supabase
+        .from("user_rules")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user?.id)
+        .eq("is_active", true),
+    ])
 
-  const consistency = totalDocumentedTrades > 0 ? Math.round((documentedWins / totalDocumentedTrades) * 100) : 0
+  const hasActiveRules = (activeRulesCount || 0) > 0
+
+  const journalByTradeId = new Map((journalRows || []).map((row) => [row.trade_id, row]))
+  const notesByTradeId = new Map<string, string[]>()
+  for (const row of tradeNotesRows || []) {
+    const existing = notesByTradeId.get(row.trade_id) || []
+    existing.push(row.note || "")
+    notesByTradeId.set(row.trade_id, existing)
+  }
+
+  const consistencyInputs: ConsistencyScoreInputs[] = (allTrades || []).map((trade) => {
+    const journal = journalByTradeId.get(trade.id)
+    const extraNotes = notesByTradeId.get(trade.id) || []
+
+    return {
+      hasActiveRules,
+      disciplineRating: journal?.discipline_rating,
+      followedPlan: journal?.followed_plan,
+      hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, extraNotes),
+    }
+  })
+
+  const consistency = calculateAverageConsistencyScore(consistencyInputs)
+
+  const totalDocumentedTrades = (journalRows || []).filter((row) =>
+    hasMeaningfulJournalNotes(row, notesByTradeId.get(row.trade_id) || []),
+  ).length
+
+  const dayToDaySnapshot = computeDayToDaySnapshot(
+    allTrades || [],
+    journalByTradeId,
+    notesByTradeId,
+    hasActiveRules,
+  )
+  const sevenDayTrend = computeSevenDayTrend(
+    allTrades || [],
+    journalByTradeId,
+    notesByTradeId,
+    hasActiveRules,
+  )
+
+  // Calculate monthly growth timeline for current and previous 2 months
+  const monthlyGrowthTimeline = calculateMonthlyGrowthTimeline(allTrades || [])
 
   // Transform trades data for the table component
   const formattedTrades = (recentTrades || []).map(trade => ({
@@ -137,6 +196,16 @@ export default async function DashboardPage() {
           riskExposure={metrics?.risk_exposure || 0}
           consistency={consistency}
           documentedTrades={totalDocumentedTrades}
+          monthlyGrowthTimeline={monthlyGrowthTimeline}
+        />
+      </div>
+
+      {/* Day-to-Day - Fast daily health check */}
+      <div>
+        <DayToDayCard
+          snapshot={dayToDaySnapshot}
+          trend={sevenDayTrend}
+          currency={currency}
         />
       </div>
 
@@ -150,13 +219,6 @@ export default async function DashboardPage() {
         />
       </div>
 
-      {/* Main Analysis Row - 66% / 33% Split with premium spacing */}
-      <AnalysisGrid 
-        userId={user?.id || ''}
-        currency={currency}
-        trades={allTrades || []}
-      />
-
       {/* Bottom Row - 2 Column Equal Split */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <TradesTable 
@@ -166,6 +228,7 @@ export default async function DashboardPage() {
         <OpenPositionsWidget 
           userId={user?.id || ''}
           currency={currency}
+          accountId={accountId}
         />
       </div>
     </div>

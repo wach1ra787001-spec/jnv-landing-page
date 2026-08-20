@@ -4,9 +4,10 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { ChevronLeft, ChevronRight, ArrowLeft, AlertCircle } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ArrowLeft, AlertCircle, X, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useAccount } from '@/components/dashboard/account-context'
 
 interface Trade {
   id: string
@@ -17,6 +18,8 @@ interface Trade {
   swap: number
   exit_time: string
   status: string
+  volume?: number
+  entry_time?: string
 }
 
 interface DayData {
@@ -36,6 +39,7 @@ const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export default function MonthlyPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { selectedAccountId } = useAccount()
   
   // State
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
@@ -44,7 +48,6 @@ export default function MonthlyPage() {
   const [dayMap, setDayMap] = useState<Map<number, DayData>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [accountId, setAccountId] = useState<string | null>(null)
   const [monthlyStats, setMonthlyStats] = useState({
     totalPnL: 0,
     tradingDays: 0,
@@ -53,6 +56,21 @@ export default function MonthlyPage() {
     lossDays: 0,
   })
   const [hoveredDayIdx, setHoveredDayIdx] = useState<number | null>(null)
+  const [selectedDay, setSelectedDay] = useState<DayData | null>(null)
+  const [tradeSort, setTradeSort] = useState<'time' | 'pnl' | 'volume'>('time')
+
+  const sortedSelectedTrades = useMemo(() => {
+    if (!selectedDay) return []
+    return [...selectedDay.trades].sort((a, b) => {
+      if (tradeSort === 'pnl') {
+        const aPnl = a.net_pnl ?? (a.pnl - a.commission - a.swap)
+        const bPnl = b.net_pnl ?? (b.pnl - b.commission - b.swap)
+        return bPnl - aPnl
+      }
+      if (tradeSort === 'volume') return (b.volume ?? 0) - (a.volume ?? 0)
+      return new Date(a.exit_time).getTime() - new Date(b.exit_time).getTime()
+    })
+  }, [selectedDay, tradeSort])
 
   // Cache to avoid redundant fetches
   const monthCacheRef = useRef<Record<string, Trade[]>>({})
@@ -63,10 +81,12 @@ export default function MonthlyPage() {
     return !(currentYear === today.getFullYear() && currentMonth === today.getMonth())
   }
 
-  // Fetch trades for the current month
+  // Fetch trades for the current month. Re-runs whenever the selected
+  // account changes, so switching accounts in the header refreshes this
+  // page immediately instead of showing stale data.
   useEffect(() => {
     fetchMonthTrades()
-  }, [currentYear, currentMonth])
+  }, [currentYear, currentMonth, selectedAccountId])
 
   const fetchMonthTrades = async () => {
     try {
@@ -79,29 +99,14 @@ export default function MonthlyPage() {
         return
       }
 
-      // Get default account if not already set
-      if (!accountId) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('default_account_id')
-          .eq('id', user.id)
-          .single()
+      const accountId = selectedAccountId
 
-        const { data: defaultAccount } = await supabase
-          .from('accounts')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .single()
-
-        const acctId = profile?.default_account_id || defaultAccount?.id
-        setAccountId(acctId)
-      }
-
-      // Check cache first
-      const cacheKey = `${currentYear}-${currentMonth}`
+      // Check cache first — keyed by account too, so switching accounts
+      // never shows a previously cached account's trades for this month.
+      const cacheKey = `${accountId ?? 'none'}-${currentYear}-${currentMonth}`
       if (monthCacheRef.current[cacheKey]) {
         setTrades(monthCacheRef.current[cacheKey])
+        setIsLoading(false)
         return
       }
 
@@ -114,7 +119,7 @@ export default function MonthlyPage() {
 
       let query = supabase
         .from('trades')
-        .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, status')
+        .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, entry_time, status')
         .eq('user_id', user.id)
         .eq('status', 'closed')
         .gte('exit_time', startIso)
@@ -127,55 +132,11 @@ export default function MonthlyPage() {
 
       const { data, error: queryError } = await query
 
-      // If query fails or returns no data, try a broader query to debug
-      if (queryError || !data) {
-        console.warn('[v0] First query failed, trying broader query...')
-        
-        const { data: allTrades, error: allTradesError } = await supabase
-          .from('trades')
-          .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, status, user_id')
-          .eq('user_id', user.id)
-          .order('exit_time', { ascending: false })
-          .limit(50)
-        
-        console.log('[v0] All trades query:', { count: allTrades?.length, error: allTradesError })
-        if (allTrades && allTrades.length > 0) {
-          console.log('[v0] Sample trades:', allTrades.slice(0, 3))
-        }
-      }
-
-      console.log('[v0] Query result:', { data, queryError })
-
-      // If query fails or returns no data, try a broader query to debug
-      if (queryError || !data) {
-        console.warn('[v0] First query failed, trying broader query...')
-        
-        const { data: allTrades, error: allTradesError } = await supabase
-          .from('trades')
-          .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, status, user_id')
-          .eq('user_id', user.id)
-          .order('exit_time', { ascending: false })
-          .limit(50)
-        
-        console.log('[v0] All trades query:', { count: allTrades?.length, error: allTradesError })
-        if (allTrades && allTrades.length > 0) {
-          console.log('[v0] Sample trades:', allTrades.slice(0, 3))
-        }
-      }
-
-      console.log('[v0] Query result:', { data, queryError })
-
       if (queryError) {
         console.error('[v0] Supabase query error:', queryError)
-        console.error('[v0] Error message:', queryError.message)
-        console.error('[v0] Error details:', JSON.stringify(queryError, null, 2))
         setError('Could not load trades. Please refresh.')
         return
       }
-
-      console.log('[v0] Trades fetched:', data?.length || 0)
-
-      console.log('[v0] Trades fetched:', data?.length || 0)
 
       // Cache the result
       monthCacheRef.current[cacheKey] = data || []
@@ -256,6 +217,45 @@ export default function MonthlyPage() {
       lossDays,
     })
   }, [trades])
+
+  const monthlyPerformanceStats = useMemo(() => {
+    const dayValues = Array.from(dayMap.values())
+    const profitableDays = dayValues.filter((day) => day.isProfit).length
+    const winningTrades = trades.filter((trade) => (trade.net_pnl ?? (trade.pnl - trade.commission - trade.swap)) > 0).length
+    const dailyPnl = dayValues.map((day) => ({ date: day.date, pnl: day.totalPnL, trades: day.tradeCount }))
+    const bestWeek = dailyPnl.reduce((sum, day) => sum + (day.pnl > 0 ? day.pnl : 0), 0)
+    const worstWeek = dailyPnl.reduce((sum, day) => sum + (day.pnl < 0 ? day.pnl : 0), 0)
+
+    let winStreak = 0
+    let lossStreak = 0
+    let currentWin = 0
+    let currentLoss = 0
+    for (const day of dailyPnl.sort((a, b) => a.date - b.date)) {
+      if (day.pnl > 0) {
+        currentWin++
+        currentLoss = 0
+        winStreak = Math.max(winStreak, currentWin)
+      } else if (day.pnl < 0) {
+        currentLoss++
+        currentWin = 0
+        lossStreak = Math.max(lossStreak, currentLoss)
+      } else {
+        currentWin = 0
+        currentLoss = 0
+      }
+    }
+
+    return {
+      bestWeek,
+      worstWeek,
+      winStreak,
+      lossStreak,
+      profitableDays,
+      profitableDaysPercent: monthlyStats.tradingDays ? (profitableDays / monthlyStats.tradingDays) * 100 : 0,
+      avgTradesPerDay: monthlyStats.tradingDays ? monthlyStats.totalTrades / monthlyStats.tradingDays : 0,
+      winRate: monthlyStats.totalTrades ? (winningTrades / monthlyStats.totalTrades) * 100 : 0,
+    }
+  }, [dayMap, monthlyStats, trades])
 
   // Navigation handlers
   const previousMonth = () => {
@@ -361,7 +361,7 @@ export default function MonthlyPage() {
               <div className="h-4 w-32 bg-muted rounded animate-pulse" />
             </div>
           ) : trades.length === 0 ? (
-            <div className="text-right text-muted-foreground text-sm">
+            <div className="text-right text-muted-foreground/90 text-sm">
               No trades this month
             </div>
           ) : (
@@ -369,7 +369,7 @@ export default function MonthlyPage() {
               <div className={cn('text-2xl sm:text-3xl font-bold', isProfit ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400')}>
                 {isProfit ? '+' : ''}{monthlyStats.totalPnL.toFixed(2)}
               </div>
-              <div className="text-xs sm:text-sm text-muted-foreground">
+              <div className="text-xs sm:text-sm text-muted-foreground/90">
                 {monthlyStats.tradingDays} trading day{monthlyStats.tradingDays !== 1 ? 's' : ''}
               </div>
             </div>
@@ -387,10 +387,10 @@ export default function MonthlyPage() {
         {/* Calendar Card */}
         <Card className="p-3 sm:p-6 bg-card border-border mx-4 sm:mx-0">
           <div className="mb-4">
-            <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground mb-2 sm:mb-3 pl-4 sm:pl-0">Monthly stats:</h3>
+            <h3 className="text-xs sm:text-sm font-semibold text-muted-foreground/90 mb-2 sm:mb-3 pl-4 sm:pl-0">Monthly stats:</h3>
             <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-3 sm:mb-4">
               {weekDays.map((day) => (
-                <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-muted-foreground py-1 sm:py-2">
+                <div key={day} className="text-center text-[10px] sm:text-xs font-medium text-muted-foreground/90 py-1 sm:py-2">
                   {day}
                 </div>
               ))}
@@ -412,7 +412,7 @@ export default function MonthlyPage() {
                   >
                     <div
                       className={cn(
-                        'relative rounded-lg border transition-all p-1 sm:p-2 min-h-[52px] cursor-default',
+                        'relative rounded-lg border transition-all p-1 sm:p-2 min-h-[52px] cursor-pointer hover:ring-2 hover:ring-primary/50',
                         isPaddingDay
                           ? 'bg-muted border-muted opacity-30'
                           : dayData
@@ -423,6 +423,15 @@ export default function MonthlyPage() {
                             : 'bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300 dark:border-yellow-900'
                           : 'bg-card border-border'
                       )}
+                      onClick={() => !isPaddingDay && dayData && setSelectedDay(dayData)}
+                      role={!isPaddingDay && dayData ? 'button' : undefined}
+                      tabIndex={!isPaddingDay && dayData ? 0 : undefined}
+                      onKeyDown={(event) => {
+                        if (!isPaddingDay && dayData && (event.key === 'Enter' || event.key === ' ')) {
+                          event.preventDefault()
+                          setSelectedDay(dayData)
+                        }
+                      }}
                     >
                       <div className="h-full flex flex-col justify-between">
                         <div className="calendar-day-number text-foreground">{dayObj.date}</div>
@@ -444,7 +453,7 @@ export default function MonthlyPage() {
                             >
                               {dayData.totalPnL > 0 ? '+' : ''}{dayData.totalPnL.toFixed(0)}
                             </div>
-                            <div className="text-xs sm:text-sm text-muted-foreground lg:hidden">
+                            <div className="text-xs sm:text-sm text-muted-foreground/90 lg:hidden">
                               {dayData.tradeCount}T
                             </div>
 
@@ -515,27 +524,49 @@ export default function MonthlyPage() {
           </div>
         </Card>
 
+        {/* Monthly performance tabs — intentionally excludes Best Month and Worst Month */}
+        {!isLoading && trades.length > 0 && (
+          <div className="mt-4 sm:mt-6 mx-4 sm:mx-0">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-3">
+              {[
+                { label: 'Best Week', value: `$${monthlyPerformanceStats.bestWeek.toFixed(2)}`, tone: 'text-emerald-400', detail: 'profitable days combined' },
+                { label: 'Worst Week', value: `-$${Math.abs(monthlyPerformanceStats.worstWeek).toFixed(2)}`, tone: 'text-red-400', detail: 'losing days combined' },
+                { label: 'Win Streak', value: `${monthlyPerformanceStats.winStreak} days`, tone: 'text-foreground', detail: 'longest winning streak' },
+                { label: 'Loss Streak', value: `${monthlyPerformanceStats.lossStreak} days`, tone: 'text-foreground', detail: 'longest losing streak' },
+                { label: 'Profitable Days', value: `${monthlyPerformanceStats.profitableDaysPercent.toFixed(1)}%`, tone: 'text-foreground', detail: `${monthlyPerformanceStats.profitableDays} of ${monthlyStats.tradingDays} days` },
+                { label: 'Avg Trades/Day', value: monthlyPerformanceStats.avgTradesPerDay.toFixed(1), tone: 'text-foreground', detail: `${monthlyStats.tradingDays} trading days` },
+              ].map((stat) => (
+                <Card key={stat.label} className="p-3 sm:p-4 bg-card border border-border/50">
+                  <p className="text-[10px] sm:text-xs font-medium text-muted-foreground/90 truncate">{stat.label}</p>
+                  <p className={cn('mt-2 text-lg sm:text-xl font-bold truncate', stat.tone)}>{stat.value}</p>
+                  <p className="mt-1 text-[10px] text-muted-foreground/90 truncate">{stat.detail}</p>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Stats Summary */}
         {!isLoading && trades.length > 0 && (
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3 mt-4 sm:mt-6 mx-4 sm:mx-0">
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Total Trades</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Total Trades</p>
               <p className="text-base sm:text-lg font-bold text-foreground">{monthlyStats.totalTrades}</p>
             </Card>
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Trading Days</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Trading Days</p>
               <p className="text-base sm:text-lg font-bold text-foreground">{monthlyStats.tradingDays}</p>
             </Card>
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Win Days</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Win Days</p>
               <p className="text-base sm:text-lg font-bold text-green-600 dark:text-green-400">{monthlyStats.winDays}</p>
             </Card>
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Loss Days</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Loss Days</p>
               <p className="text-base sm:text-lg font-bold text-red-600 dark:text-red-400">{monthlyStats.lossDays}</p>
             </Card>
             <Card className="p-2 sm:p-3 bg-card border border-border/50">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium mb-1">Breakeven Days</p>
+              <p className="text-[10px] sm:text-xs text-muted-foreground/90 font-medium mb-1">Breakeven Days</p>
               <p className="text-base sm:text-lg font-bold text-yellow-600 dark:text-yellow-400">
                 {monthlyStats.tradingDays - monthlyStats.winDays - monthlyStats.lossDays}
               </p>
@@ -543,6 +574,86 @@ export default function MonthlyPage() {
           </div>
         )}
       </div>
+
+      {selectedDay && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm" onClick={() => setSelectedDay(null)}>
+          <aside
+            className="flex h-full w-full max-w-md flex-col border-l border-border bg-card shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="selected-day-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="flex items-center justify-between border-b border-border px-5 py-4">
+              <div>
+                <h2 id="selected-day-title" className="text-base font-bold text-foreground">
+                  {new Date(currentYear, currentMonth, selectedDay.date).toLocaleDateString('en-US', {
+                    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+                  })}
+                </h2>
+                <p className="mt-1 text-xs text-muted-foreground/90">{selectedDay.tradeCount} trades</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedDay(null)} aria-label="Close day trades">
+                <X className="h-5 w-5" />
+              </Button>
+            </header>
+
+            <div className="flex items-center gap-2 border-b border-border px-5 py-3 text-xs font-medium text-muted-foreground/90">
+              {(['time', 'pnl', 'volume'] as const).map((sort) => (
+                <button
+                  key={sort}
+                  type="button"
+                  onClick={() => setTradeSort(sort)}
+                  className={cn(
+                    'rounded-md px-3 py-1.5 transition-colors',
+                    tradeSort === sort ? 'bg-primary/15 text-primary' : 'hover:bg-muted hover:text-foreground',
+                  )}
+                >
+                  {sort === 'pnl' ? 'P&L' : sort[0].toUpperCase() + sort.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5">
+              {sortedSelectedTrades.map((trade) => {
+                const netPnl = trade.net_pnl ?? (trade.pnl - trade.commission - trade.swap)
+                const exitTime = new Date(trade.exit_time)
+                return (
+                  <div key={trade.id} className="flex items-center gap-3 border-b border-border/60 py-4">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md bg-emerald-500/10 text-emerald-500">
+                      <ArrowUpRight className="h-4 w-4" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-semibold text-foreground">{trade.symbol}</p>
+                        <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground/90">
+                          {netPnl >= 0 ? '+' : ''}{netPnl.toFixed(2)}R
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground/90">
+                        {trade.entry_time ? `${new Date(trade.entry_time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} → ` : ''}
+                        {exitTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · vol {trade.volume ?? '—'}
+                      </p>
+                    </div>
+                    <p className={`text-sm font-bold ${netPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                      {netPnl >= 0 ? '+' : '-'}${Math.abs(netPnl).toFixed(2)}
+                    </p>
+                  </div>
+                )
+              })}
+            </div>
+
+            <footer className="border-t border-border px-5 py-4">
+              <div className="flex items-center justify-between text-xs text-muted-foreground/90">
+                <span>Win Rate <strong className="text-foreground">{selectedDay.winRate.toFixed(2)}%</strong> · <span className="text-emerald-500">{selectedDay.winCount}W</span> / <span className="text-red-500">{selectedDay.tradeCount - selectedDay.winCount}L</span></span>
+                <strong className={selectedDay.totalPnL >= 0 ? 'text-emerald-500' : 'text-red-500'}>
+                  {selectedDay.totalPnL >= 0 ? '+' : '-'}${Math.abs(selectedDay.totalPnL).toFixed(2)}
+                </strong>
+              </div>
+            </footer>
+          </aside>
+        </div>
+      )}
     </div>
   )
 }

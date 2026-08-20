@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
-import { getAppOrigin } from "@/lib/domain-routing"
+import { getAppOrigin, isProductionDomainHost } from "@/lib/domain-routing"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,19 +19,24 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [honeypot, setHoneypot] = useState("")
+  const [isDark, setIsDark] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     setStartedAt(Date.now())
+    setIsDark(document.documentElement.classList.contains('dark'))
   }, [])
 
   const handleOAuth = async (provider: "google" | "apple") => {
     setIsLoading(true)
     setError(null)
+    const authOrigin = isProductionDomainHost(window.location.hostname)
+      ? getAppOrigin(window.location.hostname)
+      : window.location.origin
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${getAppOrigin(window.location.hostname)}/auth/callback?next=/dashboard`,
+        redirectTo: `${authOrigin}/auth/callback?next=/dashboard`,
       },
     })
     if (error) {
@@ -50,18 +55,28 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    try {
+      const response = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      })
+      const result = await response.json()
 
-    if (error) {
-      setError(error.message)
+      if (!response.ok) {
+        setError(result.error ?? "Unable to sign in. Please try again.")
+        setIsLoading(false)
+        return
+      }
+
+      const appOrigin = isProductionDomainHost(window.location.hostname)
+        ? getAppOrigin(window.location.hostname)
+        : window.location.origin
+      window.location.assign(`${appOrigin}${result.redirectTo ?? "/dashboard"}`)
+    } catch {
+      setError("Unable to sign in. Please try again.")
       setIsLoading(false)
-      return
     }
-
-    window.location.assign(`${getAppOrigin(window.location.hostname)}/dashboard`)
   }
 
   return (
@@ -70,7 +85,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center justify-center mb-8 gap-4">
           <div className="w-20 h-20 relative">
             <Image
-              src="/logo-jnv.png"
+              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv.png"}
               alt="JnV Journal Logo"
               width={80}
               height={80}

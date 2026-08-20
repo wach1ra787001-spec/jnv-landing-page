@@ -43,7 +43,7 @@ export function HeroCard({ userName, streakDays = 3 }: HeroCardProps) {
           <Button 
             variant="outline"
             size="sm"
-            className="border-[#E2E8F0] text-[#1E293B] dark:text-foreground hover:bg-[#F8FAFC] dark:hover:bg-secondary text-xs sm:text-sm w-full sm:w-auto"
+            className="border-[#E2E8F0] text-[#1E293B] dark:text-foreground hover:bg-[#F8FAFC] dark:hover:bg-accent-blue-subtle dark:hover:text-accent-blue text-xs sm:text-sm w-full sm:w-auto"
             onClick={() => router.push("/dashboard/monthly?month=march")}
           >
             <span className="hidden sm:inline">Monthly Performance Overview</span>
@@ -51,14 +51,16 @@ export function HeroCard({ userName, streakDays = 3 }: HeroCardProps) {
             <ChevronRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
           
-          <Badge 
-            variant="secondary" 
-            className="bg-[#ECFDF5] text-[#059669] border-0 px-2 sm:px-3 py-1 sm:py-1.5 font-medium text-xs sm:text-sm whitespace-nowrap w-fit"
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => router.push("/dashboard/advanced-stats/streaks")}
+            className="bg-[#ECFDF5] text-[#059669] border-0 hover:bg-[#D1FAE5] px-2 sm:px-3 py-1 sm:py-1.5 font-medium text-xs sm:text-sm whitespace-nowrap w-fit h-auto"
           >
             <CheckCircle2 className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Streak: {streakDays} disciplined days</span>
             <span className="sm:hidden">{streakDays} day streak</span>
-          </Badge>
+          </Button>
         </div>
       </div>
     </Card>
