@@ -66,6 +66,10 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
     lastTime: allBars[allBars.length - 1]?.time ?? null,
   })
   const total = allBars.length
+  console.log('[v0] Replay pipeline initialized', {
+    symbol, interval, providerBars: Boolean(providedBars?.length), totalBars: total,
+    firstTime: allBars[0]?.time ?? null, lastTime: allBars[allBars.length - 1]?.time ?? null,
+  })
 
   // Start at 20% in so there's something to see immediately
   let cursorIdx = Math.max(1, Math.floor(total * 0.2))
@@ -240,6 +244,12 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
 
         // Always sort ascending — prevents "time order violation"
         filtered.sort((a, b) => a.time - b.time)
+        console.log('[v0] Replay getBars callback', {
+          symbol, resolution: _resolution, from: periodParams.from, to: periodParams.to,
+          countBack: periodParams.countBack ?? null, cursorIdx, available: slice.length,
+          returned: filtered.length, noData: filtered.length === 0,
+          firstTime: filtered[0]?.time ?? null, lastTime: filtered[filtered.length - 1]?.time ?? null,
+        })
 
         if (filtered.length === 0) {
           onHistory([], { noData: true })
@@ -247,6 +257,7 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
           onHistory(filtered, { noData: false })
         }
       } catch (e) {
+        console.error('[v0] Replay getBars failed', { symbol, interval: _resolution, error: String(e) })
         onError?.(String(e))
       }
     },

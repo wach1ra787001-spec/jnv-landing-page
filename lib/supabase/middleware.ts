@@ -1,7 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { getAuthCookieOptions, isAppHost } from '@/lib/domain-routing'
-import { acquireConcurrency, checkRateLimit, getPayloadLimit, getPlanFromTier } from '@/lib/rate-limit'
+import { checkRateLimit, getPayloadLimit, getPlanFromTier } from '@/lib/rate-limit'
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -66,7 +66,11 @@ export async function updateSession(request: NextRequest) {
         )
       }
 
-      const rateLimit = await checkRateLimit({
+      // Reads are user-scoped and can be triggered more than once by the
+      // dashboard/chart lifecycle. Do not let harmless GETs exhaust the API
+      // limiter; mutation requests remain rate- and quota-limited.
+      const isBacktestRead = request.method === 'GET' && request.nextUrl.pathname.startsWith('/api/backtest/')
+      const rateLimit = isBacktestRead ? null : await checkRateLimit({
         pathname: request.nextUrl.pathname,
         ip,
         userId: user?.id,
@@ -74,15 +78,7 @@ export async function updateSession(request: NextRequest) {
         method: request.method,
       })
 
-      if (user?.id && request.method !== 'GET' && (request.nextUrl.pathname.startsWith('/api/ai/') || request.nextUrl.pathname.startsWith('/api/backtest'))) {
-        const kind = request.nextUrl.pathname.startsWith('/api/ai/') ? 'ai' : 'backtesting'
-        const concurrency = await acquireConcurrency({ userId: user.id, plan, kind })
-        if (!concurrency.success) {
-          return NextResponse.json({ error: `Too many concurrent ${kind} jobs.` }, { status: 429, headers: { 'Retry-After': '600' } })
-        }
-      }
-
-      if (!rateLimit.success || rateLimit.quota?.success === false) {
+      if (rateLimit && (!rateLimit.success || rateLimit.quota?.success === false)) {
         const retryAfter = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000))
         return NextResponse.json(
           { error: 'Too many requests. Please try again later.' },

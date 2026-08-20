@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { normalizeMarketSymbol, resolveMarketDataInstrument } from '@/lib/market-data/instruments'
 
-const DATASET = 'GLBX.MDP3'
-const DEFAULT_SYMBOL = '6E.c.0'
+const DEFAULT_SYMBOL = 'EURUSD'
 const DEFAULT_SCHEMA = 'ohlcv-1m'
 const DEFAULT_LIMIT = 500
 
@@ -38,12 +38,38 @@ function normalizeRecord(record: Record<string, string>) {
 }
 
 export async function GET(request: NextRequest) {
-  const apiKey = process.env.DATABENTO_API_KEY
-  if (!apiKey) return NextResponse.json({ error: 'Databento is not configured' }, { status: 503 })
+  const requestId = crypto.randomUUID()
+  const apiKey = process.env.DATABENTO_API_KEY?.trim()
+  const config = {
+    hasDatabentoApiKey: Boolean(apiKey),
+    runtime: process.env.VERCEL_ENV ?? 'local',
+  }
+  console.log('[v0] Databento request start', { requestId, path: request.nextUrl.pathname, ...config })
+  if (!apiKey) {
+    console.error('[v0] Databento configuration missing', { requestId, ...config })
+    return NextResponse.json({
+      error: 'Databento is not configured in this deployment',
+      code: 'DATABENTO_API_KEY_MISSING',
+      requestId,
+      ...config,
+    }, { status: 503, headers: { 'Cache-Control': 'no-store' } })
+  }
 
   const params = request.nextUrl.searchParams
-  const symbol = params.get('symbol') || DEFAULT_SYMBOL
-  const schema = params.get('schema') || DEFAULT_SCHEMA
+  const symbol = normalizeMarketSymbol(params.get('symbol') || DEFAULT_SYMBOL)
+  const instrument = await resolveMarketDataInstrument(symbol)
+  if (!instrument) {
+    return NextResponse.json({
+      error: `No Databento mapping is configured for ${symbol}`,
+      code: 'INSTRUMENT_MAPPING_MISSING',
+      symbol,
+      requestId,
+    }, { status: 422, headers: { 'Cache-Control': 'no-store' } })
+  }
+  const dataset = instrument.dataset
+  const providerSymbol = instrument.provider_symbol
+  const providerStypeIn = instrument.provider_stype_in
+  const schema = params.get('schema') || instrument.schema || DEFAULT_SCHEMA
   // Historical datasets trail wall-clock time. Keep the default and explicit
   // end inside the currently available range instead of sending `now`, which
   // Databento rejects while the latest bars are still being published.
@@ -53,18 +79,28 @@ export async function GET(request: NextRequest) {
   const latestAvailable = Math.floor(Date.now() / 1000) - 12 * 60 * 60
   const requestedEnd = toUnixSeconds(params.get('end'), latestAvailable)
   const end = Math.min(requestedEnd, latestAvailable)
-  const start = toUnixSeconds(params.get('start'), end - 30 * 24 * 60 * 60)
+  const requestedStart = toUnixSeconds(params.get('start'), end - 30 * 24 * 60 * 60)
+  // A newly created session may have a future, reversed, or provider-unavailable
+  // range. Use a valid recent historical window instead of returning zero bars.
+  const start = requestedStart < end
+    ? requestedStart
+    : end - 30 * 24 * 60 * 60
   const limit = Math.min(Math.max(Number(params.get('limit') || DEFAULT_LIMIT), 1), 5_000)
 
   const url = new URL('https://hist.databento.com/v0/timeseries.get_range')
-  url.searchParams.set('dataset', DATASET)
-  url.searchParams.set('symbols', symbol)
-  url.searchParams.set('stype_in', symbol.includes('.') ? 'continuous' : 'raw_symbol')
+  url.searchParams.set('dataset', dataset)
+  url.searchParams.set('symbols', providerSymbol)
+  url.searchParams.set('stype_in', providerStypeIn)
   url.searchParams.set('schema', schema)
   url.searchParams.set('start', new Date(start * 1000).toISOString())
   url.searchParams.set('end', new Date(end * 1000).toISOString())
   url.searchParams.set('encoding', 'csv')
   url.searchParams.set('limit', String(limit))
+
+  console.log('[v0] Databento request params', {
+    requestId, symbol, providerSymbol, dataset, schema, stypeIn: providerStypeIn,
+    start: url.searchParams.get('start'), end: url.searchParams.get('end'), limit,
+  })
 
   const response = await fetch(url, {
     headers: {
@@ -75,18 +111,29 @@ export async function GET(request: NextRequest) {
   })
 
   const body = await response.text()
+  console.log('[v0] Databento response received', {
+    requestId, ok: response.ok, status: response.status, bytes: body.length,
+    contentType: response.headers.get('content-type'),
+  })
   if (!response.ok) {
-    return NextResponse.json({ error: 'Databento request failed', status: response.status, detail: body.slice(0, 500) }, { status: 502 })
+    console.error('[v0] Databento provider error', { requestId, status: response.status, detail: body.slice(0, 500) })
+    return NextResponse.json({ error: 'Databento request failed', requestId, status: response.status, detail: body.slice(0, 500) }, { status: 502 })
   }
 
   const rawRecords = body.trim().startsWith('[') ? JSON.parse(body) : parseRecords(body)
-  const bars = rawRecords.map((record: Record<string, string>) => normalizeRecord(record)).filter(Boolean).sort((a: any, b: any) => a.time - b.time)
+  const normalized = rawRecords.map((record: Record<string, string>) => normalizeRecord(record))
+  const bars = normalized.filter(Boolean).sort((a: any, b: any) => a.time - b.time)
   const deduped = bars.filter((bar: any, index: number, list: any[]) => index === 0 || bar.time !== list[index - 1].time)
+  console.log('[v0] Databento bars parsed', {
+    requestId, rawRecords: rawRecords.length, validBars: bars.length, dedupedBars: deduped.length,
+    firstTime: deduped[0]?.time ?? null, lastTime: deduped[deduped.length - 1]?.time ?? null,
+  })
 
   return NextResponse.json({
     provider: 'databento',
-    dataset: DATASET,
+    dataset,
     symbol,
+    providerSymbol,
     schema,
     start,
     end,

@@ -144,21 +144,37 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
         const start = Math.floor(new Date(s?.date_from ?? Date.now() - 30 * 86400000).getTime() / 1000)
         const end = Math.floor(new Date(s?.date_to ?? Date.now()).getTime() / 1000)
         const params = new URLSearchParams({
-          symbol: s?.symbol === "EURUSD" ? "6E.c.0" : s?.symbol ?? "6E.c.0",
+          symbol: s?.symbol ?? "EURUSD",
           schema: "ohlcv-1m",
           start: String(start),
           end: String(end),
           limit: "5000",
         })
+        console.log('[v0] Backtest Databento request', {
+          sessionId: id, symbol: s?.symbol, providerSymbol: params.get('symbol'),
+          timeframe: s?.timeframe, start: params.get('start'), end: params.get('end'), limit: params.get('limit'),
+        })
         const response = await fetch(`/api/databento/ohlc?${params.toString()}`, { cache: "no-store" })
         const payload = await response.json().catch(() => null)
+        console.log('[v0] Backtest Databento response', {
+          sessionId: id, status: response.status, provider: payload?.provider,
+          returnedCount: payload?.count ?? payload?.bars?.length ?? null,
+          payloadStart: payload?.start, payloadEnd: payload?.end,
+        })
         if (!response.ok) {
           if (response.status === 503) {
             throw new Error("Databento is not configured in this deployment. Add DATABENTO_API_KEY to the Vercel Preview/Production environment, then redeploy.")
           }
+          if (response.status === 422 && payload?.code === "INSTRUMENT_MAPPING_MISSING") {
+            throw new Error(`No Databento market mapping is configured for ${payload.symbol}.`)
+          }
           throw new Error(payload?.error || "Could not load market data")
         }
         const bars = normalizeExternalBars(payload?.bars ?? [])
+        console.log('[v0] Backtest bars normalized for replay', {
+          sessionId: id, inputCount: payload?.bars?.length ?? 0, outputCount: bars.length,
+          firstTime: bars[0]?.time ?? null, lastTime: bars[bars.length - 1]?.time ?? null,
+        })
         if (!bars.length) throw new Error("Databento returned no valid OHLC bars")
         if (cancelled) return
         console.log('[v0] Databento bars ready for replay', {

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { normalizeMarketSymbol, resolveMarketDataInstrument } from '@/lib/market-data/instruments'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET() {
@@ -28,13 +29,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing required fields: name, symbol, initial_balance' }, { status: 400 })
   }
 
+  const normalizedSymbol = normalizeMarketSymbol(symbol)
+  const instrument = await resolveMarketDataInstrument(normalizedSymbol)
+  if (!instrument) {
+    return NextResponse.json({
+      error: `Unsupported backtest symbol: ${normalizedSymbol}`,
+      code: 'INSTRUMENT_MAPPING_MISSING',
+      symbol: normalizedSymbol,
+    }, { status: 422 })
+  }
+
   const { data, error } = await supabase
     .from('backtest_sessions')
     .insert({
       user_id: user.id,
       name,
       strategy_name: strategy_name || name,   // NOT NULL — fallback to session name
-      symbol: symbol.replace(/[\/\-\s]/g, '').toUpperCase(),
+      symbol: normalizedSymbol,
       timeframe: timeframe || 'H1',
       date_from: date_from || null,
       date_to: date_to || null,
