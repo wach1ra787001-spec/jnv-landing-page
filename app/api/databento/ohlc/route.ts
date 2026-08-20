@@ -44,7 +44,12 @@ export async function GET(request: NextRequest) {
   const params = request.nextUrl.searchParams
   const symbol = params.get('symbol') || DEFAULT_SYMBOL
   const schema = params.get('schema') || DEFAULT_SCHEMA
-  const end = toUnixSeconds(params.get('end'), Math.floor(Date.now() / 1000))
+  // Historical datasets trail wall-clock time. Keep the default and explicit
+  // end inside the currently available range instead of sending `now`, which
+  // Databento rejects while the latest bars are still being published.
+  const latestAvailable = Math.floor(Date.now() / 1000) - 15 * 60
+  const requestedEnd = toUnixSeconds(params.get('end'), latestAvailable)
+  const end = Math.min(requestedEnd, latestAvailable)
   const start = toUnixSeconds(params.get('start'), end - 30 * 24 * 60 * 60)
   const limit = Math.min(Math.max(Number(params.get('limit') || DEFAULT_LIMIT), 1), 5_000)
 
