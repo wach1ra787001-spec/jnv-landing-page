@@ -53,7 +53,12 @@ export async function GET(request: NextRequest) {
   const latestAvailable = Math.floor(Date.now() / 1000) - 12 * 60 * 60
   const requestedEnd = toUnixSeconds(params.get('end'), latestAvailable)
   const end = Math.min(requestedEnd, latestAvailable)
-  const start = toUnixSeconds(params.get('start'), end - 30 * 24 * 60 * 60)
+  const requestedStart = toUnixSeconds(params.get('start'), end - 30 * 24 * 60 * 60)
+  // A newly created session may have a future, reversed, or provider-unavailable
+  // range. Use a valid recent historical window instead of returning zero bars.
+  const start = requestedStart < end
+    ? requestedStart
+    : end - 30 * 24 * 60 * 60
   const limit = Math.min(Math.max(Number(params.get('limit') || DEFAULT_LIMIT), 1), 5_000)
 
   const url = new URL('https://hist.databento.com/v0/timeseries.get_range')

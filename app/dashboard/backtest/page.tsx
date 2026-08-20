@@ -293,7 +293,7 @@ export default function BacktestPage() {
   }
 
   const handleSubmit = async () => {
-    if (!form.name || !form.symbol || !form.initial_balance) return
+    if (submitting || !form.name || !form.symbol || !form.initial_balance) return
     setSubmitting(true)
     try {
       const res = await fetch("/api/backtest/sessions", {
@@ -305,12 +305,20 @@ export default function BacktestPage() {
           symbol: formatSymbolForTradingView(form.symbol),
         }),
       })
-      if (res.ok) {
-        const session = await res.json()
-        setModalOpen(false)
-        setForm({ name: "", symbol: "", timeframe: "H1", date_from: "", date_to: "", initial_balance: "", description: "" })
-        window.location.href = `/dashboard/backtest/${session.id}/chart`
+      const payload = await res.json().catch(() => null)
+      if (!res.ok) {
+        const message = res.status === 429
+          ? "Backtest creation is temporarily rate-limited. Wait a moment and submit once more."
+          : payload?.error || "Could not create the backtest session."
+        throw new Error(message)
       }
+      const session = payload
+      setModalOpen(false)
+      setForm({ name: "", symbol: "", timeframe: "H1", date_from: "", date_to: "", initial_balance: "", description: "" })
+      window.location.href = `/dashboard/backtest/${session.id}/chart`
+    } catch (error) {
+      console.error("[v0] Backtest session creation failed", error)
+      window.alert(error instanceof Error ? error.message : "Could not create the backtest session.")
     } finally {
       setSubmitting(false)
     }
