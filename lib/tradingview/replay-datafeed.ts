@@ -123,16 +123,18 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
   function jumpTo(idx: number) {
     pause()
     const clamped = Math.min(Math.max(1, idx), total - 1)
-    const goingBack = clamped < cursorIdx
+    if (clamped === cursorIdx) return
+
     cursorIdx = clamped
     fireTick()
-    if (goingBack) {
-      resetCacheCallback?.()
-      onNeedReset?.()
-    } else {
-      // Going forward: push via realtime so chart appends without a full reload
-      pushRealtimeBar()
-    }
+
+    // A scrub/jump can skip many bars. Sending only the destination bar through
+    // subscribeBars leaves TradingView with holes in its internal logical-index
+    // map; drawing tools then resolve a clicked coordinate to null. Rebuild the
+    // historical slice for every jump, in both directions. Realtime updates are
+    // reserved for contiguous play/step-forward ticks.
+    resetCacheCallback?.()
+    onNeedReset?.()
   }
 
   const controller: ReplayController = {
