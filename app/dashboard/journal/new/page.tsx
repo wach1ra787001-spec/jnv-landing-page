@@ -14,6 +14,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { useAccount } from '@/components/dashboard/account-context'
 
 interface Account {
   id: string
@@ -47,6 +48,7 @@ const toDbDirection = (d: string) => d === 'buy' ? 'long' : 'short'
 
 export default function AddNewTradePage() {
   const router = useRouter()
+  const { selectedAccountId } = useAccount()
   const [formData, setFormData] = useState(DEFAULT_FORM)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [screenshots, setScreenshots] = useState<File[]>([])
@@ -69,10 +71,12 @@ export default function AddNewTradePage() {
       if (res.ok) {
         const data = await res.json()
         setAccounts(data)
-        // Set the first account as default
-        if (data.length > 0) {
-          setSelectedAccount(data[0])
-          handleChange('account_id', data[0].id)
+        // Default to the account currently selected in the header, falling
+        // back to the first account if nothing is selected yet.
+        const defaultAccount = data.find((account: Account) => account.id === selectedAccountId) || data[0]
+        if (defaultAccount) {
+          setSelectedAccount(defaultAccount)
+          handleChange('account_id', defaultAccount.id)
         }
       }
     } catch (error) {

@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 import { ArrowDownRight, ArrowUpRight, Search, Loader2, Trash2, Edit2 } from 'lucide-react'
 import { appToast } from '@/lib/toast-utils'
 import { EditTradeModal } from '@/components/dashboard/edit-trade-modal'
+import { useAccount } from '@/components/dashboard/account-context'
 
 interface Trade {
   id: string
@@ -29,6 +30,7 @@ interface Trade {
 
 export default function TradeHistoryPage() {
   const router = useRouter()
+  const { selectedAccountId } = useAccount()
   const [searchTerm, setSearchTerm] = useState('')
   const [trades, setTrades] = useState<Trade[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,9 +38,11 @@ export default function TradeHistoryPage() {
   const [deleting, setDeleting] = useState(false)
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
 
+  // Refetch whenever the selected account changes so switching accounts in
+  // the header immediately reflects that account's trade history.
   useEffect(() => {
     fetchTrades()
-  }, [])
+  }, [selectedAccountId])
 
   const fetchTrades = async () => {
     try {

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { TimeAnalysisClient } from '@/components/advanced-stats/TimeAnalysisClient'
 import { analyzeNewsImpact } from '@/lib/economicCalendar'
+import { getSelectedAccountId } from '@/lib/get-selected-account'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
@@ -16,13 +17,21 @@ export default async function TimeAnalysisPage() {
     redirect('/auth/login')
   }
 
-  // Fetch all closed trades for the user
-  const { data: trades } = await supabase
+  const accountId = await getSelectedAccountId(supabase, user.id)
+
+  // Fetch all closed trades for the user, scoped to the active account
+  let tradesQuery = supabase
     .from('trades')
     .select('*')
     .eq('user_id', user.id)
     .eq('status', 'closed')
     .order('entry_time', { ascending: false })
+
+  if (accountId) {
+    tradesQuery = tradesQuery.eq('account_id', accountId)
+  }
+
+  const { data: trades } = await tradesQuery
 
   // Calculate news impact analysis using economic calendar data
   let newsImpactData = {

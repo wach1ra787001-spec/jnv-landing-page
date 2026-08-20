@@ -9,6 +9,7 @@ import { Plus, BookOpen, SlidersHorizontal, Search, X, Bell } from 'lucide-react
 import { appToast } from '@/lib/toast-utils'
 import { TradeModal } from '@/components/dashboard/trade-modal'
 import { TradeJournalEntryCard } from '@/components/journal/trade-journal-entry-card'
+import { useAccount } from '@/components/dashboard/account-context'
 
 interface Trade {
   id: string
@@ -36,6 +37,7 @@ export default function TradeJournalPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const highlightId = searchParams.get('highlight')
+  const { selectedAccountId } = useAccount()
 
   const [showModal, setShowModal] = useState(false)
   const [trades, setTrades] = useState<Trade[]>([])
@@ -46,9 +48,11 @@ export default function TradeJournalPage() {
   const [newImportCount, setNewImportCount] = useState(0)
 
   // ── Fetch trades ────────────────────────────────────────────────────────────
+  // Refetches whenever the selected account changes so switching accounts in
+  // the header immediately reflects that account's trades.
   useEffect(() => {
     fetchTrades()
-  }, [])
+  }, [selectedAccountId])
 
   // Check for newly imported CSV trades (imported in the last 10 minutes)
   useEffect(() => {

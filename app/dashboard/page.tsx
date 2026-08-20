@@ -17,6 +17,7 @@ import {
 } from "@/lib/day-to-day-analysis"
 import { DayToDayCard } from "@/components/dashboard/day-to-day-card"
 import { calculateMonthlyGrowthTimeline } from "@/lib/monthly-growth-analysis"
+import { getSelectedAccountId } from "@/lib/get-selected-account"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -29,15 +30,7 @@ export default async function DashboardPage() {
     .eq("id", user?.id)
     .single()
 
-  // Fetch default account
-  const { data: defaultAccount } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", user?.id)
-    .eq("is_active", true)
-    .single()
-
-  const accountId = profile?.default_account_id || defaultAccount?.id
+  const accountId = user ? await getSelectedAccountId(supabase, user.id) : null
 
   // Fetch all trades for metric calculation - filtered by account
   const tradesQuery = supabase
@@ -235,6 +228,7 @@ export default async function DashboardPage() {
         <OpenPositionsWidget 
           userId={user?.id || ''}
           currency={currency}
+          accountId={accountId}
         />
       </div>
     </div>

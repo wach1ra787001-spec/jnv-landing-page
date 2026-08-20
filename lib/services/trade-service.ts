@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { detectTradeSession } from '@/lib/session-detection-engine'
+import { getSelectedAccountId } from '@/lib/get-selected-account'
 
 // Valid source values allowed by database constraint (matches database ENUM)
 const VALID_SOURCES = ['manual', 'mt5', 'mt4', 'ctrader', 'tradingview', 'csv'] as const
@@ -229,21 +230,9 @@ export async function getUserTrades() {
 
   console.log('[v0] Fetching trades for user:', user.id)
 
-  // Get default account
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('default_account_id')
-    .eq('id', user.id)
-    .single()
-
-  const { data: defaultAccount } = await supabase
-    .from('accounts')
-    .select('id')
-    .eq('user_id', user.id)
-    .eq('is_active', true)
-    .single()
-
-  const accountId = profile?.default_account_id || defaultAccount?.id
+  // Resolve the active account: explicit cookie selection first, then the
+  // saved default, then the most recently created account.
+  const accountId = await getSelectedAccountId(supabase, user.id)
 
   let query = supabase
     .from('trades')

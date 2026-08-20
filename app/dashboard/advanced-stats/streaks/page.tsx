@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { StreaksAnalysisClient } from '@/components/advanced-stats/StreaksAnalysisClient'
+import { getSelectedAccountId } from '@/lib/get-selected-account'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
@@ -15,13 +16,22 @@ export default async function StreaksAnalysisPage() {
     redirect('/auth/login')
   }
 
+  const accountId = await getSelectedAccountId(supabase, user.id)
+
   // Fetch all trades for the user, joined with journal data (followed_plan,
-  // discipline_rating, mistakes) for the Discipline Tracker module.
-  const { data: trades } = await supabase
+  // discipline_rating, mistakes) for the Discipline Tracker module, scoped
+  // to the active account.
+  let tradesQuery = supabase
     .from('trades_with_journal')
     .select('*')
     .eq('user_id', user.id)
     .order('entry_time', { ascending: false })
+
+  if (accountId) {
+    tradesQuery = tradesQuery.eq('account_id', accountId)
+  }
+
+  const { data: trades } = await tradesQuery
 
   return (
     <StreaksAnalysisClient trades={trades || []} />

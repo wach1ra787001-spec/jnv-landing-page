@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Plus, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useAccount } from '@/components/dashboard/account-context'
 
 interface DailyEntry {
   id: string
@@ -18,12 +19,15 @@ interface DailyEntry {
 
 export default function DailyJournalPage() {
   const router = useRouter()
+  const { selectedAccountId } = useAccount()
   const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Refetch whenever the selected account changes so switching accounts in
+  // the header immediately reflects that account's daily entries.
   useEffect(() => {
     fetchDailyEntries()
-  }, [])
+  }, [selectedAccountId])
 
   const fetchDailyEntries = async () => {
     try {

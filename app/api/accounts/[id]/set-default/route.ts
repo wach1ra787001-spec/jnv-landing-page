@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { SELECTED_ACCOUNT_COOKIE } from '@/lib/account-selection'
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 
 export async function POST(
   request: NextRequest,
@@ -36,6 +38,15 @@ export async function POST(
       console.error('[v0] Error updating default account:', updateError)
       return NextResponse.json({ error: 'Failed to update default account' }, { status: 500 })
     }
+
+    // Persist the selection in a cookie too, so it takes effect immediately
+    // across every server-rendered page without waiting on cached profile reads.
+    const cookieStore = await cookies()
+    cookieStore.set(SELECTED_ACCOUNT_COOKIE, id, {
+      path: '/',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365,
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

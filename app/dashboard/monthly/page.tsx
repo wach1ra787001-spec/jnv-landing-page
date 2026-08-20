@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { ChevronLeft, ChevronRight, ArrowLeft, AlertCircle, X, ArrowUpRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
+import { useAccount } from '@/components/dashboard/account-context'
 
 interface Trade {
   id: string
@@ -38,6 +39,7 @@ const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 export default function MonthlyPage() {
   const router = useRouter()
   const supabase = createClient()
+  const { selectedAccountId } = useAccount()
   
   // State
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
@@ -46,7 +48,6 @@ export default function MonthlyPage() {
   const [dayMap, setDayMap] = useState<Map<number, DayData>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [accountId, setAccountId] = useState<string | null>(null)
   const [monthlyStats, setMonthlyStats] = useState({
     totalPnL: 0,
     tradingDays: 0,
@@ -80,10 +81,12 @@ export default function MonthlyPage() {
     return !(currentYear === today.getFullYear() && currentMonth === today.getMonth())
   }
 
-  // Fetch trades for the current month
+  // Fetch trades for the current month. Re-runs whenever the selected
+  // account changes, so switching accounts in the header refreshes this
+  // page immediately instead of showing stale data.
   useEffect(() => {
     fetchMonthTrades()
-  }, [currentYear, currentMonth])
+  }, [currentYear, currentMonth, selectedAccountId])
 
   const fetchMonthTrades = async () => {
     try {
@@ -96,29 +99,14 @@ export default function MonthlyPage() {
         return
       }
 
-      // Get default account if not already set
-      if (!accountId) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('default_account_id')
-          .eq('id', user.id)
-          .single()
+      const accountId = selectedAccountId
 
-        const { data: defaultAccount } = await supabase
-          .from('accounts')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('is_active', true)
-          .single()
-
-        const acctId = profile?.default_account_id || defaultAccount?.id
-        setAccountId(acctId)
-      }
-
-      // Check cache first
-      const cacheKey = `${currentYear}-${currentMonth}`
+      // Check cache first — keyed by account too, so switching accounts
+      // never shows a previously cached account's trades for this month.
+      const cacheKey = `${accountId ?? 'none'}-${currentYear}-${currentMonth}`
       if (monthCacheRef.current[cacheKey]) {
         setTrades(monthCacheRef.current[cacheKey])
+        setIsLoading(false)
         return
       }
 
@@ -144,55 +132,11 @@ export default function MonthlyPage() {
 
       const { data, error: queryError } = await query
 
-      // If query fails or returns no data, try a broader query to debug
-      if (queryError || !data) {
-        console.warn('[v0] First query failed, trying broader query...')
-        
-        const { data: allTrades, error: allTradesError } = await supabase
-          .from('trades')
-          .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, status, user_id')
-          .eq('user_id', user.id)
-          .order('exit_time', { ascending: false })
-          .limit(50)
-        
-        console.log('[v0] All trades query:', { count: allTrades?.length, error: allTradesError })
-        if (allTrades && allTrades.length > 0) {
-          console.log('[v0] Sample trades:', allTrades.slice(0, 3))
-        }
-      }
-
-      console.log('[v0] Query result:', { data, queryError })
-
-      // If query fails or returns no data, try a broader query to debug
-      if (queryError || !data) {
-        console.warn('[v0] First query failed, trying broader query...')
-        
-        const { data: allTrades, error: allTradesError } = await supabase
-          .from('trades')
-          .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, status, user_id')
-          .eq('user_id', user.id)
-          .order('exit_time', { ascending: false })
-          .limit(50)
-        
-        console.log('[v0] All trades query:', { count: allTrades?.length, error: allTradesError })
-        if (allTrades && allTrades.length > 0) {
-          console.log('[v0] Sample trades:', allTrades.slice(0, 3))
-        }
-      }
-
-      console.log('[v0] Query result:', { data, queryError })
-
       if (queryError) {
         console.error('[v0] Supabase query error:', queryError)
-        console.error('[v0] Error message:', queryError.message)
-        console.error('[v0] Error details:', JSON.stringify(queryError, null, 2))
         setError('Could not load trades. Please refresh.')
         return
       }
-
-      console.log('[v0] Trades fetched:', data?.length || 0)
-
-      console.log('[v0] Trades fetched:', data?.length || 0)
 
       // Cache the result
       monthCacheRef.current[cacheKey] = data || []

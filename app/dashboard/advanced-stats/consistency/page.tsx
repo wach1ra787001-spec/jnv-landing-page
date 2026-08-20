@@ -6,6 +6,7 @@ import {
   type ConsistencyScoreInputs,
 } from "@/lib/consistency-score"
 import { ConsistencyAnalysisClient } from "@/components/advanced-stats/ConsistencyAnalysisClient"
+import { getSelectedAccountId } from "@/lib/get-selected-account"
 
 export const metadata = {
   title: "Consistency Analysis | Advanced Statistics",
@@ -20,20 +21,7 @@ export default async function ConsistencyAnalysisPage() {
     redirect("/auth/login")
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("default_account_id")
-    .eq("id", user.id)
-    .single()
-
-  const { data: defaultAccount } = await supabase
-    .from("accounts")
-    .select("id")
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-    .single()
-
-  const accountId = profile?.default_account_id || defaultAccount?.id
+  const accountId = await getSelectedAccountId(supabase, user.id)
 
   const tradesQuery = supabase
     .from("trades")
