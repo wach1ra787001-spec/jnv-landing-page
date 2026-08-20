@@ -38,7 +38,9 @@ function normalizeRecord(record: Record<string, string>) {
 }
 
 export async function GET(request: NextRequest) {
+  const requestId = crypto.randomUUID()
   const apiKey = process.env.DATABENTO_API_KEY
+  console.log('[v0] Databento request start', { requestId, path: request.nextUrl.pathname })
   if (!apiKey) return NextResponse.json({ error: 'Databento is not configured' }, { status: 503 })
 
   const params = request.nextUrl.searchParams
@@ -71,6 +73,11 @@ export async function GET(request: NextRequest) {
   url.searchParams.set('encoding', 'csv')
   url.searchParams.set('limit', String(limit))
 
+  console.log('[v0] Databento request params', {
+    requestId, dataset: DATASET, symbol, schema, stypeIn: url.searchParams.get('stype_in'),
+    start: url.searchParams.get('start'), end: url.searchParams.get('end'), limit,
+  })
+
   const response = await fetch(url, {
     headers: {
       Authorization: `Basic ${Buffer.from(`${apiKey}:`).toString('base64')}`,
@@ -80,13 +87,23 @@ export async function GET(request: NextRequest) {
   })
 
   const body = await response.text()
+  console.log('[v0] Databento response received', {
+    requestId, ok: response.ok, status: response.status, bytes: body.length,
+    contentType: response.headers.get('content-type'),
+  })
   if (!response.ok) {
-    return NextResponse.json({ error: 'Databento request failed', status: response.status, detail: body.slice(0, 500) }, { status: 502 })
+    console.error('[v0] Databento provider error', { requestId, status: response.status, detail: body.slice(0, 500) })
+    return NextResponse.json({ error: 'Databento request failed', requestId, status: response.status, detail: body.slice(0, 500) }, { status: 502 })
   }
 
   const rawRecords = body.trim().startsWith('[') ? JSON.parse(body) : parseRecords(body)
-  const bars = rawRecords.map((record: Record<string, string>) => normalizeRecord(record)).filter(Boolean).sort((a: any, b: any) => a.time - b.time)
+  const normalized = rawRecords.map((record: Record<string, string>) => normalizeRecord(record))
+  const bars = normalized.filter(Boolean).sort((a: any, b: any) => a.time - b.time)
   const deduped = bars.filter((bar: any, index: number, list: any[]) => index === 0 || bar.time !== list[index - 1].time)
+  console.log('[v0] Databento bars parsed', {
+    requestId, rawRecords: rawRecords.length, validBars: bars.length, dedupedBars: deduped.length,
+    firstTime: deduped[0]?.time ?? null, lastTime: deduped[deduped.length - 1]?.time ?? null,
+  })
 
   return NextResponse.json({
     provider: 'databento',
