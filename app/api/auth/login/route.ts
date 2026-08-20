@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
+import { cookies, headers } from "next/headers"
+import { createServerClient } from "@supabase/ssr"
 import { Ratelimit } from "@upstash/ratelimit"
 import { redis } from "@/lib/rate-limit"
-import { createClient } from "@/lib/supabase/server"
+import { getAuthCookieOptions } from "@/lib/domain-routing"
 
 const MAX_ATTEMPTS = 5
 const LOCKOUT_MS = 2 * 60 * 60 * 1000
@@ -54,7 +56,24 @@ export async function POST(request: NextRequest) {
     )
   }
 
-  const supabase = await createClient()
+  const cookieStore = await cookies()
+  const requestHeaders = await headers()
+  const cookieOptions = getAuthCookieOptions(requestHeaders.get("host")?.split(":")[0])
+  const cookiesToSet: Array<{ name: string; value: string; options: Record<string, unknown> }> = []
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookieOptions,
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: (cookies) => {
+          cookiesToSet.push(...cookies)
+          cookies.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+        },
+      },
+    },
+  )
   const { data, error } = await supabase.auth.signInWithPassword({ email, password })
 
   if (error || !data.session) {
@@ -71,7 +90,11 @@ export async function POST(request: NextRequest) {
   }
 
   await redis.del(`jnv:auth:login:${identity}`)
-  return NextResponse.json({ success: true, redirectTo: "/dashboard" })
+  const response = NextResponse.json({ success: true, redirectTo: "/dashboard" })
+  cookiesToSet.forEach(({ name, value, options }) => {
+    response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
+  })
+  return response
 }
 
 export const runtime = "nodejs"
