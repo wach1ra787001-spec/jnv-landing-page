@@ -33,6 +33,7 @@ import {
   ChevronFirst,
   ChevronLast,
   Gauge,
+  BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TradingViewChart } from "@/components/tradingview-chart"
@@ -94,6 +95,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   // ── Session ───────────────────────────────────────────────────────────────
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [interval, setInterval] = useState<TradingViewInterval>("60")
 
   // ── Replay state ──────────────────────────────────────────────────────────
@@ -129,7 +131,11 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
     let cancelled = false
     async function loadSessionAndBars() {
       try {
-        const { session: s } = await fetch(`/api/backtest/sessions/${id}`).then(r => r.json())
+        setLoadError(null)
+        const sessionResponse = await fetch(`/api/backtest/sessions/${id}`)
+        const sessionPayload = await sessionResponse.json().catch(() => null)
+        if (!sessionResponse.ok) throw new Error(sessionPayload?.error || "Could not load this backtest session")
+        const { session: s } = sessionPayload
         if (cancelled) return
         setSession(s)
         const tvInterval = DB_TO_TV[s?.timeframe] ?? "60"
@@ -144,9 +150,14 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
           end: String(end),
           limit: "5000",
         })
-        const response = await fetch(`/api/databento/ohlc?${params.toString()}`)
-        const payload = await response.json()
-        if (!response.ok) throw new Error(payload?.error || "Could not load market data")
+        const response = await fetch(`/api/databento/ohlc?${params.toString()}`, { cache: "no-store" })
+        const payload = await response.json().catch(() => null)
+        if (!response.ok) {
+          if (response.status === 503) {
+            throw new Error("Databento is not configured in this deployment. Add DATABENTO_API_KEY to the Vercel Preview/Production environment, then redeploy.")
+          }
+          throw new Error(payload?.error || "Could not load market data")
+        }
         const bars = normalizeExternalBars(payload?.bars ?? [])
         if (!bars.length) throw new Error("Databento returned no valid OHLC bars")
         if (cancelled) return
@@ -161,6 +172,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
         initDatafeed(s?.symbol ?? "EURUSD", tvInterval, bars)
       } catch (error) {
         console.error('[v0] Backtest OHLC pipeline failed', error)
+        if (!cancelled) setLoadError(error instanceof Error ? error.message : "Could not load this backtest")
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -321,6 +333,24 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (loadError) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-background p-6">
+        <div className="flex max-w-lg flex-col items-center gap-4 rounded-xl border border-destructive/30 bg-card p-8 text-center shadow-lg">
+          <div className="rounded-full bg-destructive/10 p-3 text-destructive">
+            <BarChart3 className="h-8 w-8" />
+          </div>
+          <h1 className="text-xl font-semibold text-foreground">Unable to load market data</h1>
+          <p className="text-sm leading-relaxed text-muted-foreground">{loadError}</p>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => router.push(`/dashboard/backtest/${id}`)}>Back to session</Button>
+            <Button onClick={() => window.location.reload()}>Try again</Button>
+          </div>
+        </div>
       </div>
     )
   }
