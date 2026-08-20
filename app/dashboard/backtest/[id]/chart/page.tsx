@@ -61,6 +61,42 @@ const DB_TO_TV: Record<string, TradingViewInterval> = {
   H1: "60", H4: "240", D1: "1D", W1: "1W", MN: "1M",
 }
 
+// Databento only has native OHLCV schemas at 1s/1m/1h/1d resolution. Sub-hour
+// timeframes that aren't 1m (M5, M15, M30) and 4h are derived client-side by
+// aggregating 1m or 1h bars — there is no ohlcv-5m/15m/30m/4h schema to request.
+const TIMEFRAME_TO_DATABENTO_SCHEMA: Record<string, { schema: string; aggregateMinutes?: number }> = {
+  M1: { schema: "ohlcv-1m" },
+  M5: { schema: "ohlcv-1m", aggregateMinutes: 5 },
+  M15: { schema: "ohlcv-1m", aggregateMinutes: 15 },
+  M30: { schema: "ohlcv-1m", aggregateMinutes: 30 },
+  H1: { schema: "ohlcv-1h" },
+  H4: { schema: "ohlcv-1h", aggregateMinutes: 240 },
+  D1: { schema: "ohlcv-1d" },
+  W1: { schema: "ohlcv-1d", aggregateMinutes: 7 * 24 * 60 },
+}
+
+function aggregateBars(bars: { time: number; open: number; high: number; low: number; close: number; volume: number }[], minutes: number) {
+  if (!minutes || minutes <= 1 || !bars.length) return bars
+  const bucketSeconds = minutes * 60
+  const buckets = new Map<number, typeof bars>()
+  for (const bar of bars) {
+    const bucketStart = Math.floor(bar.time / bucketSeconds) * bucketSeconds
+    const list = buckets.get(bucketStart)
+    if (list) list.push(bar)
+    else buckets.set(bucketStart, [bar])
+  }
+  return Array.from(buckets.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([time, group]) => ({
+      time,
+      open: group[0].open,
+      high: Math.max(...group.map((b) => b.high)),
+      low: Math.min(...group.map((b) => b.low)),
+      close: group[group.length - 1].close,
+      volume: group.reduce((sum, b) => sum + b.volume, 0),
+    }))
+}
+
 const TIMEFRAMES: { label: string; dbValue: string; tvValue: TradingViewInterval }[] = [
   { label: "1m",  dbValue: "M1",  tvValue: "1"   },
   { label: "5m",  dbValue: "M5",  tvValue: "5"   },
@@ -143,16 +179,18 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
 
         const start = Math.floor(new Date(s?.date_from ?? Date.now() - 30 * 86400000).getTime() / 1000)
         const end = Math.floor(new Date(s?.date_to ?? Date.now()).getTime() / 1000)
+        const schemaMapping = TIMEFRAME_TO_DATABENTO_SCHEMA[s?.timeframe] ?? TIMEFRAME_TO_DATABENTO_SCHEMA.M1
         const params = new URLSearchParams({
           symbol: s?.symbol ?? "EURUSD",
-          schema: "ohlcv-1m",
+          schema: schemaMapping.schema,
           start: String(start),
           end: String(end),
           limit: "5000",
         })
         console.log('[v0] Backtest Databento request', {
           sessionId: id, symbol: s?.symbol, providerSymbol: params.get('symbol'),
-          timeframe: s?.timeframe, start: params.get('start'), end: params.get('end'), limit: params.get('limit'),
+          timeframe: s?.timeframe, schema: schemaMapping.schema, aggregateMinutes: schemaMapping.aggregateMinutes ?? null,
+          start: params.get('start'), end: params.get('end'), limit: params.get('limit'),
         })
         const response = await fetch(`/api/databento/ohlc?${params.toString()}`, { cache: "no-store" })
         const payload = await response.json().catch(() => null)
@@ -170,9 +208,12 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
           }
           throw new Error(payload?.error || "Could not load market data")
         }
-        const bars = normalizeExternalBars(payload?.bars ?? [])
+        const normalizedBars = normalizeExternalBars(payload?.bars ?? [])
+        const bars = schemaMapping.aggregateMinutes
+          ? aggregateBars(normalizedBars, schemaMapping.aggregateMinutes)
+          : normalizedBars
         console.log('[v0] Backtest bars normalized for replay', {
-          sessionId: id, inputCount: payload?.bars?.length ?? 0, outputCount: bars.length,
+          sessionId: id, inputCount: payload?.bars?.length ?? 0, normalizedCount: normalizedBars.length, outputCount: bars.length,
           firstTime: bars[0]?.time ?? null, lastTime: bars[bars.length - 1]?.time ?? null,
         })
         if (!bars.length) throw new Error("Databento returned no valid OHLC bars")
