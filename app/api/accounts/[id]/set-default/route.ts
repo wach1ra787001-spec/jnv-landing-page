@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { SELECTED_ACCOUNT_COOKIE } from '@/lib/account-selection'
+import { SELECTED_ACCOUNT_COOKIE } from '@/lib/get-selected-account'
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
