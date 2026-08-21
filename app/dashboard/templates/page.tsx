@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Heart, MessageCircle, Share2, Plus, Search, X } from "lucide-react"
+import { Heart, MessageCircle, Share2, Plus, Search, X, Check } from "lucide-react"
 import { CreatePlaybookForm } from "@/components/dashboard/create-playbook-form"
 import { cn } from "@/lib/utils"
 
@@ -136,7 +136,7 @@ export default function TemplatesPage() {
       .then(res => res.ok ? res.json() : [])
       .then(rows => setPlaybooks(rows.map((p: any) => ({
         id: p.id, name: p.title, description: typeof p.description === 'string' ? p.description : '', author: 'Community trader', avatar: 'CT',
-        winRate: Number(p.win_rate ?? 0), trades: Number(p.trades_taken ?? 0), pnl: 0, likes: Number(p.likes_count ?? 0), liked: false,
+        winRate: Number(p.win_rate ?? 0), trades: Number(p.trades_taken ?? 0), pnl: Number(p.pnl ?? 0), likes: Number(p.likes_count ?? 0), liked: false,
         month: new Date(p.created_at).toLocaleString('en-US', { month: 'long' }), timeframe: p.strategy_type || 'Flexible', strategy: p.strategy_type || 'General', comments: Number(p.comments_count ?? 0), publicSlug: p.public_slug,
       }))))
       .finally(() => setLoading(false))
@@ -161,6 +161,22 @@ export default function TemplatesPage() {
     if (!res.ok) return
     const { liked } = await res.json()
     setPlaybooks(playbooks.map(p => p.id === id ? { ...p, liked, likes: p.likes + (liked ? 1 : -1) } : p))
+  }
+
+  const sharePlaybook = async (playbook: Playbook) => {
+    if (!playbook.publicSlug) return
+    const url = `${window.location.origin}/playbooks/${playbook.publicSlug}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: playbook.name, text: `Check out ${playbook.name}`, url })
+      } else {
+        await navigator.clipboard.writeText(url)
+      }
+      await fetch(`/api/playbooks/${playbook.id}/engagement`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'share' }) })
+      setPlaybooks((current) => current.map((item) => item.id === playbook.id ? { ...item } : item))
+    } catch (error) {
+      if ((error as DOMException).name !== 'AbortError') console.error('[v0] Failed to share playbook:', error)
+    }
   }
 
   if (loading) {
@@ -289,8 +305,17 @@ export default function TemplatesPage() {
                 <MessageCircle className="w-4 h-4" />
                 <span className="text-xs">{playbook.comments}</span>
               </Button>
-              <Button variant="ghost" size="sm" className="flex-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 gap-2"
+                onClick={() => sharePlaybook(playbook)}
+                disabled={!playbook.publicSlug}
+                aria-label={`Share ${playbook.name}`}
+                title={playbook.publicSlug ? 'Copy unique playbook link' : 'Share link unavailable'}
+              >
                 <Share2 className="w-4 h-4" />
+                <span className="text-xs">Share</span>
               </Button>
             </div>
           </Card>
