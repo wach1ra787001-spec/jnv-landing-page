@@ -12,10 +12,43 @@
  *   6. Wicks survive parseFloat(toFixed(decimals)) rounding without collapsing
  */
 
+export interface SymbolDefinition extends SymbolMeta {
+  symbol: string
+  displayName: string
+  exchange: string
+  listedExchange: string
+  assetClass: 'forex' | 'futures' | 'crypto' | 'index' | 'commodity'
+  provider: string
+  providerDataset: string
+  providerSymbol: string
+  providerSymbolType: string
+  supportedResolutions: string[]
+}
+
 export interface SymbolMeta {
   pricescale: number
   basePrice: number
   spread: number
+}
+
+const SUPPORTED_RESOLUTIONS = ['1', '5', '15', '30', '60', '240', '1D', '1W']
+
+const SYMBOL_DEFINITIONS: Record<string, SymbolDefinition> = {
+  EURUSD: { symbol: 'EURUSD', displayName: 'EUR/USD (CME 6E futures)', exchange: 'CME', listedExchange: 'CME', assetClass: 'forex', provider: 'Databento', providerDataset: 'GLBX.MDP3', providerSymbol: '6E.c.0', providerSymbolType: 'continuous', pricescale: 100000, basePrice: 1.1, spread: 0.002, supportedResolutions: SUPPORTED_RESOLUTIONS },
+  GBPUSD: { symbol: 'GBPUSD', displayName: 'GBP/USD (CME 6B futures)', exchange: 'CME', listedExchange: 'CME', assetClass: 'forex', provider: 'Databento', providerDataset: 'GLBX.MDP3', providerSymbol: '6B.c.0', providerSymbolType: 'continuous', pricescale: 100000, basePrice: 1.25, spread: 0.002, supportedResolutions: SUPPORTED_RESOLUTIONS },
+  USDJPY: { symbol: 'USDJPY', displayName: 'USD/JPY (CME 6J futures)', exchange: 'CME', listedExchange: 'CME', assetClass: 'forex', provider: 'Databento', providerDataset: 'GLBX.MDP3', providerSymbol: '6J.c.0', providerSymbolType: 'continuous', pricescale: 1000, basePrice: 150, spread: 0.05, supportedResolutions: SUPPORTED_RESOLUTIONS },
+  XAUUSD: { symbol: 'XAUUSD', displayName: 'Gold / USD (COMEX GC futures)', exchange: 'COMEX', listedExchange: 'COMEX', assetClass: 'commodity', provider: 'Databento', providerDataset: 'GLBX.MDP3', providerSymbol: 'GC.c.0', providerSymbolType: 'continuous', pricescale: 100, basePrice: 2300, spread: 2, supportedResolutions: SUPPORTED_RESOLUTIONS },
+  US500: { symbol: 'US500', displayName: 'S&P 500 (CME ES futures)', exchange: 'CME', listedExchange: 'CME', assetClass: 'index', provider: 'Databento', providerDataset: 'GLBX.MDP3', providerSymbol: 'ES.c.0', providerSymbolType: 'continuous', pricescale: 100, basePrice: 5000, spread: 20, supportedResolutions: SUPPORTED_RESOLUTIONS },
+  US100: { symbol: 'US100', displayName: 'Nasdaq 100 (CME NQ futures)', exchange: 'CME', listedExchange: 'CME', assetClass: 'index', provider: 'Databento', providerDataset: 'GLBX.MDP3', providerSymbol: 'NQ.c.0', providerSymbolType: 'continuous', pricescale: 100, basePrice: 18000, spread: 20, supportedResolutions: SUPPORTED_RESOLUTIONS },
+  US30: { symbol: 'US30', displayName: 'Dow Jones (CBOT YM futures)', exchange: 'CBOT', listedExchange: 'CBOT', assetClass: 'index', provider: 'Databento', providerDataset: 'GLBX.MDP3', providerSymbol: 'YM.c.0', providerSymbolType: 'continuous', pricescale: 100, basePrice: 40000, spread: 20, supportedResolutions: SUPPORTED_RESOLUTIONS },
+  BTCUSD: { symbol: 'BTCUSD', displayName: 'Bitcoin / USD (CME BTC futures)', exchange: 'CME', listedExchange: 'CME', assetClass: 'crypto', provider: 'Databento', providerDataset: 'GLBX.MDP3', providerSymbol: 'BTC.c.0', providerSymbolType: 'continuous', pricescale: 100, basePrice: 65000, spread: 100, supportedResolutions: SUPPORTED_RESOLUTIONS },
+}
+
+export function getSymbolDefinition(symbolName: string): SymbolDefinition {
+  const normalized = symbolName.replace(/[\\/\\-\\s]/g, '').toUpperCase()
+  return SYMBOL_DEFINITIONS[normalized] ?? {
+    symbol: normalized, displayName: normalized, exchange: 'JnV', listedExchange: 'JnV', assetClass: 'forex', provider: 'Databento', providerDataset: 'GLBX.MDP3', providerSymbol: normalized, providerSymbolType: 'raw_symbol', pricescale: 100000, basePrice: 1.1, spread: 0.002, supportedResolutions: SUPPORTED_RESOLUTIONS,
+  }
 }
 
 export function getSymbolMeta(symbolName: string): SymbolMeta {
@@ -58,14 +91,18 @@ export function isValidBar(b: any): boolean {
 
 export function normalizeExternalBars(rawBars: any[]) {
   const mapped = rawBars
-    .map((bar) => ({
-      time: Number(bar.time ?? bar.timestamp ?? bar.ts_event),
+    .map((bar) => {
+      const rawTime = Number(bar.time ?? bar.timestamp ?? bar.ts_event)
+      const time = rawTime > 1e17 ? Math.floor(rawTime / 1e9) : rawTime > 1e14 ? Math.floor(rawTime / 1e6) : rawTime > 1e11 ? Math.floor(rawTime / 1e3) : Math.floor(rawTime)
+      return {
+      time,
       open: Number(bar.open),
       high: Number(bar.high),
       low: Number(bar.low),
       close: Number(bar.close),
       volume: Number(bar.volume ?? 0),
-    }))
+      }
+    })
   const sorted = mapped.filter(isValidBar).sort((a, b) => a.time - b.time)
 
   const bars = sorted.filter((bar, index) => index === 0 || bar.time !== sorted[index - 1].time)

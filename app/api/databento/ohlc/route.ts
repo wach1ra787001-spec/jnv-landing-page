@@ -146,6 +146,8 @@ export async function GET(request: NextRequest) {
   const deduped = bars.filter((bar: any, index: number, list: any[]) => index === 0 || bar.time !== list[index - 1].time)
   console.log('[v0] Databento bars parsed', {
     requestId, rawRecords: rawRecords.length, validBars: bars.length, dedupedBars: deduped.length,
+    firstRaw: rawRecords[0] ? { ts_event: rawRecords[0].ts_event, open: rawRecords[0].open, high: rawRecords[0].high, low: rawRecords[0].low, close: rawRecords[0].close } : null,
+    firstNormalized: deduped[0] ? { time: deduped[0].time, timeUnit: 'unix-seconds', open: deduped[0].open, high: deduped[0].high, low: deduped[0].low, close: deduped[0].close } : null,
     firstTime: deduped[0]?.time ?? null, lastTime: deduped[deduped.length - 1]?.time ?? null,
   })
 
