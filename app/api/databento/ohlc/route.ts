@@ -29,11 +29,22 @@ function parseRecords(payload: string) {
 // fixed-point integers scaled by 1e-9. Parsing those raw values without the
 // pretty flags is what previously produced billion-scale prices and
 // epoch-1970 dates.
+function parseTimestamp(value: string | undefined) {
+  if (!value) return null
+  const numeric = Number(value)
+  if (Number.isFinite(numeric)) {
+    if (numeric > 1e17) return Math.floor(numeric / 1e9)
+    if (numeric > 1e14) return Math.floor(numeric / 1e6)
+    if (numeric > 1e11) return Math.floor(numeric / 1e3)
+    return Math.floor(numeric)
+  }
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null
+}
+
 function normalizeRecord(record: Record<string, string>) {
-  const rawTs = record.ts_event ?? record.ts_recv ?? record.timestamp
-  const parsedTs = Date.parse(rawTs)
-  if (!Number.isFinite(parsedTs)) return null
-  const time = Math.floor(parsedTs / 1000)
+  const time = parseTimestamp(record.ts_event ?? record.ts_recv ?? record.timestamp)
+  if (!time || time <= 0) return null
   const open = Number(record.open)
   const high = Number(record.high)
   const low = Number(record.low)
