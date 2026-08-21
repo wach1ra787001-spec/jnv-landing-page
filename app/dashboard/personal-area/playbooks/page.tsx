@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Plus, Loader2, Trash2, Edit2, X, ChevronDown, ChevronUp, Zap, ZapOff } from 'lucide-react'
+import { Plus, Loader2, Trash2, Edit2, X, ChevronDown, ChevronUp, Zap, ZapOff, Settings, Globe, Lock } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { PlaybookEmptyState } from '@/components/playbooks/empty-state'
@@ -17,6 +18,13 @@ interface Playbook {
   rules: { entry?: string[]; exit?: string[] }
   tags: (string | { id?: string; title?: string; description?: string })[]
   is_public: boolean
+  is_active: boolean
+  public_slug?: string | null
+  likes_count?: number
+  comments_count?: number
+  shares_count?: number
+  trades_taken?: number
+  win_rate?: number
   created_at: string
   updated_at: string
 }
@@ -40,7 +48,11 @@ export default function PlaybooksPage() {
     try {
       setLoading(true)
       const res = await fetch('/api/playbooks')
-      if (res.ok) setPlaybooks(await res.json())
+      if (res.ok) {
+        const data = await res.json()
+        setPlaybooks(data)
+        setActiveId(data.find((p: Playbook) => p.is_active)?.id ?? null)
+      }
     } catch {
       toast.error('Failed to fetch playbooks')
     } finally {
@@ -92,10 +104,22 @@ export default function PlaybooksPage() {
     setShowModal(true)
   }
 
-  const handleActivate = (id: string) => {
-    const next = activeId === id ? null : id
-    setActiveId(next)
-    toast.success(next ? 'Playbook activated — new trades will use this playbook' : 'Playbook deactivated')
+  const handleActivate = async (id: string) => {
+    const currentlyActive = activeId === id
+    const res = await fetch(`/api/playbooks/${id}/engagement`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: currentlyActive ? 'deactivate' : 'activate' }) })
+    if (!res.ok) return toast.error('Failed to activate playbook')
+    const updated = await res.json()
+    setPlaybooks(playbooks.map(p => ({ ...p, is_active: p.id === updated.id && !currentlyActive })))
+    setActiveId(currentlyActive ? null : updated.id)
+    toast.success(currentlyActive ? 'Playbook deactivated' : 'Playbook activated — new trades will use this playbook')
+  }
+
+  const handlePublish = async (p: Playbook) => {
+    const res = await fetch(`/api/playbooks/${p.id}/engagement`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'publish', value: !p.is_public }) })
+    if (!res.ok) return toast.error('Failed to update visibility')
+    const updated = await res.json()
+    setPlaybooks(playbooks.map(item => item.id === p.id ? updated : item))
+    toast.success(updated.is_public ? 'Playbook published to Templates' : 'Playbook made private')
   }
 
   const getDisplayText = (value: unknown): string => {
@@ -192,22 +216,26 @@ export default function PlaybooksPage() {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className={cn('h-8 gap-1.5 text-xs', isActive && 'text-primary')}
-                      onClick={() => handleActivate(p.id)}
-                      title={isActive ? 'Deactivate' : 'Activate'}
-                    >
-                      {isActive ? <ZapOff className="w-3.5 h-3.5" /> : <Zap className="w-3.5 h-3.5" />}
-                      {isActive ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleEdit(p)}>
-                      <Edit2 className="w-3.5 h-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(p.id)}>
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={`Settings for ${p.title}`}>
+                          <Settings className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleActivate(p.id)}>
+                          {isActive ? <ZapOff className="w-4 h-4 mr-2" /> : <Zap className="w-4 h-4 mr-2" />}
+                          {isActive ? 'Deactivate playbook' : 'Activate playbook'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handlePublish(p)}>
+                          {p.is_public ? <Lock className="w-4 h-4 mr-2" /> : <Globe className="w-4 h-4 mr-2" />}
+                          {p.is_public ? 'Make private' : 'Publish to Templates'}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(p)}><Edit2 className="w-4 h-4 mr-2" />Edit playbook</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="w-4 h-4 mr-2" />Delete playbook</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                     <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
                       {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </Button>
