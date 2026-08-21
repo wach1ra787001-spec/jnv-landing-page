@@ -331,8 +331,8 @@ export default function PlaybooksPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md bg-card shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
+          <Card className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-border">
               <h2 className="text-lg font-semibold">{editingId ? 'Edit Playbook' : 'New Playbook'}</h2>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={closeModal}>
