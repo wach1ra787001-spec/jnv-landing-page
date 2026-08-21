@@ -24,7 +24,9 @@ interface Playbook {
   comments_count?: number
   shares_count?: number
   trades_taken?: number
+  winning_trades?: number
   win_rate?: number
+  pnl?: number
   created_at: string
   updated_at: string
 }
@@ -290,7 +292,12 @@ export default function PlaybooksPage() {
                         </div>
                       )}
 
-                      <p className="text-xs text-muted-foreground border-t border-border pt-3">
+                      <div className="grid grid-cols-3 gap-3 border-t border-border pt-4">
+                        <div><p className="text-xs text-muted-foreground">Trades</p><p className="font-semibold text-foreground">{p.trades_taken ?? 0}</p></div>
+                        <div><p className="text-xs text-muted-foreground">Win rate</p><p className="font-semibold text-foreground">{p.win_rate ?? 0}%</p></div>
+                        <div><p className="text-xs text-muted-foreground">P&L</p><p className={cn('font-semibold', (p.pnl ?? 0) >= 0 ? 'text-emerald-500' : 'text-destructive')}>${(p.pnl ?? 0).toFixed(2)}</p></div>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
                         Created {new Date(p.created_at).toLocaleDateString()} &middot; Updated {new Date(p.updated_at).toLocaleDateString()}
                       </p>
                     </div>

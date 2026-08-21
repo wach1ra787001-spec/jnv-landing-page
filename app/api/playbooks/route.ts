@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
+import { attachPlaybookMetrics, getPlaybookMetrics } from '@/lib/playbooks/metrics'
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +14,7 @@ export async function GET(request: NextRequest) {
         .eq('is_public', true)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return NextResponse.json(data || [])
+      return NextResponse.json(await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>, true))
     }
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(data || [])
+    return NextResponse.json(await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>))
   } catch (error) {
     console.error('Fetch playbooks error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

@@ -136,7 +136,7 @@ export default function TemplatesPage() {
       .then(res => res.ok ? res.json() : [])
       .then(rows => setPlaybooks(rows.map((p: any) => ({
         id: p.id, name: p.title, description: typeof p.description === 'string' ? p.description : '', author: 'Community trader', avatar: 'CT',
-        winRate: Number(p.win_rate ?? 0), trades: Number(p.trades_taken ?? 0), pnl: 0, likes: Number(p.likes_count ?? 0), liked: false,
+        winRate: Number(p.win_rate ?? 0), trades: Number(p.trades_taken ?? 0), pnl: Number(p.pnl ?? 0), likes: Number(p.likes_count ?? 0), liked: false,
         month: new Date(p.created_at).toLocaleString('en-US', { month: 'long' }), timeframe: p.strategy_type || 'Flexible', strategy: p.strategy_type || 'General', comments: Number(p.comments_count ?? 0), publicSlug: p.public_slug,
       }))))
       .finally(() => setLoading(false))
