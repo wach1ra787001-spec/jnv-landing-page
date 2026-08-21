@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Heart, MessageCircle, Share2, Plus, Search, X } from "lucide-react"
+import { Heart, MessageCircle, Share2, Plus, Search, X, Check } from "lucide-react"
 import { CreatePlaybookForm } from "@/components/dashboard/create-playbook-form"
 import { cn } from "@/lib/utils"
 
@@ -163,6 +163,22 @@ export default function TemplatesPage() {
     setPlaybooks(playbooks.map(p => p.id === id ? { ...p, liked, likes: p.likes + (liked ? 1 : -1) } : p))
   }
 
+  const sharePlaybook = async (playbook: Playbook) => {
+    if (!playbook.publicSlug) return
+    const url = `${window.location.origin}/playbooks/${playbook.publicSlug}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: playbook.name, text: `Check out ${playbook.name}`, url })
+      } else {
+        await navigator.clipboard.writeText(url)
+      }
+      await fetch(`/api/playbooks/${playbook.id}/engagement`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'share' }) })
+      setPlaybooks((current) => current.map((item) => item.id === playbook.id ? { ...item } : item))
+    } catch (error) {
+      if ((error as DOMException).name !== 'AbortError') console.error('[v0] Failed to share playbook:', error)
+    }
+  }
+
   if (loading) {
     return <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground">Loading public playbooks...</div>
   }
@@ -289,8 +305,17 @@ export default function TemplatesPage() {
                 <MessageCircle className="w-4 h-4" />
                 <span className="text-xs">{playbook.comments}</span>
               </Button>
-              <Button variant="ghost" size="sm" className="flex-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="flex-1 gap-2"
+                onClick={() => sharePlaybook(playbook)}
+                disabled={!playbook.publicSlug}
+                aria-label={`Share ${playbook.name}`}
+                title={playbook.publicSlug ? 'Copy unique playbook link' : 'Share link unavailable'}
+              >
                 <Share2 className="w-4 h-4" />
+                <span className="text-xs">Share</span>
               </Button>
             </div>
           </Card>

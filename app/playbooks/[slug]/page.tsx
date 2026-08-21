@@ -19,7 +19,16 @@ export default function PublicPlaybookPage({ params }: { params: Promise<{ slug:
     const res = await fetch(`/api/playbooks/${playbook.id}/engagement`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ...body }) })
     if (!res.ok) return toast.error('Sign in to engage with this playbook')
     if (action === 'like') { const result = await res.json(); setPlaybook((p: any) => ({ ...p, likes_count: result.likes_count })) }
-    if (action === 'share') { await navigator.clipboard.writeText(window.location.href); toast.success('Link copied') }
+    if (action === 'share') {
+      const url = window.location.href
+      try {
+        if (navigator.share) await navigator.share({ title: playbook.title, text: `Check out ${playbook.title}`, url })
+        else await navigator.clipboard.writeText(url)
+        toast.success('Playbook shared')
+      } catch (error) {
+        if ((error as DOMException).name !== 'AbortError') toast.error('Could not share this playbook')
+      }
+    }
   }
   return <main className="min-h-screen bg-background p-6 md:p-12"><div className="mx-auto max-w-3xl space-y-6">
     <Card className="p-6 md:p-8"><div className="flex items-start justify-between gap-4"><div><p className="text-sm text-primary">Community playbook</p><h1 className="mt-2 text-3xl font-bold text-foreground">{playbook.title}</h1><p className="mt-3 text-muted-foreground">{playbook.description}</p></div><Button variant="outline" size="icon" onClick={() => engage('share')} aria-label="Share playbook"><Share2 className="h-4 w-4" /></Button></div>
