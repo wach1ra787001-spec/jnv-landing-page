@@ -1,4 +1,5 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseServerClient } from '@/lib/supabase/server'
+import { createClient } from '@supabase/supabase-js'
 
 export type MarketDataInstrument = {
   symbol: string
@@ -12,7 +13,14 @@ export type MarketDataInstrument = {
 
 export async function resolveMarketDataInstrument(symbol: string) {
   const normalized = symbol.replace(/[\/\-\s]/g, '').toUpperCase()
-  const supabase = await createClient()
+  // This is server-only reference data. Use the service-role client so the
+  // OHLC route does not depend on a browser auth cookie or authenticated RLS
+  // context (which made production curl/preview checks appear unmapped).
+  const supabase = process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+    : await createSupabaseServerClient()
   const { data, error } = await supabase
     .from('market_data_instruments')
     .select('symbol, provider, dataset, provider_symbol, provider_stype_in, schema, enabled')

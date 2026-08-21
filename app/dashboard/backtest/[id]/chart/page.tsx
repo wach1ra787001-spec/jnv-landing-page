@@ -220,9 +220,12 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
         if (cancelled) return
         console.log('[v0] Databento bars ready for replay', {
           symbol: s?.symbol,
-          providerSymbol: params.get('symbol'),
+          provider: payload?.provider,
+          dataset: payload?.dataset,
+          providerSymbol: payload?.providerSymbol,
+          providerInstrumentType: 'continuous futures',
           count: bars.length,
-          firstTime: bars[0]?.time,
+          firstBar: bars[0] ? { time: bars[0].time, timeUnit: 'unix-seconds', open: bars[0].open, high: bars[0].high, low: bars[0].low, close: bars[0].close } : null,
           lastTime: bars[bars.length - 1]?.time,
         })
         barsRef.current = bars
@@ -385,7 +388,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   const isProfit = pnlDelta >= 0
   const progress = totalBars > 1 ? Math.round((barIndex / totalBars) * 100) : 0
 
-  // ── Render ────────────────────────────────────────────────────────────────
+  // ── Render ─────────��──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">

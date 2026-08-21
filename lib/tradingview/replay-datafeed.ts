@@ -12,7 +12,7 @@
  *   can call widget.chart().resetData() to redraw from scratch
  */
 
-import { getSymbolMeta, generateMockBars, resolutionToSeconds, isValidBar } from './replay-utils'
+import { getSymbolDefinition, resolutionToSeconds, isValidBar } from './replay-utils'
 
 export interface ReplayBar {
   time: number
@@ -51,14 +51,10 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
 } {
   const { symbol, interval, bars: providedBars, onTick, onNeedReset } = options
 
-  // Prefer server-backed normalized bars. Keep deterministic mock generation as
-  // an explicit fallback so the chart remains usable when a provider request
-  // fails, but never silently replace valid provider data.
-  const now = Math.floor(Date.now() / 1000)
-  const sixMonthsAgo = now - 60 * 60 * 24 * 180
-  const allBars = providedBars?.length
-    ? providedBars
-    : generateMockBars(symbol, sixMonthsAgo, now, interval)
+  // Replay must only ever use provider-backed bars. Mock candles would hide
+  // Databento failures and make the chart appear valid with fabricated data.
+  const allBars = providedBars?.length ? providedBars : []
+  if (!allBars.length) throw new Error(`No provider market data is available for ${symbol}`)
   console.log('[v0] Replay datafeed initialized', {
     providerBars: Boolean(providedBars?.length),
     count: allBars.length,
@@ -175,7 +171,8 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
 
   // ── TradingView Datafeed ──────────────────────────────────────────────────
 
-  const { pricescale } = getSymbolMeta(symbol)
+  const definition = getSymbolDefinition(symbol)
+  const { pricescale } = definition
 
   const datafeed = {
     onReady(callback: (config: any) => void) {
@@ -193,14 +190,19 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
 
     resolveSymbol(symbolName: string, onResolved: (info: any) => void) {
       setTimeout(() => onResolved({
-        name: symbolName,
-        full_name: symbolName,
-        description: symbolName,
-        type: 'forex',
+        name: definition.symbol,
+        ticker: definition.symbol,
+        full_name: `${definition.exchange}:${definition.symbol}`,
+        description: definition.displayName,
+        type: definition.assetClass,
+        exchange: definition.exchange,
+        listed_exchange: definition.listedExchange,
+        provider: definition.provider,
+        provider_dataset: definition.providerDataset,
+        provider_symbol: definition.providerSymbol,
+        provider_symbol_type: definition.providerSymbolType,
         session: '0000-2359:1234567',
         timezone: 'Etc/UTC',
-        exchange: '',
-        listed_exchange: '',
         format: 'price',
         minmov: 1,
         pricescale,
@@ -210,7 +212,7 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
         has_daily: true,
         has_weekly_and_monthly: true,
         has_empty_bars: true,
-        supported_resolutions: ['1', '5', '15', '30', '60', '240', '1D', '1W'],
+        supported_resolutions: definition.supportedResolutions,
         intraday_multipliers: ['1', '5', '15', '30', '60', '240'],
         volume_precision: 0,
         data_status: 'endofday',
@@ -244,6 +246,10 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
 
         // Always sort ascending — prevents "time order violation"
         filtered.sort((a, b) => a.time - b.time)
+        console.log('[v0] Replay candle handoff to TradingView', {
+          symbol, timeUnit: 'unix-seconds', firstBar: filtered[0] ?? null,
+          hourlyDelta: _resolution === '60' && filtered.length > 1 ? filtered[1].time - filtered[0].time : null,
+        })
         console.log('[v0] Replay getBars callback', {
           symbol, resolution: _resolution, from: periodParams.from, to: periodParams.to,
           countBack: periodParams.countBack ?? null, cursorIdx, available: slice.length,
