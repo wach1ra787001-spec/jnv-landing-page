@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,6 +23,7 @@ interface Playbook {
   timeframe: string
   strategy: string
   comments: number
+  publicSlug?: string | null
 }
 
 const mockPlaybooks: Playbook[] = [
@@ -126,8 +127,20 @@ const mockPlaybooks: Playbook[] = [
 
 export default function TemplatesPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [playbooks, setPlaybooks] = useState(mockPlaybooks)
+  const [playbooks, setPlaybooks] = useState<Playbook[]>([])
   const [sortBy, setSortBy] = useState<"popular" | "newest" | "best-wr">("popular")
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/playbooks?public=true')
+      .then(res => res.ok ? res.json() : [])
+      .then(rows => setPlaybooks(rows.map((p: any) => ({
+        id: p.id, name: p.title, description: typeof p.description === 'string' ? p.description : '', author: 'Community trader', avatar: 'CT',
+        winRate: Number(p.win_rate ?? 0), trades: Number(p.trades_taken ?? 0), pnl: 0, likes: Number(p.likes_count ?? 0), liked: false,
+        month: new Date(p.created_at).toLocaleString('en-US', { month: 'long' }), timeframe: p.strategy_type || 'Flexible', strategy: p.strategy_type || 'General', comments: Number(p.comments_count ?? 0), publicSlug: p.public_slug,
+      }))))
+      .finally(() => setLoading(false))
+  }, [])
   const [showCreateForm, setShowCreateForm] = useState(false)
 
   const filteredPlaybooks = playbooks
@@ -143,16 +156,15 @@ export default function TemplatesPage() {
       return 0
     })
 
-  const toggleLike = (id: string) => {
-    setPlaybooks(playbooks.map((p) =>
-      p.id === id
-        ? {
-            ...p,
-            liked: !p.liked,
-            likes: p.liked ? p.likes - 1 : p.likes + 1,
-          }
-        : p
-    ))
+  const toggleLike = async (id: string) => {
+    const res = await fetch(`/api/playbooks/${id}/engagement`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'like' }) })
+    if (!res.ok) return
+    const { liked } = await res.json()
+    setPlaybooks(playbooks.map(p => p.id === id ? { ...p, liked, likes: p.likes + (liked ? 1 : -1) } : p))
+  }
+
+  if (loading) {
+    return <div className="flex min-h-48 items-center justify-center text-sm text-muted-foreground">Loading public playbooks...</div>
   }
 
   if (showCreateForm) {

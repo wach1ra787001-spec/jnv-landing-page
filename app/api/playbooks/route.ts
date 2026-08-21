@@ -4,11 +4,20 @@ import { NextRequest, NextResponse } from 'next/server'
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const publicOnly = request.nextUrl.searchParams.get('public') === 'true'
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (publicOnly) {
+      const { data, error } = await supabase
+        .from('playbooks')
+        .select('*')
+        .eq('is_public', true)
+        .order('created_at', { ascending: false })
+      if (error) throw error
+      return NextResponse.json(data || [])
     }
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { data, error } = await supabase
       .from('playbooks')
@@ -54,6 +63,7 @@ export async function POST(request: NextRequest) {
         strategy_type: strategy_type || 'general',
         tags: tags || [],
         is_public: false,
+        public_slug: `${String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${crypto.randomUUID().slice(0, 8)}`,
       })
       .select()
       .single()
