@@ -48,11 +48,14 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { title, description, rules, strategy_type, tags, is_active } = body
+    const { title, description, rules, strategy_type, tags, is_public, public_display_name, public_avatar_url, youtube_links } = body
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
     }
+    const links = Array.isArray(youtube_links) ? youtube_links.filter((link: unknown) => typeof link === 'string' && /^https?:\/\/(www\.)?(youtube\.com|youtu\.be)\//i.test(link)).slice(0, 10) : []
+    const publicProfile = Boolean(is_public)
+    if (publicProfile && public_display_name && String(public_display_name).length > 80) return NextResponse.json({ error: 'Display name is too long' }, { status: 400 })
 
     const { data, error } = await supabase
       .from('playbooks')
@@ -63,7 +66,10 @@ export async function POST(request: NextRequest) {
         rules: rules || {},
         strategy_type: strategy_type || 'general',
         tags: tags || [],
-        is_public: false,
+        is_public: publicProfile,
+        public_display_name: publicProfile ? String(public_display_name || '').trim() || null : null,
+        public_avatar_url: publicProfile ? String(public_avatar_url || '').trim() || null : null,
+        youtube_links: publicProfile ? links : [],
         public_slug: `${String(title).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${crypto.randomUUID().slice(0, 8)}`,
       })
       .select()
