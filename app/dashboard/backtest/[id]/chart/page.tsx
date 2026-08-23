@@ -388,7 +388,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   const isProfit = pnlDelta >= 0
   const progress = totalBars > 1 ? Math.round((barIndex / totalBars) * 100) : 0
 
-  // ── Render ─────────��──────────────────────────────────────────────────────
+  // ── Render ───────���─��──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
@@ -481,14 +481,9 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
               ))}
             </div>
             {session?.status === "running" && (
-              <>
-                <Button size="sm" className="h-7 text-xs gap-1" onClick={() => setTradeModalOpen(true)}>
-                  <Plus className="w-3 h-3" /> Log Trade
-                </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEndModalOpen(true)}>
-                  End Session
-                </Button>
-              </>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEndModalOpen(true)}>
+                End Session
+              </Button>
             )}
             {session?.status !== "running" && (
               <Badge className="bg-chart-1/15 text-chart-1 border-0 text-xs gap-1">
@@ -635,98 +630,6 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </div>
-
-      {/* ── Log Trade Modal ────────────────────────────────────────────────── */}
-      <Dialog open={tradeModalOpen} onOpenChange={setTradeModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Log Trade — {session?.symbol}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Direction</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {(["buy", "sell"] as const).map(dir => (
-                  <button
-                    key={dir}
-                    onClick={() => setTradeForm(f => ({ ...f, direction: dir }))}
-                    className={cn(
-                      "flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-all",
-                      tradeForm.direction === dir
-                        ? dir === "buy"
-                          ? "border-chart-1 bg-chart-1/15 text-chart-1"
-                          : "border-chart-2 bg-chart-2/15 text-chart-2"
-                        : "border-border text-muted-foreground hover:border-border/80"
-                    )}
-                  >
-                    {dir === "buy" ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                    {dir.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Entry Price <span className="text-destructive">*</span></Label>
-                <Input type="number" step="0.00001" placeholder="1.08500"
-                  value={tradeForm.entry_price}
-                  onChange={e => setTradeForm(f => ({ ...f, entry_price: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Exit Price <span className="text-destructive">*</span></Label>
-                <Input type="number" step="0.00001" placeholder="1.09200"
-                  value={tradeForm.exit_price}
-                  onChange={e => setTradeForm(f => ({ ...f, exit_price: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Lot Size</Label>
-                <Input type="number" step="0.01" min="0.01" value={tradeForm.lot_size}
-                  onChange={e => setTradeForm(f => ({ ...f, lot_size: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Stop Loss</Label>
-                <Input type="number" step="0.00001" placeholder="optional" value={tradeForm.stop_loss}
-                  onChange={e => setTradeForm(f => ({ ...f, stop_loss: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Take Profit</Label>
-                <Input type="number" step="0.00001" placeholder="optional" value={tradeForm.take_profit}
-                  onChange={e => setTradeForm(f => ({ ...f, take_profit: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Entry Time</Label>
-                <Input type="datetime-local" value={tradeForm.entry_time}
-                  onChange={e => setTradeForm(f => ({ ...f, entry_time: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Exit Time</Label>
-                <Input type="datetime-local" value={tradeForm.exit_time}
-                  onChange={e => setTradeForm(f => ({ ...f, exit_time: e.target.value }))} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Notes</Label>
-              <Input placeholder="Optional trade notes..." value={tradeForm.notes}
-                onChange={e => setTradeForm(f => ({ ...f, notes: e.target.value }))} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTradeModalOpen(false)}>Cancel</Button>
-            <Button
-              onClick={handleLogTrade}
-              disabled={submitting || !tradeForm.entry_price || !tradeForm.exit_price}
-              className="gap-2"
-            >
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Log Trade
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── End Session Modal ──────────────────────────────────────────────── */}
       <Dialog open={endModalOpen} onOpenChange={setEndModalOpen}>
