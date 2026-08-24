@@ -142,6 +142,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   const controllerRef = useRef<ReplayController | null>(null)
   const widgetRef = useRef<any>(null)
   const positionLinesRef = useRef<any[]>([])
+  const activeTradeRef = useRef<{ id: string; direction: 'long' | 'short'; stopLoss: number; takeProfit: number } | null>(null)
   // The datafeed object is kept stable for the life of symbol+interval
   const datafeedRef = useRef<object | null>(null)
   const barsRef = useRef<any[]>([])
@@ -247,6 +248,20 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
         setBarIndex(idx)
         setTotalBars(total)
         setIsPlaying(controller.isPlaying())
+        const active = activeTradeRef.current
+        const bar = bars[idx - 1]
+        if (active && bar) {
+          const hitStop = active.direction === 'long' ? bar.low <= active.stopLoss : bar.high >= active.stopLoss
+          const hitTarget = active.direction === 'long' ? bar.high >= active.takeProfit : bar.low <= active.takeProfit
+          // Conservative OHLC rule: if both levels are touched in one candle, stop loss wins.
+          if (hitStop || hitTarget) {
+            const exit = hitStop ? active.stopLoss : active.takeProfit
+            activeTradeRef.current = null
+            controller.pause()
+            setIsPlaying(false)
+            void fetch(`/api/backtest/sessions/${id}/trades/${active.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ exit_price: exit, exit_time: new Date(time * 1000).toISOString() }) }).then(() => fetch(`/api/backtest/sessions/${id}`)).then(r => r.ok ? r.json() : null).then(payload => { if (payload?.session) setSession(payload.session) })
+          }
+        }
       },
       onNeedReset: () => {
         // Called by stepBack / jumpTo-backward — reset chart data so it
@@ -365,7 +380,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
     }
   }
 
-  // ── Derived ───────────────────────────────────────────────────────────────
+  // ── Derived ────────────────────────────────────────────────────��──────────
   const pnlDelta = session ? (session.final_balance - session.initial_balance) : 0
   const isProfit = pnlDelta >= 0
   const progress = totalBars > 1 ? Math.round((barIndex / totalBars) * 100) : 0
@@ -492,10 +507,10 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
           {session?.status === 'running' && <BacktestRiskPanel symbol={session.symbol} values={riskValues} onChange={setRiskValues} onPlaceTrade={async (position) => {
             const response = await fetch(`/api/backtest/sessions/${id}/trades`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ direction: position.direction, entry_price: position.entry, exit_price: null, stop_loss: position.stopLoss, take_profit: position.takeProfit, lot_size: position.positionSize, entry_time: new Date(currentTime * 1000).toISOString(), exit_time: null, notes: `Risk ${position.riskPercent}% | R:R 1:${position.riskReward.toFixed(2)}` }) })
             if (!response.ok) return
-            controllerRef.current?.pause()
-            setIsPlaying(false)
-            const refreshed = await fetch(`/api/backtest/sessions/${id}`)
-            if (refreshed.ok) setSession((await refreshed.json()).session)
+            const createdTrade = await response.json()
+            activeTradeRef.current = { id: createdTrade.id, direction: position.direction, stopLoss: position.stopLoss, takeProfit: position.takeProfit }
+            controllerRef.current?.play(speed)
+            setIsPlaying(true)
           }} />}
         </div>
 
