@@ -27,6 +27,9 @@ interface Playbook {
   winning_trades?: number
   win_rate?: number
   pnl?: number
+  public_display_name?: string | null
+  public_avatar_url?: string | null
+  youtube_links?: string[]
   created_at: string
   updated_at: string
 }
@@ -42,6 +45,10 @@ export default function PlaybooksPage() {
     title: '',
     description: '',
     strategy_type: '',
+    is_public: false,
+    public_display_name: '',
+    public_avatar_url: '',
+    youtube_links: '',
   })
 
   useEffect(() => { fetchPlaybooks() }, [])
@@ -62,6 +69,16 @@ export default function PlaybooksPage() {
     }
   }
 
+  const handleAvatarUpload = async (file: File) => {
+    const payload = new FormData()
+    payload.append('file', file)
+    const res = await fetch('/api/upload', { method: 'POST', body: payload })
+    if (!res.ok) return toast.error('Could not upload profile photo')
+    const { url } = await res.json()
+    setForm(current => ({ ...current, public_avatar_url: url }))
+    toast.success('Profile photo uploaded')
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.title || !form.description) { toast.error('Please fill in all fields'); return }
@@ -71,7 +88,10 @@ export default function PlaybooksPage() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          youtube_links: form.youtube_links.split('\n').map(link => link.trim()).filter(Boolean),
+        }),
       })
       if (!res.ok) throw new Error()
       const saved = await res.json()
@@ -101,7 +121,7 @@ export default function PlaybooksPage() {
   }
 
   const handleEdit = (p: Playbook) => {
-    setForm({ title: p.title, description: getDisplayText(p.description), strategy_type: p.strategy_type || '' })
+    setForm({ title: p.title, description: getDisplayText(p.description), strategy_type: p.strategy_type || '', is_public: p.is_public, public_display_name: p.public_display_name || '', public_avatar_url: p.public_avatar_url || '', youtube_links: (p.youtube_links || []).join('\n') })
     setEditingId(p.id)
     setShowModal(true)
   }
@@ -138,7 +158,7 @@ export default function PlaybooksPage() {
   const closeModal = () => {
     setShowModal(false)
     setEditingId(null)
-    setForm({ title: '', description: '', strategy_type: '' })
+    setForm({ title: '', description: '', strategy_type: '', is_public: false, public_display_name: '', public_avatar_url: '', youtube_links: '' })
   }
 
   if (loading) return (
@@ -311,8 +331,8 @@ export default function PlaybooksPage() {
 
       {/* Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md bg-card shadow-2xl">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
+          <Card className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-border">
               <h2 className="text-lg font-semibold">{editingId ? 'Edit Playbook' : 'New Playbook'}</h2>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={closeModal}>
@@ -337,6 +357,17 @@ export default function PlaybooksPage() {
                   rows={5}
                   className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                 />
+              </div>
+              <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input type="checkbox" checked={form.is_public} onChange={e => setForm({ ...form, is_public: e.target.checked })} className="mt-1 h-4 w-4 accent-primary" />
+                  <span><span className="block text-sm font-medium text-foreground">Make this playbook public</span><span className="block text-xs text-muted-foreground mt-1">Anyone with the public link can discover and view it in Templates & Playbooks.</span></span>
+                </label>
+                {form.is_public && <div className="space-y-3">
+                  <div className="space-y-1.5"><label className="text-sm font-medium text-foreground">Name shown publicly</label><Input placeholder="Your preferred display name" value={form.public_display_name} onChange={e => setForm({ ...form, public_display_name: e.target.value })} /></div>
+                  <div className="space-y-1.5"><label className="text-sm font-medium text-foreground">Profile photo</label><Input type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={e => { const file = e.target.files?.[0]; if (file) void handleAvatarUpload(file) }} /><Input type="url" placeholder="Or paste a public image URL" value={form.public_avatar_url} onChange={e => setForm({ ...form, public_avatar_url: e.target.value })} /></div>
+                  <div className="space-y-1.5"><label className="text-sm font-medium text-foreground">YouTube videos</label><textarea rows={3} placeholder="One YouTube URL per line" value={form.youtube_links} onChange={e => setForm({ ...form, youtube_links: e.target.value })} className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring" /><p className="text-xs text-muted-foreground">Add videos that explain this playbook.</p></div>
+                </div>}
               </div>
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" className="flex-1" onClick={closeModal}>Cancel</Button>

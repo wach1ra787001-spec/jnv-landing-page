@@ -4,8 +4,6 @@ import { useState, useEffect, use, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
@@ -21,9 +19,6 @@ import {
 } from "@/components/ui/tooltip"
 import {
   ArrowLeft,
-  Plus,
-  TrendingUp,
-  TrendingDown,
   CheckCircle2,
   Loader2,
   Play,
@@ -37,6 +32,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TradingViewChart } from "@/components/tradingview-chart"
+import { BacktestRiskPanel, type RiskPanelValues } from "@/components/backtest-risk-panel"
 import { createReplayDatafeed, type ReplayController } from "@/lib/tradingview/replay-datafeed"
 import { normalizeExternalBars } from "@/lib/tradingview/replay-utils"
 import type { TradingViewInterval } from "@/lib/tradingview/utils"
@@ -145,22 +141,17 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   // Stable refs — never trigger re-renders
   const controllerRef = useRef<ReplayController | null>(null)
   const widgetRef = useRef<any>(null)
+  const positionLinesRef = useRef<any[]>([])
   // The datafeed object is kept stable for the life of symbol+interval
   const datafeedRef = useRef<object | null>(null)
   const barsRef = useRef<any[]>([])
   // Key forces TradingViewChart to fully remount when symbol/interval changes
   const [chartKey, setChartKey] = useState(0)
 
-  // ── Modals ────────────────────────────────────────────────────────────────
-  const [tradeModalOpen, setTradeModalOpen] = useState(false)
+  // ── Session controls ─────────────────────────────────────────────────────
   const [endModalOpen, setEndModalOpen] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
   const [endingSession, setEndingSession] = useState(false)
-  const [tradeForm, setTradeForm] = useState({
-    direction: "buy" as "buy" | "sell",
-    entry_price: "", exit_price: "", lot_size: "0.1",
-    stop_loss: "", take_profit: "", entry_time: "", exit_time: "", notes: "",
-  })
+  const [riskValues, setRiskValues] = useState<RiskPanelValues>({ direction: 'long', entry: '', stopLoss: '', takeProfit: '', balance: '', riskPercent: '1' })
 
   // ── Load session ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -279,6 +270,29 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
     setChartKey(k => k + 1)
   }
 
+  // Keep the chart and panel on the same position state. TradingView's line
+  // handles provide an immediate visual representation of the active setup.
+  useEffect(() => {
+    const chart = widgetRef.current?.activeChart?.()
+    const entry = Number(riskValues.entry)
+    const stop = Number(riskValues.stopLoss)
+    const target = Number(riskValues.takeProfit)
+    const anchorTime = currentTime || barsRef.current[barIndex - 1]?.time
+    if (!chart || !anchorTime || ![entry, stop, target].every(Number.isFinite)) return
+    positionLinesRef.current.forEach((line) => { try { chart.removeEntity(line) } catch (_) {} })
+    positionLinesRef.current = []
+    const addLine = (price: number, text: string, color: string) => {
+      try {
+        const line = chart.createShape({ price, time: anchorTime }, { shape: 'horizontal_line', lock: false, disableSelection: false, disableSave: true, overrides: { linecolor: color, linewidth: 2, showLabel: true, text } })
+        if (line) positionLinesRef.current.push(line)
+      } catch (_) {}
+    }
+    addLine(entry, `${riskValues.direction === 'long' ? 'LONG' : 'SHORT'} Entry`, '#3b82f6')
+    addLine(stop, 'Stop Loss', '#ef4444')
+    addLine(target, 'Take Profit', '#22c55e')
+    return () => { positionLinesRef.current.forEach((line) => { try { chart.removeEntity(line) } catch (_) {} }); positionLinesRef.current = [] }
+  }, [riskValues, currentTime])
+
   // ── Playback handlers ─────────────────────────────────────────────────────
   const handlePlayPause = useCallback(() => {
     const ctrl = controllerRef.current
@@ -336,39 +350,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.symbol])
 
-  // ── Trade + session handlers ──────────────────────────────────────────────
-  const handleLogTrade = async () => {
-    if (!session || !tradeForm.entry_price || !tradeForm.exit_price) return
-    setSubmitting(true)
-    try {
-      await fetch(`/api/backtest/sessions/${id}/trades`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...tradeForm,
-          symbol: session.symbol,
-          entry_price: parseFloat(tradeForm.entry_price),
-          exit_price: parseFloat(tradeForm.exit_price),
-          lot_size: parseFloat(tradeForm.lot_size),
-          stop_loss: tradeForm.stop_loss ? parseFloat(tradeForm.stop_loss) : null,
-          take_profit: tradeForm.take_profit ? parseFloat(tradeForm.take_profit) : null,
-          entry_time: tradeForm.entry_time || null,
-          exit_time: tradeForm.exit_time || null,
-        }),
-      })
-      const res = await fetch(`/api/backtest/sessions/${id}`)
-      const { session: updated } = await res.json()
-      setSession(updated)
-      setTradeModalOpen(false)
-      setTradeForm({
-        direction: "buy", entry_price: "", exit_price: "", lot_size: "0.1",
-        stop_loss: "", take_profit: "", entry_time: "", exit_time: "", notes: "",
-      })
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
+  // ── Session handlers ─────────────────────────────────────────────────────
   const handleEndSession = async () => {
     setEndingSession(true)
     try {
@@ -388,7 +370,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   const isProfit = pnlDelta >= 0
   const progress = totalBars > 1 ? Math.round((barIndex / totalBars) * 100) : 0
 
-  // ── Render ─────────��──────────────────────────────────────────────────────
+  // ── Render ───���───���─��──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
@@ -481,14 +463,9 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
               ))}
             </div>
             {session?.status === "running" && (
-              <>
-                <Button size="sm" className="h-7 text-xs gap-1" onClick={() => setTradeModalOpen(true)}>
-                  <Plus className="w-3 h-3" /> Log Trade
-                </Button>
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEndModalOpen(true)}>
-                  End Session
-                </Button>
-              </>
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setEndModalOpen(true)}>
+                End Session
+              </Button>
             )}
             {session?.status !== "running" && (
               <Badge className="bg-chart-1/15 text-chart-1 border-0 text-xs gap-1">
@@ -500,7 +477,8 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
         </div>
 
         {/* ── Chart — fills all remaining space ─────────────────────────── */}
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 min-h-0 flex overflow-hidden">
+          <div className="flex-1 min-w-0 overflow-hidden">
           <TradingViewChart
             key={chartKey}
             symbol={session?.symbol ?? "EURUSD"}
@@ -510,6 +488,15 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
             replayDatafeed={datafeedRef.current ?? undefined}
             onReady={(w) => { widgetRef.current = w }}
           />
+          </div>
+          {session?.status === 'running' && <BacktestRiskPanel symbol={session.symbol} values={riskValues} onChange={setRiskValues} onPlaceTrade={async (position) => {
+            const response = await fetch(`/api/backtest/sessions/${id}/trades`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ direction: position.direction, entry_price: position.entry, exit_price: null, stop_loss: position.stopLoss, take_profit: position.takeProfit, lot_size: position.positionSize, entry_time: new Date(currentTime * 1000).toISOString(), exit_time: null, notes: `Risk ${position.riskPercent}% | R:R 1:${position.riskReward.toFixed(2)}` }) })
+            if (!response.ok) return
+            controllerRef.current?.pause()
+            setIsPlaying(false)
+            const refreshed = await fetch(`/api/backtest/sessions/${id}`)
+            if (refreshed.ok) setSession((await refreshed.json()).session)
+          }} />}
         </div>
 
         {/* ── Replay controls ────────────────────────────────────────────── */}
@@ -635,98 +622,6 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
       </div>
-
-      {/* ── Log Trade Modal ────────────────────────────────────────────────── */}
-      <Dialog open={tradeModalOpen} onOpenChange={setTradeModalOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Log Trade — {session?.symbol}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Direction</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {(["buy", "sell"] as const).map(dir => (
-                  <button
-                    key={dir}
-                    onClick={() => setTradeForm(f => ({ ...f, direction: dir }))}
-                    className={cn(
-                      "flex items-center justify-center gap-2 py-2 rounded-lg border text-sm font-medium transition-all",
-                      tradeForm.direction === dir
-                        ? dir === "buy"
-                          ? "border-chart-1 bg-chart-1/15 text-chart-1"
-                          : "border-chart-2 bg-chart-2/15 text-chart-2"
-                        : "border-border text-muted-foreground hover:border-border/80"
-                    )}
-                  >
-                    {dir === "buy" ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                    {dir.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Entry Price <span className="text-destructive">*</span></Label>
-                <Input type="number" step="0.00001" placeholder="1.08500"
-                  value={tradeForm.entry_price}
-                  onChange={e => setTradeForm(f => ({ ...f, entry_price: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Exit Price <span className="text-destructive">*</span></Label>
-                <Input type="number" step="0.00001" placeholder="1.09200"
-                  value={tradeForm.exit_price}
-                  onChange={e => setTradeForm(f => ({ ...f, exit_price: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Lot Size</Label>
-                <Input type="number" step="0.01" min="0.01" value={tradeForm.lot_size}
-                  onChange={e => setTradeForm(f => ({ ...f, lot_size: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Stop Loss</Label>
-                <Input type="number" step="0.00001" placeholder="optional" value={tradeForm.stop_loss}
-                  onChange={e => setTradeForm(f => ({ ...f, stop_loss: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Take Profit</Label>
-                <Input type="number" step="0.00001" placeholder="optional" value={tradeForm.take_profit}
-                  onChange={e => setTradeForm(f => ({ ...f, take_profit: e.target.value }))} />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Entry Time</Label>
-                <Input type="datetime-local" value={tradeForm.entry_time}
-                  onChange={e => setTradeForm(f => ({ ...f, entry_time: e.target.value }))} />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Exit Time</Label>
-                <Input type="datetime-local" value={tradeForm.exit_time}
-                  onChange={e => setTradeForm(f => ({ ...f, exit_time: e.target.value }))} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Notes</Label>
-              <Input placeholder="Optional trade notes..." value={tradeForm.notes}
-                onChange={e => setTradeForm(f => ({ ...f, notes: e.target.value }))} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTradeModalOpen(false)}>Cancel</Button>
-            <Button
-              onClick={handleLogTrade}
-              disabled={submitting || !tradeForm.entry_price || !tradeForm.exit_price}
-              className="gap-2"
-            >
-              {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              Log Trade
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ── End Session Modal ──────────────────────────────────────────────── */}
       <Dialog open={endModalOpen} onOpenChange={setEndModalOpen}>

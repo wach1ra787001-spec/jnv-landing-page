@@ -16,7 +16,8 @@
   --secondary: #090c9b;
   --secondary-foreground: #FFFFFF;
   --muted: #f5f7fa;
-  --muted-foreground: #7a8292;
+  /* Stronger secondary text keeps labels readable on light surfaces. */
+  --muted-foreground: #626b7c;
   --accent: #090c9b;
   --accent-foreground: #FFFFFF;
   --destructive: #e63946;
@@ -62,7 +63,7 @@
   --accent-blue-strong: #2563EB;
   --accent-blue-subtle: rgba(59, 123, 248, 0.12);
   --text-primary: #F5F7FA;
-  --text-secondary: #8B93A6;
+  --text-secondary: #B3BCCB;
   --background: var(--bg-base);
   --foreground: var(--text-primary);
   --card: var(--bg-surface);
@@ -103,6 +104,9 @@
 }
 
 @theme inline {
+  /* Increase compact UI text by one pixel for better readability. */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
   --font-sans: 'Geist', 'Geist Fallback', sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback', monospace;
   --color-background: var(--background);
@@ -174,6 +178,11 @@
   /* Improve contrast and readability */
   p {
     @apply leading-relaxed;
+  }
+
+  /* Muted labels and helper copy should remain readable without relying on opacity. */
+  small {
+    color: var(--muted-foreground);
   }
 }
 

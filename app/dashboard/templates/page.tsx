@@ -24,6 +24,9 @@ interface Playbook {
   strategy: string
   comments: number
   publicSlug?: string | null
+  publicDisplayName?: string | null
+  publicAvatarUrl?: string | null
+  youtubeLinks?: string[]
 }
 
 const mockPlaybooks: Playbook[] = [
@@ -135,7 +138,7 @@ export default function TemplatesPage() {
     fetch('/api/playbooks?public=true')
       .then(res => res.ok ? res.json() : [])
       .then(rows => setPlaybooks(rows.map((p: any) => ({
-        id: p.id, name: p.title, description: typeof p.description === 'string' ? p.description : '', author: 'Community trader', avatar: 'CT',
+        id: p.id, name: p.title, description: typeof p.description === 'string' ? p.description : '', author: p.public_display_name || 'Community trader', avatar: p.public_avatar_url || 'CT', publicDisplayName: p.public_display_name, publicAvatarUrl: p.public_avatar_url, youtubeLinks: p.youtube_links || [],
         winRate: Number(p.win_rate ?? 0), trades: Number(p.trades_taken ?? 0), pnl: Number(p.pnl ?? 0), likes: Number(p.likes_count ?? 0), liked: false,
         month: new Date(p.created_at).toLocaleString('en-US', { month: 'long' }), timeframe: p.strategy_type || 'Flexible', strategy: p.strategy_type || 'General', comments: Number(p.comments_count ?? 0), publicSlug: p.public_slug,
       }))))
@@ -247,9 +250,7 @@ export default function TemplatesPage() {
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3 flex-1 min-w-0">
-                <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 font-bold text-sm">
-                  {playbook.avatar}
-                </div>
+                {playbook.publicAvatarUrl ? <img src={playbook.publicAvatarUrl} alt="" className="w-10 h-10 rounded-full object-cover shrink-0" /> : <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shrink-0 font-bold text-sm">{playbook.avatar}</div>}
                 <div className="min-w-0">
                   <h3 className="font-semibold text-foreground truncate">{playbook.name}</h3>
                   <p className="text-xs text-muted-foreground">by {playbook.author}</p>
