@@ -32,10 +32,20 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { TradingViewChart } from "@/components/tradingview-chart"
-import { BacktestRiskPanel, type RiskPanelValues } from "@/components/backtest-risk-panel"
+import { BacktestRiskPanel } from "@/components/backtest-risk-panel"
 import { createReplayDatafeed, type ReplayController } from "@/lib/tradingview/replay-datafeed"
 import { normalizeExternalBars } from "@/lib/tradingview/replay-utils"
 import type { TradingViewInterval } from "@/lib/tradingview/utils"
+import { PositionOverlay } from "@/lib/tradingview/position-overlay"
+import {
+  IDLE_POSITION,
+  createPendingPosition,
+  getInstrumentRiskMetadata,
+  hasActivePosition,
+  updateLevel,
+  type PositionState,
+} from "@/lib/backtest/position-state"
+import type { RiskDirection } from "@/lib/backtest/risk-calculator"
 
 interface Session {
   id: string
@@ -141,7 +151,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   // Stable refs — never trigger re-renders
   const controllerRef = useRef<ReplayController | null>(null)
   const widgetRef = useRef<any>(null)
-  const positionLinesRef = useRef<any[]>([])
+  const positionOverlayRef = useRef<PositionOverlay | null>(null)
   const activeTradeRef = useRef<{ id: string; direction: 'long' | 'short'; stopLoss: number; takeProfit: number } | null>(null)
   // The datafeed object is kept stable for the life of symbol+interval
   const datafeedRef = useRef<object | null>(null)
@@ -152,7 +162,13 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   // ── Session controls ─────────────────────────────────────────────────────
   const [endModalOpen, setEndModalOpen] = useState(false)
   const [endingSession, setEndingSession] = useState(false)
-  const [riskValues, setRiskValues] = useState<RiskPanelValues>({ direction: 'long', entry: '', stopLoss: '', takeProfit: '', balance: '', riskPercent: '1' })
+
+  // ── Unified position state (single source of truth for panel + chart) ────
+  const [position, setPosition] = useState<PositionState>(IDLE_POSITION)
+  const positionRef = useRef(position)
+  useEffect(() => { positionRef.current = position }, [position])
+  const [placementMode, setPlacementMode] = useState<RiskDirection | null>(null)
+  const lastCrosshairRef = useRef<{ time: number; price: number } | null>(null)
 
   // ── Load session ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -256,9 +272,11 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
           // Conservative OHLC rule: if both levels are touched in one candle, stop loss wins.
           if (hitStop || hitTarget) {
             const exit = hitStop ? active.stopLoss : active.takeProfit
+            const reason: 'STOP_LOSS' | 'TAKE_PROFIT' = hitStop ? 'STOP_LOSS' : 'TAKE_PROFIT'
             activeTradeRef.current = null
             controller.pause()
             setIsPlaying(false)
+            setPosition((prev) => ({ ...prev, status: 'closed', exit: { price: exit, time, reason } }))
             void fetch(`/api/backtest/sessions/${id}/trades/${active.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ exit_price: exit, exit_time: new Date(time * 1000).toISOString() }) }).then(() => fetch(`/api/backtest/sessions/${id}`)).then(r => r.ok ? r.json() : null).then(payload => { if (payload?.session) setSession(payload.session) })
           }
         }
@@ -285,28 +303,51 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
     setChartKey(k => k + 1)
   }
 
-  // Keep the chart and panel on the same position state. TradingView's line
-  // handles provide an immediate visual representation of the active setup.
+  // The chart, the risk panel, and the replay engine all read/write this one
+  // PositionState. Whenever it changes — regardless of whether the change
+  // came from typing in the panel or dragging a line on the chart — push it
+  // into the overlay controller so there's exactly one rendered result.
   useEffect(() => {
-    const chart = widgetRef.current?.activeChart?.()
-    const entry = Number(riskValues.entry)
-    const stop = Number(riskValues.stopLoss)
-    const target = Number(riskValues.takeProfit)
-    const anchorTime = currentTime || barsRef.current[barIndex - 1]?.time
-    if (!chart || !anchorTime || ![entry, stop, target].every(Number.isFinite)) return
-    positionLinesRef.current.forEach((line) => { try { chart.removeEntity(line) } catch (_) {} })
-    positionLinesRef.current = []
-    const addLine = (price: number, text: string, color: string) => {
-      try {
-        const line = chart.createShape({ price, time: anchorTime }, { shape: 'horizontal_line', lock: false, disableSelection: false, disableSave: true, overrides: { linecolor: color, linewidth: 2, showLabel: true, text } })
-        if (line) positionLinesRef.current.push(line)
-      } catch (_) {}
+    const overlay = positionOverlayRef.current
+    if (!overlay) return
+    if (position.status === 'closed') {
+      void overlay.renderClosedTrade(position)
+    } else {
+      void overlay.update(position)
     }
-    addLine(entry, `${riskValues.direction === 'long' ? 'LONG' : 'SHORT'} Entry`, '#3b82f6')
-    addLine(stop, 'Stop Loss', '#ef4444')
-    addLine(target, 'Take Profit', '#22c55e')
-    return () => { positionLinesRef.current.forEach((line) => { try { chart.removeEntity(line) } catch (_) {} }); positionLinesRef.current = [] }
-  }, [riskValues, currentTime])
+  }, [position])
+
+  // Track the last crosshair position so a chart click (which TradingView's
+  // widget API doesn't expose a direct coordinate-to-price hook for outside
+  // the crosshair-moved event) can be resolved to a real {time, price}.
+  const handleChartReady = useCallback((widget: any) => {
+    widgetRef.current = widget
+    try {
+      const chart = widget.activeChart()
+      positionOverlayRef.current?.destroy()
+      positionOverlayRef.current = new PositionOverlay(chart, {
+        onDragStopLoss: (price) => setPosition((prev) => (prev.status === 'pending' ? updateLevel(prev, 'stopLoss', price, getInstrumentRiskMetadata(session?.symbol ?? 'EURUSD')) : prev)),
+        onDragTakeProfit: (price) => setPosition((prev) => (prev.status === 'pending' ? updateLevel(prev, 'takeProfit', price, getInstrumentRiskMetadata(session?.symbol ?? 'EURUSD')) : prev)),
+      })
+      chart.crossHairMoved().subscribe(null, (params: { time: number; price: number }) => {
+        lastCrosshairRef.current = { time: params.time, price: params.price }
+      })
+      if (positionRef.current.status !== 'idle') void positionOverlayRef.current.update(positionRef.current)
+    } catch (_) {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.symbol])
+
+  // Click-to-place: while placement mode is armed, the next chart click uses
+  // the last tracked crosshair {time, price} as the entry anchor.
+  const handleChartClickCapture = useCallback(() => {
+    if (!placementMode || hasActivePosition(positionRef.current)) return
+    const point = lastCrosshairRef.current
+    if (!point) return
+    const metadata = getInstrumentRiskMetadata(session?.symbol ?? 'EURUSD')
+    setPosition(createPendingPosition(placementMode, point.price, point.time, metadata))
+    setPlacementMode(null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [placementMode, session?.symbol])
 
   // ── Playback handlers ─────────────────────────────────────────────────────
   const handlePlayPause = useCallback(() => {
