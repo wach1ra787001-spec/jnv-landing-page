@@ -4,8 +4,6 @@ import { useState, useEffect, use, useRef, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
 import {
   Dialog,
   DialogContent,
@@ -21,9 +19,6 @@ import {
 } from "@/components/ui/tooltip"
 import {
   ArrowLeft,
-  Plus,
-  TrendingUp,
-  TrendingDown,
   CheckCircle2,
   Loader2,
   Play,
@@ -151,16 +146,9 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   // Key forces TradingViewChart to fully remount when symbol/interval changes
   const [chartKey, setChartKey] = useState(0)
 
-  // ── Modals ────────────────────────────────────────────────────────────────
-  const [tradeModalOpen, setTradeModalOpen] = useState(false)
+  // ── Session controls ─────────────────────────────────────────────────────
   const [endModalOpen, setEndModalOpen] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
   const [endingSession, setEndingSession] = useState(false)
-  const [tradeForm, setTradeForm] = useState({
-    direction: "buy" as "buy" | "sell",
-    entry_price: "", exit_price: "", lot_size: "0.1",
-    stop_loss: "", take_profit: "", entry_time: "", exit_time: "", notes: "",
-  })
 
   // ── Load session ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -336,39 +324,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.symbol])
 
-  // ── Trade + session handlers ──────────────────────────────────────────────
-  const handleLogTrade = async () => {
-    if (!session || !tradeForm.entry_price || !tradeForm.exit_price) return
-    setSubmitting(true)
-    try {
-      await fetch(`/api/backtest/sessions/${id}/trades`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...tradeForm,
-          symbol: session.symbol,
-          entry_price: parseFloat(tradeForm.entry_price),
-          exit_price: parseFloat(tradeForm.exit_price),
-          lot_size: parseFloat(tradeForm.lot_size),
-          stop_loss: tradeForm.stop_loss ? parseFloat(tradeForm.stop_loss) : null,
-          take_profit: tradeForm.take_profit ? parseFloat(tradeForm.take_profit) : null,
-          entry_time: tradeForm.entry_time || null,
-          exit_time: tradeForm.exit_time || null,
-        }),
-      })
-      const res = await fetch(`/api/backtest/sessions/${id}`)
-      const { session: updated } = await res.json()
-      setSession(updated)
-      setTradeModalOpen(false)
-      setTradeForm({
-        direction: "buy", entry_price: "", exit_price: "", lot_size: "0.1",
-        stop_loss: "", take_profit: "", entry_time: "", exit_time: "", notes: "",
-      })
-    } finally {
-      setSubmitting(false)
-    }
-  }
-
+  // ── Session handlers ─────────────────────────────────────────────────────
   const handleEndSession = async () => {
     setEndingSession(true)
     try {
@@ -388,7 +344,7 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
   const isProfit = pnlDelta >= 0
   const progress = totalBars > 1 ? Math.round((barIndex / totalBars) * 100) : 0
 
-  // ── Render ───────���─��──────────────────────────────────────────────────────
+  // ── Render ───���───���─��──────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-background">
