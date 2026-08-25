@@ -25,7 +25,7 @@ export default async function ConsistencyAnalysisPage() {
 
   const tradesQuery = supabase
     .from("trades")
-    .select("id, entry_time, net_pnl, status")
+    .select("id, entry_time, net_pnl, status, followed_rule_ids")
     .eq("user_id", user.id)
     .order("entry_time", { ascending: false })
 
@@ -76,6 +76,8 @@ export default async function ConsistencyAnalysisPage() {
 
     return {
       hasActiveRules,
+      activeRulesCount: activeRulesCount || 0,
+      followedRuleIds: trade.followed_rule_ids,
       disciplineRating: journal?.discipline_rating,
       followedPlan: journal?.followed_plan,
       hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, extraNotes),

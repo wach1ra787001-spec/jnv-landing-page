@@ -35,7 +35,11 @@ export const CONSISTENCY_WEIGHTS = {
 export interface ConsistencyScoreInputs {
   /** Does the user have at least one active rule configured in Manage Rules? */
   hasActiveRules: boolean
-  /** 1-10 self-rating of how well the trade's rules were followed (proxy for rules-followed fraction). */
+  /** Number of active rules configured by the user. */
+  activeRulesCount?: number
+  /** IDs of the rules explicitly checked for this trade. */
+  followedRuleIds?: string[] | null
+  /** 1-10 self-rating used only for legacy trades without per-rule selections. */
   disciplineRating: number | null | undefined
   /** Did the user follow their plan for this trade? Used as proxy for risk-model + trade-model adherence. */
   followedPlan: boolean | null | undefined
@@ -59,13 +63,17 @@ const DISCIPLINE_RATING_MAX = 10
 export function calculateTradeConsistencyScore(
   inputs: ConsistencyScoreInputs,
 ): ConsistencyScoreBreakdown {
-  const { hasActiveRules, disciplineRating, followedPlan, hasMeaningfulNotes } = inputs
+  const { hasActiveRules, activeRulesCount = 0, followedRuleIds, disciplineRating, followedPlan, hasMeaningfulNotes } = inputs
 
-  // Rules followed (30%) - scaled by fraction of rules followed.
-  // Zero active rules configured => 0 points (user hasn't set up their rules checklist).
+  // Rules followed (30%) - use the per-trade checklist when available.
   let rulesScore = 0
-  if (hasActiveRules && typeof disciplineRating === 'number' && disciplineRating > 0) {
-    const fraction = Math.min(disciplineRating, DISCIPLINE_RATING_MAX) / DISCIPLINE_RATING_MAX
+  if (hasActiveRules) {
+    const hasChecklist = Array.isArray(followedRuleIds)
+    const fraction = hasChecklist && activeRulesCount > 0
+      ? Math.min(followedRuleIds.length, activeRulesCount) / activeRulesCount
+      : typeof disciplineRating === 'number' && disciplineRating > 0
+        ? Math.min(disciplineRating, DISCIPLINE_RATING_MAX) / DISCIPLINE_RATING_MAX
+        : 0
     rulesScore = fraction * CONSISTENCY_WEIGHTS.rules
   }
 
