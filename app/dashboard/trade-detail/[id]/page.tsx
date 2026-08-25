@@ -63,19 +63,19 @@ export default function TradeDetailPage() {
           setTrade(data)
           setFollowedRuleIds(Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : [])
           try {
-            const rulesResponse = await fetch('/api/rules')
-            if (rulesResponse.ok) {
-              const rules = await rulesResponse.json()
-              let playbookRules: any = null
-              if (data.playbook_id) {
-                const playbookResponse = await fetch(`/api/playbooks/${data.playbook_id}`)
-                if (playbookResponse.ok) playbookRules = await playbookResponse.json()
+            if (data.playbook_id) {
+              const playbookResponse = await fetch(`/api/playbooks/${data.playbook_id}`)
+              if (playbookResponse.ok) {
+                const playbook = await playbookResponse.json()
+                const rulesColumn = playbook?.rules || {}
+                const ruleItems = [
+                  ...(Array.isArray(rulesColumn.entry) ? rulesColumn.entry : []),
+                  ...(Array.isArray(rulesColumn.exit) ? rulesColumn.exit : []),
+                  ...(Array.isArray(rulesColumn.custom) ? rulesColumn.custom : []),
+                ].filter((rule): rule is string => typeof rule === 'string' && rule.trim().length > 0)
+                  .map((text, index) => ({ id: `custom-${index}`, title: text, is_active: true, isCustom: true }))
+                setUserRules(ruleItems)
               }
-              const linkedIds = Array.isArray(playbookRules?.rules?.linkedRuleIds) ? playbookRules.rules.linkedRuleIds : []
-              const customRules = Array.isArray(playbookRules?.rules?.custom) ? playbookRules.rules.custom : []
-              const linkedRules = rules.filter((rule: UserRule) => rule.is_active && linkedIds.includes(rule.id))
-              const customRuleItems = customRules.map((text: string, index: number) => ({ id: `custom-${index}`, title: text, is_active: true, isCustom: true }))
-              setUserRules([...linkedRules, ...customRuleItems])
             }
           } finally {
             setRulesLoading(false)

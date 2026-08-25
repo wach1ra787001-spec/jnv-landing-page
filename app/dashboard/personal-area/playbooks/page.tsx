@@ -147,7 +147,7 @@ export default function PlaybooksPage() {
     const res = await fetch(`/api/playbooks/${id}/engagement`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: currentlyActive ? 'deactivate' : 'activate' }) })
     if (!res.ok) return toast.error('Failed to activate playbook')
     const updated = await res.json()
-    setPlaybooks(playbooks.map(p => ({ ...p, is_active: p.id === updated.id && !currentlyActive })))
+    setPlaybooks(playbooks.map(p => ({ ...p, is_active: !currentlyActive && p.id === updated.id })))
     setActiveId(currentlyActive ? null : updated.id)
     toast.success(currentlyActive ? 'Playbook deactivated' : 'Playbook activated — new trades will use this playbook')
   }
