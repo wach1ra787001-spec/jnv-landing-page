@@ -25,7 +25,7 @@ export default async function ConsistencyAnalysisPage() {
 
   const tradesQuery = supabase
     .from("trades")
-    .select("id, entry_time, net_pnl, status, followed_rule_ids")
+    .select("id, entry_time, net_pnl, status, followed_rule_ids, account_id, risk_amount")
     .eq("user_id", user.id)
     .order("entry_time", { ascending: false })
 
@@ -37,7 +37,7 @@ export default async function ConsistencyAnalysisPage() {
 
   const tradeIds = (allTrades || []).map((trade) => trade.id)
 
-  const [{ data: journalRows }, { data: tradeNotesRows }, { count: activeRulesCount }] =
+  const [{ data: journalRows }, { data: tradeNotesRows }, { count: activeRulesCount }, { data: accountRows }] =
     await Promise.all([
       tradeIds.length > 0
         ? supabase
@@ -58,9 +58,14 @@ export default async function ConsistencyAnalysisPage() {
         .select("id", { count: "exact", head: true })
         .eq("user_id", user.id)
         .eq("is_active", true),
+      supabase
+        .from("accounts")
+        .select("id, initial_balance, risk_percent, risk_amount")
+        .eq("user_id", user.id),
     ])
 
   const hasActiveRules = (activeRulesCount || 0) > 0
+  const accountById = new Map((accountRows || []).map((account) => [account.id, account]))
 
   const journalByTradeId = new Map((journalRows || []).map((row) => [row.trade_id, row]))
   const notesByTradeId = new Map<string, string[]>()
@@ -80,6 +85,10 @@ export default async function ConsistencyAnalysisPage() {
       followedRuleIds: trade.followed_rule_ids,
       disciplineRating: journal?.discipline_rating,
       followedPlan: journal?.followed_plan,
+      tradeRiskAmount: trade.risk_amount,
+      accountRiskAmount: accountById.get(trade.account_id)?.risk_amount,
+      tradeRiskPercent: typeof trade.risk_amount === 'number' && accountById.get(trade.account_id)?.initial_balance ? (trade.risk_amount / accountById.get(trade.account_id)!.initial_balance) * 100 : null,
+      accountRiskPercent: accountById.get(trade.account_id)?.risk_percent,
       hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, extraNotes),
     }
   })
