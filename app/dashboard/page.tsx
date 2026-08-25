@@ -93,12 +93,12 @@ export default async function DashboardPage() {
   // See lib/consistency-score.ts for the full breakdown and data-availability notes.
   const tradeIds = (allTrades || []).map((trade) => trade.id)
 
-  const [{ data: journalRows }, { data: tradeNotesRows }, { count: activeRulesCount }] =
+  const [{ data: journalRows }, { data: tradeNotesRows }, { data: accountRows }, { data: playbookRows }] =
     await Promise.all([
       tradeIds.length > 0
         ? supabase
             .from("trade_journal")
-            .select("trade_id, discipline_rating, followed_plan, content, session_notes, lessons_learned, mistakes, what_went_well")
+            .select("trade_id, discipline_rating, followed_plan, followed_rule_ids, content, session_notes, lessons_learned, mistakes, what_went_well")
             .eq("user_id", user?.id)
             .in("trade_id", tradeIds)
         : Promise.resolve({ data: [] }),
@@ -110,13 +110,18 @@ export default async function DashboardPage() {
             .in("trade_id", tradeIds)
         : Promise.resolve({ data: [] }),
       supabase
-        .from("user_rules")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user?.id)
-        .eq("is_active", true),
+        .from("accounts")
+        .select("id, initial_balance, risk_percent, risk_amount")
+        .eq("user_id", user?.id),
+      supabase
+        .from("playbooks")
+        .select("id, rules")
+        .eq("user_id", user?.id),
     ])
 
-  const hasActiveRules = (activeRulesCount || 0) > 0
+  const accountById = new Map((accountRows || []).map((account) => [account.id, account]))
+  const playbookById = new Map((playbookRows || []).map((playbook) => [playbook.id, playbook]))
+  const hasActiveRules = (playbookRows || []).some((playbook) => (playbook.rules?.linkedRuleIds || []).length > 0)
 
   const journalByTradeId = new Map((journalRows || []).map((row) => [row.trade_id, row]))
   const notesByTradeId = new Map<string, string[]>()
@@ -130,10 +135,20 @@ export default async function DashboardPage() {
     const journal = journalByTradeId.get(trade.id)
     const extraNotes = notesByTradeId.get(trade.id) || []
 
+    const linkedRuleIds = playbookById.get(trade.playbook_id)?.rules?.linkedRuleIds || []
+    const account = accountById.get(trade.account_id)
+    const tradeRiskAmount = typeof trade.risk_amount === 'number' ? trade.risk_amount : null
+    const tradeRiskPercent = tradeRiskAmount !== null && Number(account?.initial_balance) > 0 ? (tradeRiskAmount / Number(account?.initial_balance)) * 100 : null
     return {
-      hasActiveRules,
+      hasActiveRules: linkedRuleIds.length > 0,
+      activeRulesCount: linkedRuleIds.length,
+      followedRuleIds: journal?.followed_rule_ids,
       disciplineRating: journal?.discipline_rating,
       followedPlan: journal?.followed_plan,
+      tradeRiskAmount,
+      accountRiskAmount: account?.risk_amount,
+      tradeRiskPercent,
+      accountRiskPercent: account?.risk_percent,
       hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, extraNotes),
     }
   })
