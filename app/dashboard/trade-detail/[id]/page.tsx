@@ -13,8 +13,9 @@ import { appToast } from "@/lib/toast-utils"
 interface UserRule {
   id: string
   title: string
-  rule: string
+  rule?: string
   is_active: boolean
+  isCustom?: boolean
 }
 
 interface Trade {
@@ -70,8 +71,11 @@ export default function TradeDetailPage() {
                 const playbookResponse = await fetch(`/api/playbooks/${data.playbook_id}`)
                 if (playbookResponse.ok) playbookRules = await playbookResponse.json()
               }
-              const linkedIds = playbookRules?.rules?.linkedRuleIds
-              setUserRules(rules.filter((rule: UserRule) => rule.is_active && (!Array.isArray(linkedIds) || linkedIds.includes(rule.id))))
+              const linkedIds = Array.isArray(playbookRules?.rules?.linkedRuleIds) ? playbookRules.rules.linkedRuleIds : []
+              const customRules = Array.isArray(playbookRules?.rules?.custom) ? playbookRules.rules.custom : []
+              const linkedRules = rules.filter((rule: UserRule) => rule.is_active && linkedIds.includes(rule.id))
+              const customRuleItems = customRules.map((text: string, index: number) => ({ id: `custom-${index}`, title: text, is_active: true, isCustom: true }))
+              setUserRules([...linkedRules, ...customRuleItems])
             }
           } finally {
             setRulesLoading(false)
@@ -352,7 +356,7 @@ export default function TradeDetailPage() {
           <span className="text-xs text-muted-foreground">{savingRuleId ? 'Saving…' : `${followedRuleIds.length}/${userRules.length} checked`}</span>
         </div>
         <div className="mt-4 flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
-          {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={followedRuleIds.includes(rule.id)} onChange={(event) => handleRuleChange(rule.id, event.target.checked)} disabled={savingRuleId === rule.id} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.rule}</span></span></label>)}
+          {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={followedRuleIds.includes(rule.id)} onChange={(event) => handleRuleChange(rule.id, event.target.checked)} disabled={savingRuleId === rule.id} className="mt-0.5 size-4 shrink-0 accent-primary" /><span className="min-w-0"><span className="block text-sm font-medium text-foreground">{rule.title}</span>{rule.rule && <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.rule}</span>}</span><span className={cn('ml-auto shrink-0 text-xs font-medium', followedRuleIds.includes(rule.id) ? 'text-emerald-500' : 'text-muted-foreground')}>{followedRuleIds.includes(rule.id) ? 'Followed' : 'Not followed'}</span></label>)}
         </div>
       </Card>
 
