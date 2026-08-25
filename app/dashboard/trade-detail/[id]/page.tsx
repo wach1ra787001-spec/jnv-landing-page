@@ -10,6 +10,13 @@ import { TradingViewChart, type SingleBarData } from "@/components/tradingview-c
 import { cn } from "@/lib/utils"
 import { appToast } from "@/lib/toast-utils"
 
+interface UserRule {
+  id: string
+  title: string
+  rule: string
+  is_active: boolean
+}
+
 interface Trade {
   id: string
   symbol: string
@@ -40,6 +47,10 @@ export default function TradeDetailPage() {
   const [uploading, setUploading] = useState(false)
   const [deletingUrl, setDeletingUrl] = useState<string | null>(null)
   const [confirmDeleteUrl, setConfirmDeleteUrl] = useState<string | null>(null)
+  const [userRules, setUserRules] = useState<UserRule[]>([])
+  const [rulesLoading, setRulesLoading] = useState(true)
+  const [followedRuleIds, setFollowedRuleIds] = useState<string[]>([])
+  const [savingRuleId, setSavingRuleId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -49,6 +60,16 @@ export default function TradeDetailPage() {
         if (response.ok) {
           const data = await response.json()
           setTrade(data)
+          setFollowedRuleIds(Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : [])
+          try {
+            const rulesResponse = await fetch('/api/rules')
+            if (rulesResponse.ok) {
+              const rules = await rulesResponse.json()
+              setUserRules(rules.filter((rule: UserRule) => rule.is_active))
+            }
+          } finally {
+            setRulesLoading(false)
+          }
           
           // Generate signed URLs for private blob screenshots
           if (data.screenshot_urls && data.screenshot_urls.length > 0) {
@@ -105,7 +126,7 @@ export default function TradeDetailPage() {
       if (response.ok) {
         const data = await response.json()
         setSignedScreenshotUrls([...signedScreenshotUrls, ...data.urls])
-        appToast.tradeSaved(trade?.symbol || 'Trade', '0', '0', true, 'Screenshot(s) added successfully')
+        appToast.tradeSaved(trade?.symbol || 'Trade', '0', '0', true)
       } else {
         appToast.tradeSaveFailed()
       }
@@ -120,6 +141,27 @@ export default function TradeDetailPage() {
     }
   }
 
+  const handleRuleChange = async (ruleId: string, checked: boolean) => {
+    const previous = followedRuleIds
+    const next = checked ? [...new Set([...previous, ruleId])] : previous.filter((id) => id !== ruleId)
+    setFollowedRuleIds(next)
+    setSavingRuleId(ruleId)
+    try {
+      const response = await fetch(`/api/trades/${tradeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ followed_rule_ids: next }),
+      })
+      if (!response.ok) throw new Error('Failed to save rule status')
+      setTrade((current) => current ? { ...current, followed_rule_ids: next, followed_rules: next.length > 0 } : current)
+    } catch {
+      setFollowedRuleIds(previous)
+      appToast.tradeSaveFailed()
+    } finally {
+      setSavingRuleId(null)
+    }
+  }
+
   const handleDeleteScreenshot = async (url: string) => {
     setDeletingUrl(url)
     try {
@@ -130,7 +172,7 @@ export default function TradeDetailPage() {
       })
       if (response.ok) {
         setSignedScreenshotUrls(prev => prev.filter(u => u !== url))
-        appToast.tradeSaved(trade?.symbol || 'Trade', '0', '0', true, 'Screenshot deleted')
+        appToast.tradeSaved(trade?.symbol || 'Trade', '0', '0', true)
       } else {
         appToast.tradeSaveFailed()
       }
@@ -209,8 +251,8 @@ export default function TradeDetailPage() {
         <div className="flex min-w-0 flex-col gap-4">
           {/* Trade Details */}
           <Card className="flex-1 p-4 bg-card border border-border/50">
-        <div className="flex flex-col gap-4">
-          <div>
+        <div className="flex flex-col divide-y divide-border/50">
+          <div className="pb-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Direction</p>
             <div className="flex items-center gap-2 mt-2">
               {isLong ? (
@@ -221,15 +263,15 @@ export default function TradeDetailPage() {
               <p className="font-medium text-foreground">{directionDisplay}</p>
             </div>
           </div>
-          <div>
+          <div className="py-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entry Price</p>
             <p className="font-medium text-foreground mt-2">{trade.entry_price.toFixed(4)}</p>
           </div>
-          <div>
+          <div className="py-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Exit Price</p>
             <p className="font-medium text-foreground mt-2">{trade.exit_price.toFixed(4)}</p>
           </div>
-          <div>
+          <div className="pt-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quantity</p>
             <p className="font-medium text-foreground mt-2">{trade.quantity}</p>
           </div>
@@ -238,20 +280,20 @@ export default function TradeDetailPage() {
 
           {/* Timeline */}
           <Card className="flex-1 p-4 bg-card border border-border/50">
-        <div className="flex flex-col gap-4">
-          <div>
+        <div className="flex flex-col divide-y divide-border/50">
+          <div className="pb-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entry Time</p>
             <p className="font-medium text-foreground mt-2">{entryDate.toLocaleString()}</p>
           </div>
-          <div>
+          <div className="py-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Exit Time</p>
             <p className="font-medium text-foreground mt-2">{exitDate.toLocaleString()}</p>
           </div>
-          <div>
+          <div className="py-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Duration</p>
             <p className="font-medium text-foreground mt-2">{duration} minutes</p>
           </div>
-          <div>
+          <div className="pt-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</p>
             <p className="font-medium text-foreground mt-2 capitalize">{trade.status}</p>
           </div>
@@ -293,6 +335,20 @@ export default function TradeDetailPage() {
         </p>
         </Card>
       </div>
+
+      {/* Rules followed */}
+      <Card className="p-4 bg-card border border-border/50">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Rules Followed</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Review your active trading rules for this trade.</p>
+          </div>
+          <span className="text-xs text-muted-foreground">{savingRuleId ? 'Saving…' : `${followedRuleIds.length}/${userRules.length} checked`}</span>
+        </div>
+        <div className="mt-4 flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
+          {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={followedRuleIds.includes(rule.id)} onChange={(event) => handleRuleChange(rule.id, event.target.checked)} disabled={savingRuleId === rule.id} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.rule}</span></span></label>)}
+        </div>
+      </Card>
 
       {/* Screenshot Card */}
       <Card className="p-6 bg-card border border-border/50">
