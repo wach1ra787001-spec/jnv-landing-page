@@ -18,6 +18,7 @@ import {
 import { DayToDayCard } from "@/components/dashboard/day-to-day-card"
 import { calculateMonthlyGrowthTimeline } from "@/lib/monthly-growth-analysis"
 import { getSelectedAccountId } from "@/lib/get-selected-account"
+import { endOfWeek, format, startOfWeek, subWeeks } from "date-fns"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -31,6 +32,7 @@ export default async function DashboardPage() {
     .single()
 
   const accountId = user ? await getSelectedAccountId(supabase, user.id) : null
+  const weekOptions = Array.from({ length: 4 }, (_, index) => { const start = startOfWeek(subWeeks(new Date(), index), { weekStartsOn: 1 }); const end = endOfWeek(start, { weekStartsOn: 1 }); return { value: format(start, 'yyyy-MM-dd'), label: `${format(start, 'MMM d')} – ${format(end, 'MMM d')}` } })
 
   // Fetch all trades for metric calculation - filtered by account
   const tradesQuery = supabase
@@ -221,6 +223,9 @@ export default async function DashboardPage() {
           snapshot={dayToDaySnapshot}
           trend={sevenDayTrend}
           currency={currency}
+          weekOptions={weekOptions}
+          selectedWeek={weekOptions[0].value}
+          onWeekChange={() => {}}
         />
       </div>
 
