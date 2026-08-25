@@ -293,21 +293,9 @@ export default function TradeDetailPage() {
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Duration</p>
             <p className="font-medium text-foreground mt-2">{duration} minutes</p>
           </div>
-          <div className="py-4">
+          <div className="pt-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</p>
             <p className="font-medium text-foreground mt-2 capitalize">{trade.status}</p>
-          </div>
-          <div className="pt-4">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rules Followed</p>
-                <p className="mt-1 text-xs text-muted-foreground">Review your active trading rules for this trade.</p>
-              </div>
-              <span className="text-xs text-muted-foreground">{savingRuleId ? 'Saving…' : `${followedRuleIds.length}/${userRules.length} checked`}</span>
-            </div>
-            <div className="mt-3 flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
-              {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={followedRuleIds.includes(rule.id)} onChange={(event) => handleRuleChange(rule.id, event.target.checked)} disabled={savingRuleId === rule.id} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.rule}</span></span></label>)}
-            </div>
           </div>
         </div>
           </Card>
@@ -347,6 +335,20 @@ export default function TradeDetailPage() {
         </p>
         </Card>
       </div>
+
+      {/* Rules followed */}
+      <Card className="p-4 bg-card border border-border/50">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Rules Followed</h3>
+            <p className="mt-1 text-sm text-muted-foreground">Review your active trading rules for this trade.</p>
+          </div>
+          <span className="text-xs text-muted-foreground">{savingRuleId ? 'Saving…' : `${followedRuleIds.length}/${userRules.length} checked`}</span>
+        </div>
+        <div className="mt-4 flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
+          {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={followedRuleIds.includes(rule.id)} onChange={(event) => handleRuleChange(rule.id, event.target.checked)} disabled={savingRuleId === rule.id} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.rule}</span></span></label>)}
+        </div>
+      </Card>
 
       {/* Screenshot Card */}
       <Card className="p-6 bg-card border border-border/50">
