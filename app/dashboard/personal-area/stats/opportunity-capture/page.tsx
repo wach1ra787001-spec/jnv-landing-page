@@ -1,0 +1,1 @@
+export default function OpportunityCapturePage() { return <main className="space-y-3"><h1 className="text-2xl font-semibold text-foreground">Opportunity Capture</h1><p className="text-sm text-muted-foreground">This personal stats view is reserved for a future update.</p></main> }

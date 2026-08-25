@@ -30,16 +30,6 @@ interface Goal {
   metric_type: string
 }
 
-interface Rule {
-  id: string
-  title: string
-  description?: string
-  priority?: "high" | "medium" | "low"
-  category?: string
-  is_active: boolean
-  tags?: string[]
-}
-
 interface Playbook {
   id: string
   title: string
@@ -56,9 +46,8 @@ interface Playbook {
 
 export default function PersonalAreaPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState<"goals" | "rules" | "playbooks" | "notes">("goals")
+  const [activeTab, setActiveTab] = useState<"goals" | "playbooks" | "notes">("goals")
   const [goals, setGoals] = useState<Goal[]>([])
-  const [rules, setRules] = useState<Rule[]>([])
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
   const [loading, setLoading] = useState(true)
   const [showPlaybookChoice, setShowPlaybookChoice] = useState(false)
@@ -77,13 +66,7 @@ export default function PersonalAreaPage() {
             const data = await res.json()
             setGoals(data)
           }
-        } else if (activeTab === "rules") {
-          const res = await fetch("/api/rules")
-          if (res.ok) {
-            const data = await res.json()
-            setRules(data)
-          }
-        } else if (activeTab === "playbooks") {
+  } else if (activeTab === "playbooks") {
           const res = await fetch("/api/playbooks")
           if (res.ok) {
             const data = await res.json()
@@ -113,18 +96,6 @@ export default function PersonalAreaPage() {
     }
   }
 
-  const deleteRule = async (id: string) => {
-    try {
-      const res = await fetch(`/api/rules/${id}`, { method: "DELETE" })
-      if (res.ok) {
-        setRules(rules.filter(r => r.id !== id))
-        toast.success("Rule deleted")
-      }
-    } catch (error) {
-      toast.error("Failed to delete rule")
-    }
-  }
-
   const deletePlaybook = async (id: string) => {
     try {
       const res = await fetch(`/api/playbooks/${id}`, { method: "DELETE" })
@@ -134,21 +105,6 @@ export default function PersonalAreaPage() {
       }
     } catch (error) {
       toast.error("Failed to delete playbook")
-    }
-  }
-
-  const toggleRuleActive = async (id: string, isActive: boolean) => {
-    try {
-      const res = await fetch(`/api/rules/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_active: !isActive })
-      })
-      if (res.ok) {
-        setRules(rules.map(r => r.id === id ? { ...r, is_active: !r.is_active } : r))
-      }
-    } catch (error) {
-      toast.error("Failed to update rule")
     }
   }
 
@@ -197,13 +153,6 @@ export default function PersonalAreaPage() {
           className="border-b-2"
         >
           Goals
-        </Button>
-        <Button
-          variant={activeTab === "rules" ? "default" : "ghost"}
-          onClick={() => setActiveTab("rules")}
-          className="border-b-2"
-        >
-          Rules
         </Button>
         <Button
           variant={activeTab === "playbooks" ? "default" : "ghost"}
@@ -290,53 +239,6 @@ export default function PersonalAreaPage() {
                             Delete
                           </Button>
                         </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Rules Tab */}
-          {activeTab === "rules" && (
-            <div className="space-y-4">
-              <Button className="gap-2">
-                <Plus className="w-4 h-4" />
-                Add New Rule
-              </Button>
-
-              {rules.length === 0 ? (
-                <Card className="p-12 bg-card border-border text-center">
-                  <p className="text-muted-foreground">No rules yet. Create one to get started!</p>
-                </Card>
-              ) : (
-                <div className="space-y-3">
-                  {rules.map((rule) => (
-                    <Card key={rule.id} className={cn("p-4 bg-card border-border", !rule.is_active && "opacity-60")}>
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <input
-                              type="checkbox"
-                              checked={rule.is_active}
-                              onChange={() => toggleRuleActive(rule.id, rule.is_active)}
-                              className="w-4 h-4 rounded"
-                            />
-                            <h3 className="font-semibold text-foreground">{rule.title}</h3>
-                          </div>
-                          {rule.description && (
-                            <p className="text-sm text-muted-foreground">{rule.description}</p>
-                          )}
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => deleteRule(rule.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
                       </div>
                     </Card>
                   ))}

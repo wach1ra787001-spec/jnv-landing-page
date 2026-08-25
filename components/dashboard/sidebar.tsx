@@ -15,7 +15,6 @@ import {
   TrendingDown,
   BarChart2,
   Target,
-  ShieldCheck,
   BookMarked,
   StickyNote,
   ChevronDown,
@@ -40,7 +39,17 @@ interface DashboardSidebarProps {
 
 const personalAreaSubItems = [
   { href: "/dashboard/personal-area/goals", label: "Goals", icon: Target },
-  { href: "/dashboard/personal-area/rules", label: "Rules", icon: ShieldCheck },
+  {
+    href: "/dashboard/personal-area/stats",
+    label: "Personal Stats",
+    icon: BarChart2,
+    children: [
+      { href: "/dashboard/personal-area/stats/discipline-score", label: "Discipline Score" },
+      { href: "/dashboard/personal-area/stats/opportunity-capture", label: "Opportunity Capture" },
+      { href: "/dashboard/personal-area/stats/appearance-streaks", label: "Appearance Streaks" },
+      { href: "/dashboard/personal-area/stats/users-rde", label: "Users RDE" },
+    ],
+  },
   { href: "/dashboard/personal-area/playbooks", label: "Playbooks", icon: BookMarked },
   { href: "/dashboard/personal-area/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/accounts", label: "Accounts", icon: Wallet },
@@ -68,6 +77,12 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
 
   const isPersonalAreaActive = pathname.startsWith("/dashboard/personal-area") || pathname.startsWith("/dashboard/accounts")
   const [personalAreaOpen, setPersonalAreaOpen] = useState(isPersonalAreaActive)
+  const isPersonalStatsActive = pathname.startsWith("/dashboard/personal-area/stats")
+  const [personalStatsOpen, setPersonalStatsOpen] = useState(isPersonalStatsActive)
+
+  useEffect(() => {
+    if (isPersonalStatsActive) setPersonalStatsOpen(true)
+  }, [isPersonalStatsActive])
 
   // Detect dark mode
   useEffect(() => {
@@ -205,21 +220,19 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
               <div className="ml-4 pl-3 border-l border-border/50 space-y-0.5">
                 {personalAreaSubItems.map((sub) => {
                   const isSubActive = pathname === sub.href || pathname.startsWith(sub.href)
-                  return (
-                    <Link
-                      key={sub.href}
-                      href={sub.href}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-150",
-                        isSubActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground",
-                      )}
-                    >
-                      <sub.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
-                      <span>{sub.label}</span>
-                    </Link>
-                  )
+                  if (sub.children) {
+                    return (
+                      <div key={sub.href}>
+                        <button onClick={() => setPersonalStatsOpen(!personalStatsOpen)} className={cn("w-full flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-150", isSubActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground")}>
+                          <sub.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                          <span className="flex-1 text-left">{sub.label}</span>
+                          <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", personalStatsOpen && "rotate-180")} />
+                        </button>
+                        {personalStatsOpen && <div className="ml-4 pl-3 border-l border-border/50 space-y-0.5">{sub.children.map((child) => <Link key={child.href} href={child.href} className={cn("block px-3 py-1.5 text-xs font-medium transition-all duration-150", pathname === child.href ? "text-primary" : "text-sidebar-foreground/60 hover:text-sidebar-foreground")}>{child.label}</Link>)}</div>}
+                      </div>
+                    )
+                  }
+                  return <Link key={sub.href} href={sub.href} className={cn("flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-150", isSubActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground")}><sub.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} /><span>{sub.label}</span></Link>
                 })}
               </div>
             )}
