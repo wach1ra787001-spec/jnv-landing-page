@@ -10,12 +10,20 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { PlaybookEmptyState } from '@/components/playbooks/empty-state'
 
+interface UserRule {
+  id: string
+  title: string
+  rule?: string
+  description?: string
+  is_active?: boolean
+}
+
 interface Playbook {
   id: string
   title: string
   description: string | { id?: string; title?: string; description?: string }
   strategy_type: string
-  rules: { entry?: string[]; exit?: string[] }
+  rules: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[] }
   tags: (string | { id?: string; title?: string; description?: string })[]
   is_public: boolean
   is_active: boolean
@@ -41,6 +49,8 @@ export default function PlaybooksPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
+  const [userRules, setUserRules] = useState<UserRule[]>([])
+  const [rulesLoading, setRulesLoading] = useState(true)
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -49,9 +59,13 @@ export default function PlaybooksPage() {
     public_display_name: '',
     public_avatar_url: '',
     youtube_links: '',
+    linkedRuleIds: [] as string[],
   })
 
-  useEffect(() => { fetchPlaybooks() }, [])
+  useEffect(() => {
+    fetchPlaybooks()
+    fetch('/api/rules').then(r => r.ok ? r.json() : []).then((rules: UserRule[]) => setUserRules(rules.filter(rule => rule.is_active !== false))).catch(() => setUserRules([])).finally(() => setRulesLoading(false))
+  }, [])
 
   const fetchPlaybooks = async () => {
     try {
@@ -91,6 +105,7 @@ export default function PlaybooksPage() {
         body: JSON.stringify({
           ...form,
           youtube_links: form.youtube_links.split('\n').map(link => link.trim()).filter(Boolean),
+          rules: { linkedRuleIds: form.linkedRuleIds },
         }),
       })
       if (!res.ok) throw new Error()
@@ -121,7 +136,7 @@ export default function PlaybooksPage() {
   }
 
   const handleEdit = (p: Playbook) => {
-    setForm({ title: p.title, description: getDisplayText(p.description), strategy_type: p.strategy_type || '', is_public: p.is_public, public_display_name: p.public_display_name || '', public_avatar_url: p.public_avatar_url || '', youtube_links: (p.youtube_links || []).join('\n') })
+    setForm({ title: p.title, description: getDisplayText(p.description), strategy_type: p.strategy_type || '', is_public: p.is_public, public_display_name: p.public_display_name || '', public_avatar_url: p.public_avatar_url || '', youtube_links: (p.youtube_links || []).join('\n'), linkedRuleIds: p.rules?.linkedRuleIds || [] })
     setEditingId(p.id)
     setShowModal(true)
   }
@@ -158,7 +173,7 @@ export default function PlaybooksPage() {
   const closeModal = () => {
     setShowModal(false)
     setEditingId(null)
-    setForm({ title: '', description: '', strategy_type: '', is_public: false, public_display_name: '', public_avatar_url: '', youtube_links: '' })
+    setForm({ title: '', description: '', strategy_type: '', is_public: false, public_display_name: '', public_avatar_url: '', youtube_links: '', linkedRuleIds: [] })
   }
 
   if (loading) return (
@@ -301,6 +316,13 @@ export default function PlaybooksPage() {
                         </div>
                       )}
 
+                      {p.rules?.linkedRuleIds && p.rules.linkedRuleIds.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Linked Rules</h4>
+                          <ul className="space-y-1">{p.rules.linkedRuleIds.map(id => { const rule = userRules.find(item => item.id === id); return <li key={id} className="text-sm text-foreground">{rule?.title || id}</li> })}</ul>
+                        </div>
+                      )}
+
                       {p.tags && p.tags.length > 0 && (
                         <div className="flex flex-wrap gap-1.5">
                           {p.tags.map((t, i) => {
@@ -357,6 +379,13 @@ export default function PlaybooksPage() {
                   rows={5}
                   className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                 />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-foreground">Rules</label>
+                <p className="text-xs text-muted-foreground">These rules will appear when documenting trades with this playbook.</p>
+                <div className="flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
+                  {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map(rule => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={form.linkedRuleIds.includes(rule.id)} onChange={e => setForm(current => ({ ...current, linkedRuleIds: e.target.checked ? [...new Set([...current.linkedRuleIds, rule.id])] : current.linkedRuleIds.filter(id => id !== rule.id) }))} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-xs text-muted-foreground">{rule.rule || rule.description || 'No description provided.'}</span></span></label>)}
+                </div>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
                 <label className="flex items-start gap-3 cursor-pointer">

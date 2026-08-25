@@ -65,7 +65,13 @@ export default function TradeDetailPage() {
             const rulesResponse = await fetch('/api/rules')
             if (rulesResponse.ok) {
               const rules = await rulesResponse.json()
-              setUserRules(rules.filter((rule: UserRule) => rule.is_active))
+              let playbookRules: any = null
+              if (data.playbook_id) {
+                const playbookResponse = await fetch(`/api/playbooks/${data.playbook_id}`)
+                if (playbookResponse.ok) playbookRules = await playbookResponse.json()
+              }
+              const linkedIds = playbookRules?.rules?.linkedRuleIds
+              setUserRules(rules.filter((rule: UserRule) => rule.is_active && (!Array.isArray(linkedIds) || linkedIds.includes(rule.id))))
             }
           } finally {
             setRulesLoading(false)
