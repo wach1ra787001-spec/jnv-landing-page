@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json()
     const { title, description, rules, strategy_type, tags, is_public, public_display_name, public_avatar_url, youtube_links } = body
+    const linkedRuleIds = Array.isArray(rules?.linkedRuleIds) ? rules.linkedRuleIds.filter((id: unknown): id is string => typeof id === 'string').slice(0, 100) : []
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         title,
         description: description || '',
-        rules: rules || {},
+        rules: { ...(rules && typeof rules === 'object' ? rules : {}), linkedRuleIds },
         strategy_type: strategy_type || 'general',
         tags: tags || [],
         is_public: publicProfile,

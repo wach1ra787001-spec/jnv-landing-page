@@ -38,9 +38,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { account_name, account_type, broker_connection_id, currency, initial_balance, notes } = body
+    const { account_name, account_type, broker_connection_id, currency, initial_balance, notes, risk_percent, risk_amount } = body
+    const parsedRiskPercent = Number(risk_percent)
+    const parsedRiskAmount = Number(risk_amount)
 
-    if (!account_name || !account_type) {
+    if (!account_name || !account_type || !Number.isFinite(parsedRiskPercent) || parsedRiskPercent <= 0 || parsedRiskPercent > 100 || !Number.isFinite(parsedRiskAmount) || parsedRiskAmount <= 0) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -55,6 +57,8 @@ export async function POST(request: NextRequest) {
           currency,
           initial_balance,
           notes,
+          risk_percent: parsedRiskPercent,
+          risk_amount: parsedRiskAmount,
         },
       ])
       .select()

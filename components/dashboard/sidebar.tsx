@@ -15,7 +15,6 @@ import {
   TrendingDown,
   BarChart2,
   Target,
-  ShieldCheck,
   BookMarked,
   StickyNote,
   ChevronDown,
@@ -40,7 +39,7 @@ interface DashboardSidebarProps {
 
 const personalAreaSubItems = [
   { href: "/dashboard/personal-area/goals", label: "Goals", icon: Target },
-  { href: "/dashboard/personal-area/rules", label: "Rules", icon: ShieldCheck },
+  { href: "/dashboard/personal-area/stats", label: "Personal Stats", icon: BarChart2 },
   { href: "/dashboard/personal-area/playbooks", label: "Playbooks", icon: BookMarked },
   { href: "/dashboard/personal-area/notes", label: "Notes", icon: StickyNote },
   { href: "/dashboard/accounts", label: "Accounts", icon: Wallet },
@@ -205,21 +204,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
               <div className="ml-4 pl-3 border-l border-border/50 space-y-0.5">
                 {personalAreaSubItems.map((sub) => {
                   const isSubActive = pathname === sub.href || pathname.startsWith(sub.href)
-                  return (
-                    <Link
-                      key={sub.href}
-                      href={sub.href}
-                      className={cn(
-                        "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-150",
-                        isSubActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground",
-                      )}
-                    >
-                      <sub.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
-                      <span>{sub.label}</span>
-                    </Link>
-                  )
+                  return <Link key={sub.href} href={sub.href} className={cn("flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-150", isSubActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground")}><sub.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} /><span>{sub.label}</span></Link>
                 })}
               </div>
             )}

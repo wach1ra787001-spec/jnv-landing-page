@@ -41,8 +41,13 @@ export interface ConsistencyScoreInputs {
   followedRuleIds?: string[] | null
   /** 1-10 self-rating used only for legacy trades without per-rule selections. */
   disciplineRating: number | null | undefined
-  /** Did the user follow their plan for this trade? Used as proxy for risk-model + trade-model adherence. */
+  /** Did the user follow their plan for this trade? */
   followedPlan: boolean | null | undefined
+  /** Trade risk amount and selected account limits. Missing values are non-compliant. */
+  tradeRiskAmount?: number | null
+  accountRiskAmount?: number | null
+  tradeRiskPercent?: number | null
+  accountRiskPercent?: number | null
   /** Does the trade have any non-empty journal note text? */
   hasMeaningfulNotes: boolean
 }
@@ -63,7 +68,11 @@ const DISCIPLINE_RATING_MAX = 10
 export function calculateTradeConsistencyScore(
   inputs: ConsistencyScoreInputs,
 ): ConsistencyScoreBreakdown {
-  const { hasActiveRules, activeRulesCount = 0, followedRuleIds, disciplineRating, followedPlan, hasMeaningfulNotes } = inputs
+  const { hasActiveRules, activeRulesCount = 0, followedRuleIds, disciplineRating, followedPlan, tradeRiskAmount, accountRiskAmount, tradeRiskPercent, accountRiskPercent, hasMeaningfulNotes } = inputs
+
+  const rulesFollowed = !hasActiveRules || (Array.isArray(followedRuleIds) && activeRulesCount > 0 && followedRuleIds.length >= activeRulesCount)
+  const riskCompliant = typeof tradeRiskAmount === 'number' && typeof accountRiskAmount === 'number' && tradeRiskAmount <= accountRiskAmount && typeof tradeRiskPercent === 'number' && typeof accountRiskPercent === 'number' && tradeRiskPercent <= accountRiskPercent
+  const journalCompleted = hasMeaningfulNotes
 
   // Rules followed (30%) - use the per-trade checklist when available.
   let rulesScore = 0
@@ -78,13 +87,15 @@ export function calculateTradeConsistencyScore(
   }
 
   // Followed risk model (20%) - all-or-nothing.
-  const riskModelScore = followedPlan === true ? CONSISTENCY_WEIGHTS.riskModel : 0
+  const riskModelScore = riskCompliant ? CONSISTENCY_WEIGHTS.riskModel : 0
 
-  // Followed trade model / strategy (20%) - all-or-nothing.
-  const tradeModelScore = followedPlan === true ? CONSISTENCY_WEIGHTS.tradeModel : 0
+  // Trade Model is earned only when rules, risk, and journaling are all complete.
+  const tradeModelScore = rulesFollowed && riskCompliant && journalCompleted && followedPlan === true
+    ? CONSISTENCY_WEIGHTS.tradeModel
+    : 0
 
   // Meaningful journaling (30%) - all-or-nothing.
-  const journalingScore = hasMeaningfulNotes ? CONSISTENCY_WEIGHTS.journaling : 0
+  const journalingScore = journalCompleted ? CONSISTENCY_WEIGHTS.journaling : 0
 
   const total = rulesScore + riskModelScore + tradeModelScore + journalingScore
 
