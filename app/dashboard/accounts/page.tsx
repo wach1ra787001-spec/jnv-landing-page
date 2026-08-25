@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Plus, ArrowRight, Loader2, Wallet, DollarSign } from 'lucide-react'
+import { Plus, ArrowRight, Loader2, Wallet, DollarSign, Settings, Trash2 } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,8 @@ interface Account {
   account_type: string
   currency: string
   initial_balance: number
+  risk_percent: number
+  risk_amount: number
   created_at: string
   is_active: boolean
 }
@@ -41,11 +43,35 @@ export default function AccountsPage() {
   const [creating, setCreating] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
+  const [settingsAccount, setSettingsAccount] = useState<Account | null>(null)
+  const [settingsData, setSettingsData] = useState({ account_name: '', risk_percent: '', risk_amount: '' })
+  const [savingSettings, setSavingSettings] = useState(false)
+
+  const openSettings = (account: Account) => {
+    setSettingsAccount(account)
+    setSettingsData({ account_name: account.account_name, risk_percent: String(account.risk_percent || ''), risk_amount: String(account.risk_amount || '') })
+  }
+
+  const saveSettings = async (event: React.FormEvent) => {
+    event.preventDefault()
+    setSavingSettings(true)
+    const response = await fetch(`/api/accounts/${settingsAccount?.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ account_name: settingsData.account_name.trim(), risk_percent: Number(settingsData.risk_percent), risk_amount: Number(settingsData.risk_amount) }) })
+    if (response.ok) { const updated = await response.json(); setAccounts(current => current.map(account => account.id === updated.id ? updated : account)); setSettingsAccount(null); toast.success('Account updated') } else toast.error('Could not update account')
+    setSavingSettings(false)
+  }
+
+  const deleteAccount = async () => {
+    if (!settingsAccount || !window.confirm(`Deleting ${settingsAccount.account_name} will also permanently delete all trades in this account. Continue?`)) return
+    const response = await fetch(`/api/accounts/${settingsAccount.id}`, { method: 'DELETE' })
+    if (response.ok) { setAccounts(current => current.filter(account => account.id !== settingsAccount.id)); setSettingsAccount(null); toast.success('Account and its trades deleted') } else toast.error('Could not delete account')
+  }
   const [formData, setFormData] = useState({
     account_name: '',
     account_type: 'Manual',
     currency: 'USD',
     initial_balance: '',
+    risk_percent: '1',
+    risk_amount: '',
   })
 
   useEffect(() => {
@@ -74,8 +100,10 @@ export default function AccountsPage() {
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.account_name) {
-      toast.error('Please enter an account name')
+    const riskPercent = Number(formData.risk_percent)
+    const riskAmount = Number(formData.risk_amount)
+    if (!formData.account_name || !Number.isFinite(riskPercent) || riskPercent <= 0 || riskPercent > 100 || !Number.isFinite(riskAmount) || riskAmount <= 0) {
+      toast.error('Enter an account name, risk percentage, and positive risk amount')
       return
     }
 
@@ -89,6 +117,8 @@ export default function AccountsPage() {
           account_type: formData.account_type,
           currency: formData.currency,
           initial_balance: formData.initial_balance ? parseFloat(formData.initial_balance) : null,
+          risk_percent: riskPercent,
+          risk_amount: riskAmount,
         }),
       })
 
@@ -96,7 +126,7 @@ export default function AccountsPage() {
         const newAccount = await res.json()
         setAccounts([newAccount, ...accounts])
         toast.success('Account created successfully')
-        setFormData({ account_name: '', account_type: 'Manual', currency: 'USD', initial_balance: '' })
+        setFormData({ account_name: '', account_type: 'Manual', currency: 'USD', initial_balance: '', risk_percent: '1', risk_amount: '' })
         setDialogOpen(false)
       } else {
         toast.error('Failed to create account')
@@ -272,6 +302,7 @@ export default function AccountsPage() {
                       />
                     </div>
                   </div>
+                  <div className="grid grid-cols-2 gap-3"><div><label className="text-sm font-medium text-foreground">Risk % per trade</label><Input required type="number" min="0.001" max="100" step="0.001" value={formData.risk_percent} onChange={e => setFormData({ ...formData, risk_percent: e.target.value })} className="mt-1" /></div><div><label className="text-sm font-medium text-foreground">Risk amount</label><Input required type="number" min="0.01" step="0.01" value={formData.risk_amount} onChange={e => setFormData({ ...formData, risk_amount: e.target.value })} className="mt-1" /></div></div>
 
                   <Button type="submit" className="w-full" disabled={creating}>
                     {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
@@ -299,6 +330,7 @@ export default function AccountsPage() {
                       <h3 className="font-semibold text-foreground text-lg">{account.account_name}</h3>
                       <p className="text-sm text-muted-foreground">{account.account_type}</p>
                     </div>
+                    <Button type="button" variant="ghost" size="icon" aria-label={`Settings for ${account.account_name}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openSettings(account) }}><Settings className="w-4 h-4" /></Button>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       account.is_active
                         ? 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-300'
@@ -307,7 +339,7 @@ export default function AccountsPage() {
                       {account.is_active ? 'Active' : 'Inactive'}
                     </span>
                   </div>
-
+                  <div className="flex items-center justify-between text-xs text-muted-foreground"><span>Risk limit</span><span>{account.risk_percent}% · {account.currency} {Number(account.risk_amount).toLocaleString()}</span></div>
                   {account.initial_balance && (
                     <div className="flex items-center gap-2 pt-2 border-t border-border/50">
                       <DollarSign className="w-4 h-4 text-muted-foreground" />
@@ -330,6 +362,11 @@ export default function AccountsPage() {
           })}
         </div>
       )}
+      <Dialog open={!!settingsAccount} onOpenChange={(open) => !open && setSettingsAccount(null)}>
+        <DialogContent className="sm:max-w-[425px]"><DialogHeader><DialogTitle>Account settings</DialogTitle><DialogDescription>Update risk parameters or delete this account.</DialogDescription></DialogHeader>
+          <form onSubmit={saveSettings} className="space-y-4"><div><label className="text-sm font-medium">Account Name</label><Input value={settingsData.account_name} onChange={e => setSettingsData({ ...settingsData, account_name: e.target.value })} /></div><div className="grid grid-cols-2 gap-3"><div><label className="text-sm font-medium">Risk %</label><Input type="number" min="0.001" max="100" step="0.001" value={settingsData.risk_percent} onChange={e => setSettingsData({ ...settingsData, risk_percent: e.target.value })} /></div><div><label className="text-sm font-medium">Risk amount</label><Input type="number" min="0.01" step="0.01" value={settingsData.risk_amount} onChange={e => setSettingsData({ ...settingsData, risk_amount: e.target.value })} /></div></div><Button type="submit" className="w-full" disabled={savingSettings}>{savingSettings ? 'Saving…' : 'Save changes'}</Button><Button type="button" variant="destructive" className="w-full" onClick={deleteAccount}><Trash2 className="mr-2 h-4 w-4" />Delete account and trades</Button></form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

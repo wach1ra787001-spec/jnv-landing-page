@@ -46,13 +46,14 @@ export async function PATCH(
     }
 
     const body = await request.json()
+    const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
+    if (typeof body.account_name === 'string' && body.account_name.trim()) update.account_name = body.account_name.trim()
+    if (body.risk_percent !== undefined) { const value = Number(body.risk_percent); if (!Number.isFinite(value) || value <= 0 || value > 100) return NextResponse.json({ error: 'Invalid risk percentage' }, { status: 400 }); update.risk_percent = value }
+    if (body.risk_amount !== undefined) { const value = Number(body.risk_amount); if (!Number.isFinite(value) || value <= 0) return NextResponse.json({ error: 'Invalid risk amount' }, { status: 400 }); update.risk_amount = value }
 
     const { data: account, error: updateError } = await supabase
       .from('accounts')
-      .update({
-        ...body,
-        updated_at: new Date().toISOString(),
-      })
+      .update(update)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()
@@ -112,6 +113,9 @@ export async function DELETE(
           .eq('id', user.id)
       }
     }
+
+    const { error: tradesError } = await supabase.from('trades').delete().eq('account_id', id).eq('user_id', user.id)
+    if (tradesError) return NextResponse.json({ error: 'Failed to delete account trades' }, { status: 500 })
 
     const { error } = await supabase
       .from('accounts')
