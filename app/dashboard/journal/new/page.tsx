@@ -42,6 +42,8 @@ const DEFAULT_FORM = {
   emotion_before:'',
   notes:         '',
   account_id:    '',
+  playbook_id:   '',
+  followed_rule_ids: [] as string[],
 }
 
 const toDbDirection = (d: string) => d === 'buy' ? 'long' : 'short'
@@ -58,10 +60,12 @@ export default function AddNewTradePage() {
   const [loadingAccounts, setLoadingAccounts] = useState(true)
   const [playbooks, setPlaybooks] = useState<any[]>([])
   const [loadingPlaybooks, setLoadingPlaybooks] = useState(true)
+  const [userRules, setUserRules] = useState<any[]>([])
 
   useEffect(() => {
     fetchAccounts()
     fetchPlaybooks()
+    fetch('/api/rules').then((response) => response.ok ? response.json() : []).then(setUserRules).catch(() => setUserRules([]))
   }, [])
 
   const fetchAccounts = async () => {
@@ -185,6 +189,8 @@ export default function AddNewTradePage() {
         status: 'closed',
         screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : null,
         account_id: formData.account_id,
+        playbook_id: formData.playbook_id || null,
+        followed_rule_ids: formData.followed_rule_ids,
       }
 
       const response = await fetch('/api/trades', {
@@ -509,23 +515,22 @@ export default function AddNewTradePage() {
             <div>
               <label className="text-sm font-medium text-foreground">Strategy</label>
               <select
-                value={formData.strategy}
-                onChange={(e) => handleChange('strategy', e.target.value)}
+                onChange={(e) => { const selected = playbooks.find((playbook) => playbook.id === e.target.value); handleChange('playbook_id', e.target.value); handleChange('strategy', selected?.title || '') ; handleChange('followed_rule_ids', []) }}
                 className="mt-2 w-full px-3 py-2 rounded-md border border-input bg-background text-foreground"
+                value={formData.playbook_id}
                 disabled={loadingPlaybooks}
               >
                 <option value="">Select a strategy or playbook</option>
                 {playbooks.map((playbook) => (
-                  <option key={playbook.id} value={playbook.title}>
+                  <option key={playbook.id} value={playbook.id}>
                     {playbook.title}
                   </option>
                 ))}
               </select>
               {playbooks.length === 0 && !loadingPlaybooks && (
-                <p className="text-xs text-muted-foreground mt-2">
-                  No playbooks found. Create a playbook to select strategies.
-                </p>
+                <p className="text-xs text-muted-foreground mt-2">No playbooks found. Create a playbook to select strategies.</p>
               )}
+              {formData.playbook_id && (() => { const playbook = playbooks.find((item) => item.id === formData.playbook_id); const linkedIds = playbook?.rules?.linkedRuleIds || []; const customRules = playbook?.rules?.custom || []; const linkedRules = linkedIds.map((id: string) => ({ id, label: userRules.find((item) => item.id === id)?.title || id })); return <div className="mt-4 rounded-lg border border-border/50 bg-muted/20 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-medium text-foreground">Rules to follow</p><span className="text-xs text-muted-foreground">{formData.followed_rule_ids.length}/{linkedIds.length + customRules.length} followed</span></div><div className="space-y-2">{[...linkedRules, ...customRules.map((rule: string, index: number) => ({ id: `custom-${index}`, label: rule }))].map((rule) => <label key={rule.id} className="flex items-start gap-3 rounded-md p-2 hover:bg-muted/40"><input type="checkbox" checked={formData.followed_rule_ids.includes(rule.id)} onChange={(e) => handleChange('followed_rule_ids', e.target.checked ? [...formData.followed_rule_ids, rule.id] : formData.followed_rule_ids.filter((id: string) => id !== rule.id))} className="mt-0.5 size-4 accent-primary" /><span className="text-sm text-foreground">{rule.label}</span></label>)}</div></div> })()}
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">Emotion Before Trade</label>
