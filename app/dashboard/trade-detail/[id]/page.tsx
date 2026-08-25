@@ -10,6 +10,13 @@ import { TradingViewChart, type SingleBarData } from "@/components/tradingview-c
 import { cn } from "@/lib/utils"
 import { appToast } from "@/lib/toast-utils"
 
+interface UserRule {
+  id: string
+  title: string
+  rule: string
+  is_active: boolean
+}
+
 interface Trade {
   id: string
   symbol: string
@@ -40,6 +47,10 @@ export default function TradeDetailPage() {
   const [uploading, setUploading] = useState(false)
   const [deletingUrl, setDeletingUrl] = useState<string | null>(null)
   const [confirmDeleteUrl, setConfirmDeleteUrl] = useState<string | null>(null)
+  const [userRules, setUserRules] = useState<UserRule[]>([])
+  const [rulesLoading, setRulesLoading] = useState(true)
+  const [followedRules, setFollowedRules] = useState(false)
+  const [savingRules, setSavingRules] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -49,6 +60,16 @@ export default function TradeDetailPage() {
         if (response.ok) {
           const data = await response.json()
           setTrade(data)
+          setFollowedRules(Boolean(data.followed_rules))
+          try {
+            const rulesResponse = await fetch('/api/rules')
+            if (rulesResponse.ok) {
+              const rules = await rulesResponse.json()
+              setUserRules(rules.filter((rule: UserRule) => rule.is_active))
+            }
+          } finally {
+            setRulesLoading(false)
+          }
           
           // Generate signed URLs for private blob screenshots
           if (data.screenshot_urls && data.screenshot_urls.length > 0) {
@@ -117,6 +138,26 @@ export default function TradeDetailPage() {
       if (fileInputRef.current) {
         fileInputRef.current.value = ''
       }
+    }
+  }
+
+  const handleFollowedRulesChange = async (checked: boolean) => {
+    const previous = followedRules
+    setFollowedRules(checked)
+    setSavingRules(true)
+    try {
+      const response = await fetch(`/api/trades/${tradeId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ followed_rules: checked }),
+      })
+      if (!response.ok) throw new Error('Failed to save rule status')
+      setTrade((current) => current ? { ...current, followed_rules: checked } : current)
+    } catch {
+      setFollowedRules(previous)
+      appToast.tradeSaveFailed()
+    } finally {
+      setSavingRules(false)
     }
   }
 
@@ -209,8 +250,8 @@ export default function TradeDetailPage() {
         <div className="flex min-w-0 flex-col gap-4">
           {/* Trade Details */}
           <Card className="flex-1 p-4 bg-card border border-border/50">
-        <div className="flex flex-col gap-4">
-          <div>
+        <div className="flex flex-col divide-y divide-border/50">
+          <div className="pb-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Direction</p>
             <div className="flex items-center gap-2 mt-2">
               {isLong ? (
@@ -221,15 +262,15 @@ export default function TradeDetailPage() {
               <p className="font-medium text-foreground">{directionDisplay}</p>
             </div>
           </div>
-          <div>
+          <div className="py-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entry Price</p>
             <p className="font-medium text-foreground mt-2">{trade.entry_price.toFixed(4)}</p>
           </div>
-          <div>
+          <div className="py-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Exit Price</p>
             <p className="font-medium text-foreground mt-2">{trade.exit_price.toFixed(4)}</p>
           </div>
-          <div>
+          <div className="pt-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quantity</p>
             <p className="font-medium text-foreground mt-2">{trade.quantity}</p>
           </div>
@@ -238,22 +279,37 @@ export default function TradeDetailPage() {
 
           {/* Timeline */}
           <Card className="flex-1 p-4 bg-card border border-border/50">
-        <div className="flex flex-col gap-4">
-          <div>
+        <div className="flex flex-col divide-y divide-border/50">
+          <div className="pb-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entry Time</p>
             <p className="font-medium text-foreground mt-2">{entryDate.toLocaleString()}</p>
           </div>
-          <div>
+          <div className="py-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Exit Time</p>
             <p className="font-medium text-foreground mt-2">{exitDate.toLocaleString()}</p>
           </div>
-          <div>
+          <div className="py-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Duration</p>
             <p className="font-medium text-foreground mt-2">{duration} minutes</p>
           </div>
-          <div>
+          <div className="py-4">
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</p>
             <p className="font-medium text-foreground mt-2 capitalize">{trade.status}</p>
+          </div>
+          <div className="pt-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rules Followed</p>
+                <p className="mt-1 text-xs text-muted-foreground">Review your active trading rules for this trade.</p>
+              </div>
+              <label className="flex shrink-0 items-center gap-2 text-sm text-foreground">
+                <input type="checkbox" checked={followedRules} onChange={(event) => handleFollowedRulesChange(event.target.checked)} disabled={savingRules} className="size-4 accent-primary" />
+                <span>{savingRules ? 'Saving…' : 'I followed them'}</span>
+              </label>
+            </div>
+            <div className="mt-3 flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
+              {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <div key={rule.id} className="p-3"><p className="text-sm font-medium text-foreground">{rule.title}</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">{rule.rule}</p></div>)}
+            </div>
           </div>
         </div>
           </Card>
