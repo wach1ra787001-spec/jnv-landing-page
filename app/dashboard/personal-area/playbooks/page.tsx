@@ -23,7 +23,7 @@ interface Playbook {
   title: string
   description: string | { id?: string; title?: string; description?: string }
   strategy_type: string
-  rules: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[] }
+  rules: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[]; custom?: string[] }
   tags: (string | { id?: string; title?: string; description?: string })[]
   is_public: boolean
   is_active: boolean
@@ -60,6 +60,7 @@ export default function PlaybooksPage() {
     public_avatar_url: '',
     youtube_links: '',
     linkedRuleIds: [] as string[],
+    customRules: [''],
   })
 
   useEffect(() => {
@@ -105,7 +106,7 @@ export default function PlaybooksPage() {
         body: JSON.stringify({
           ...form,
           youtube_links: form.youtube_links.split('\n').map(link => link.trim()).filter(Boolean),
-          rules: { linkedRuleIds: form.linkedRuleIds },
+          rules: { linkedRuleIds: form.linkedRuleIds, custom: form.customRules.map(rule => rule.trim()).filter(Boolean) },
         }),
       })
       if (!res.ok) throw new Error()
@@ -136,7 +137,7 @@ export default function PlaybooksPage() {
   }
 
   const handleEdit = (p: Playbook) => {
-    setForm({ title: p.title, description: getDisplayText(p.description), strategy_type: p.strategy_type || '', is_public: p.is_public, public_display_name: p.public_display_name || '', public_avatar_url: p.public_avatar_url || '', youtube_links: (p.youtube_links || []).join('\n'), linkedRuleIds: p.rules?.linkedRuleIds || [] })
+    setForm({ title: p.title, description: getDisplayText(p.description), strategy_type: p.strategy_type || '', is_public: p.is_public, public_display_name: p.public_display_name || '', public_avatar_url: p.public_avatar_url || '', youtube_links: (p.youtube_links || []).join('\n'), linkedRuleIds: p.rules?.linkedRuleIds || [], customRules: p.rules?.custom?.length ? p.rules.custom : [''] })
     setEditingId(p.id)
     setShowModal(true)
   }
@@ -173,7 +174,7 @@ export default function PlaybooksPage() {
   const closeModal = () => {
     setShowModal(false)
     setEditingId(null)
-    setForm({ title: '', description: '', strategy_type: '', is_public: false, public_display_name: '', public_avatar_url: '', youtube_links: '', linkedRuleIds: [] })
+    setForm({ title: '', description: '', strategy_type: '', is_public: false, public_display_name: '', public_avatar_url: '', youtube_links: '', linkedRuleIds: [], customRules: [''] })
   }
 
   if (loading) return (
@@ -383,8 +384,9 @@ export default function PlaybooksPage() {
               <div className="space-y-2">
                 <label className="text-sm font-medium text-foreground">Rules</label>
                 <p className="text-xs text-muted-foreground">These rules will appear when documenting trades with this playbook.</p>
-                <div className="flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
-                  {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map(rule => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={form.linkedRuleIds.includes(rule.id)} onChange={e => setForm(current => ({ ...current, linkedRuleIds: e.target.checked ? [...new Set([...current.linkedRuleIds, rule.id])] : current.linkedRuleIds.filter(id => id !== rule.id) }))} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-xs text-muted-foreground">{rule.rule || rule.description || 'No description provided.'}</span></span></label>)}
+                <div className="space-y-2">
+                  {form.customRules.map((rule, index) => <div key={index} className="flex gap-2"><Input placeholder="e.g., Only trade with the trend" value={rule} onChange={e => setForm(current => ({ ...current, customRules: current.customRules.map((item, i) => i === index ? e.target.value : item) }))} /><Button type="button" variant="ghost" size="sm" onClick={() => setForm(current => ({ ...current, customRules: current.customRules.filter((_, i) => i !== index) }))} disabled={form.customRules.length === 1}>Remove</Button></div>)}
+                  <Button type="button" variant="outline" size="sm" onClick={() => setForm(current => ({ ...current, customRules: [...current.customRules, ''] }))}>Add rule</Button>
                 </div>
               </div>
               <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
