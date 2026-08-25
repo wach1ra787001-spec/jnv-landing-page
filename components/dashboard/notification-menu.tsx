@@ -28,7 +28,7 @@ export function NotificationMenu() {
 
   useEffect(() => {
     let active = true
-    fetch(`/api/notifications?ts=${Date.now()}`, { cache: "no-store", headers: { "Cache-Control": "no-cache" } })
+    fetch(`/api/notifications?ts=${Date.now()}`, { method: "POST", cache: "no-store", headers: { "Cache-Control": "no-cache" } })
       .then((response) => response.ok ? response.json() : { notifications: [] })
       .then((data) => { if (active) { setNotifications(Array.isArray(data.notifications) ? data.notifications : []); setLoading(false) } })
       .catch(() => { if (active) { setNotifications([]); setLoading(false) } })
