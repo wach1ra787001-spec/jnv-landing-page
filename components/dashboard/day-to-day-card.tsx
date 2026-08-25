@@ -125,7 +125,7 @@ export function DayToDayCard({ snapshot, trend, currency, weekOptions, selectedW
           <h3 className="text-base sm:text-lg font-semibold text-foreground">Day-to-Day</h3>
           <p className="text-xs text-muted-foreground mt-0.5">Your daily trading health check</p>
         </div>
-        <div className="flex items-center gap-2 shrink-0"><Select defaultValue={selectedWeek}><SelectTrigger className="h-8 w-[132px] text-xs"><SelectValue placeholder="Select week" /></SelectTrigger><SelectContent>{weekOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select><Badge variant="secondary" className={cn("shrink-0 text-[10px] sm:text-xs border-0", journalConfig.className)}>
+        <div className="flex items-center gap-2 shrink-0"><Select defaultValue={selectedWeek} onValueChange={(value) => { const url = new URL(window.location.href); url.searchParams.set('dayWeek', value); window.location.href = url.toString() }}><SelectTrigger className="h-8 w-[132px] text-xs"><SelectValue placeholder="Select week" /></SelectTrigger><SelectContent>{weekOptions.map((option) => <SelectItem key={option.value} value={option.value}>{option.label}</SelectItem>)}</SelectContent></Select><Badge variant="secondary" className={cn("shrink-0 text-[10px] sm:text-xs border-0", journalConfig.className)}>
           {journalConfig.label}
         </Badge></div>
       </div>

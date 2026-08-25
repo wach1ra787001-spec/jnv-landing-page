@@ -20,7 +20,10 @@ import { calculateMonthlyGrowthTimeline } from "@/lib/monthly-growth-analysis"
 import { getSelectedAccountId } from "@/lib/get-selected-account"
 import { endOfWeek, format, startOfWeek, subWeeks } from "date-fns"
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ dayWeek?: string }> }) {
+  const { dayWeek } = await searchParams
+  const selectedWeekDate = dayWeek ? new Date(`${dayWeek}T12:00:00`) : new Date()
+  const analysisDate = Number.isNaN(selectedWeekDate.getTime()) ? new Date() : selectedWeekDate
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -100,7 +103,7 @@ export default async function DashboardPage() {
       tradeIds.length > 0
         ? supabase
             .from("trade_journal")
-            .select("trade_id, discipline_rating, followed_plan, followed_rule_ids, content, session_notes, lessons_learned, mistakes, what_went_well")
+            .select("trade_id, discipline_rating, followed_plan, content, session_notes, lessons_learned, mistakes, what_went_well")
             .eq("user_id", user?.id)
             .in("trade_id", tradeIds)
         : Promise.resolve({ data: [] }),
@@ -144,7 +147,7 @@ export default async function DashboardPage() {
     return {
       hasActiveRules: linkedRuleIds.length > 0,
       activeRulesCount: linkedRuleIds.length,
-      followedRuleIds: journal?.followed_rule_ids,
+      followedRuleIds: undefined,
       disciplineRating: journal?.discipline_rating,
       followedPlan: journal?.followed_plan,
       tradeRiskAmount,
@@ -166,12 +169,14 @@ export default async function DashboardPage() {
     journalByTradeId,
     notesByTradeId,
     hasActiveRules,
+    analysisDate,
   )
   const sevenDayTrend = computeSevenDayTrend(
     allTrades || [],
     journalByTradeId,
     notesByTradeId,
     hasActiveRules,
+    analysisDate,
   )
 
   // Calculate monthly growth timeline for current and previous 2 months
@@ -224,7 +229,7 @@ export default async function DashboardPage() {
           trend={sevenDayTrend}
           currency={currency}
           weekOptions={weekOptions}
-          selectedWeek={weekOptions[0].value}
+          selectedWeek={format(startOfWeek(analysisDate, { weekStartsOn: 1 }), 'yyyy-MM-dd')}
         />
       </div>
 
