@@ -16,6 +16,7 @@ interface PlaybookData {
   label: string
   entryCriteria: Array<{ id: string; title: string; description: string }>
   exitCriteria: Array<{ id: string; title: string; description: string }>
+  linkedRuleIds: string[]
 }
 
 interface Goal {
@@ -163,7 +164,8 @@ export default function PersonalAreaPage() {
           color: data.color,
           rules: {
             entry: data.entryCriteria,
-            exit: data.exitCriteria
+            exit: data.exitCriteria,
+            linkedRuleIds: data.linkedRuleIds
           }
         })
       })

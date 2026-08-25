@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,8 @@ interface Rule {
   id: string
   title: string
   description: string
+  rule?: string
+  is_active?: boolean
 }
 
 interface PlaybookData {
@@ -18,18 +20,30 @@ interface PlaybookData {
   label: string
   entryCriteria: Rule[]
   exitCriteria: Rule[]
+  linkedRuleIds: string[]
 }
 
 const colors = ['#FF6B35', '#004E89', '#F7931E', '#06A77D', '#D62828', '#F77F00']
 
-export function CreatePlaybookForm({ onSubmit, onCancel }: { onSubmit: (data: PlaybookData) => void; onCancel: () => void }) {
+export function CreatePlaybookForm({ onSubmit, onCancel }: { onSubmit: (data: PlaybookData) => void | Promise<void>; onCancel: () => void }) {
   const [data, setData] = useState<PlaybookData>({
     name: '',
     color: colors[0],
     label: '',
     entryCriteria: [{ id: '1', title: '', description: '' }],
     exitCriteria: [{ id: '1', title: '', description: '' }],
+    linkedRuleIds: [],
   })
+  const [userRules, setUserRules] = useState<Rule[]>([])
+  const [rulesLoading, setRulesLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/rules')
+      .then((response) => response.ok ? response.json() : [])
+      .then((rules: Rule[]) => setUserRules(rules.filter((rule) => rule.is_active)))
+      .catch(() => setUserRules([]))
+      .finally(() => setRulesLoading(false))
+  }, [])
 
   const addRule = (type: 'entry' | 'exit') => {
     const newId = Date.now().toString()
@@ -46,7 +60,7 @@ export function CreatePlaybookForm({ onSubmit, onCancel }: { onSubmit: (data: Pl
     const key = type === 'entry' ? 'entryCriteria' : 'exitCriteria'
     setData(prev => ({
       ...prev,
-      [key]: prev[key as keyof PlaybookData].map(rule =>
+      [key]: (prev[key as 'entryCriteria' | 'exitCriteria'] as Rule[]).map((rule: Rule) =>
         rule.id === id ? { ...rule, [field]: value } : rule
       )
     }))
@@ -56,7 +70,7 @@ export function CreatePlaybookForm({ onSubmit, onCancel }: { onSubmit: (data: Pl
     const key = type === 'entry' ? 'entryCriteria' : 'exitCriteria'
     setData(prev => ({
       ...prev,
-      [key]: prev[key as keyof PlaybookData].filter(rule => rule.id !== id)
+      [key]: (prev[key as 'entryCriteria' | 'exitCriteria'] as Rule[]).filter((rule: Rule) => rule.id !== id)
     }))
   }
 
@@ -112,6 +126,14 @@ export function CreatePlaybookForm({ onSubmit, onCancel }: { onSubmit: (data: Pl
                 onChange={(e) => setData({ ...data, label: e.target.value })}
                 className="bg-input border border-border/50"
               />
+            </div>
+          </div>
+
+          <div className="border-t border-border/50 pt-5">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Rules</h3>
+            <p className="text-sm text-muted-foreground mb-4">Select the existing rules that this playbook follows.</p>
+            <div className="flex flex-col divide-y divide-border/50 rounded-lg border border-border/50">
+              {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={data.linkedRuleIds.includes(rule.id)} onChange={(event) => setData((current) => ({ ...current, linkedRuleIds: event.target.checked ? [...current.linkedRuleIds, rule.id] : current.linkedRuleIds.filter((id) => id !== rule.id) }))} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.description || rule.rule || 'No description provided.'}</span></span></label>)}
             </div>
           </div>
         </div>
