@@ -49,8 +49,8 @@ export default function TradeDetailPage() {
   const [confirmDeleteUrl, setConfirmDeleteUrl] = useState<string | null>(null)
   const [userRules, setUserRules] = useState<UserRule[]>([])
   const [rulesLoading, setRulesLoading] = useState(true)
-  const [followedRules, setFollowedRules] = useState(false)
-  const [savingRules, setSavingRules] = useState(false)
+  const [followedRuleIds, setFollowedRuleIds] = useState<string[]>([])
+  const [savingRuleId, setSavingRuleId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -60,7 +60,7 @@ export default function TradeDetailPage() {
         if (response.ok) {
           const data = await response.json()
           setTrade(data)
-          setFollowedRules(Boolean(data.followed_rules))
+          setFollowedRuleIds(Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : [])
           try {
             const rulesResponse = await fetch('/api/rules')
             if (rulesResponse.ok) {
@@ -126,7 +126,7 @@ export default function TradeDetailPage() {
       if (response.ok) {
         const data = await response.json()
         setSignedScreenshotUrls([...signedScreenshotUrls, ...data.urls])
-        appToast.tradeSaved(trade?.symbol || 'Trade', '0', '0', true, 'Screenshot(s) added successfully')
+        appToast.tradeSaved(trade?.symbol || 'Trade', '0', '0', true)
       } else {
         appToast.tradeSaveFailed()
       }
@@ -141,23 +141,24 @@ export default function TradeDetailPage() {
     }
   }
 
-  const handleFollowedRulesChange = async (checked: boolean) => {
-    const previous = followedRules
-    setFollowedRules(checked)
-    setSavingRules(true)
+  const handleRuleChange = async (ruleId: string, checked: boolean) => {
+    const previous = followedRuleIds
+    const next = checked ? [...new Set([...previous, ruleId])] : previous.filter((id) => id !== ruleId)
+    setFollowedRuleIds(next)
+    setSavingRuleId(ruleId)
     try {
       const response = await fetch(`/api/trades/${tradeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ followed_rules: checked }),
+        body: JSON.stringify({ followed_rule_ids: next }),
       })
       if (!response.ok) throw new Error('Failed to save rule status')
-      setTrade((current) => current ? { ...current, followed_rules: checked } : current)
+      setTrade((current) => current ? { ...current, followed_rule_ids: next, followed_rules: next.length > 0 } : current)
     } catch {
-      setFollowedRules(previous)
+      setFollowedRuleIds(previous)
       appToast.tradeSaveFailed()
     } finally {
-      setSavingRules(false)
+      setSavingRuleId(null)
     }
   }
 
@@ -171,7 +172,7 @@ export default function TradeDetailPage() {
       })
       if (response.ok) {
         setSignedScreenshotUrls(prev => prev.filter(u => u !== url))
-        appToast.tradeSaved(trade?.symbol || 'Trade', '0', '0', true, 'Screenshot deleted')
+        appToast.tradeSaved(trade?.symbol || 'Trade', '0', '0', true)
       } else {
         appToast.tradeSaveFailed()
       }
@@ -302,13 +303,10 @@ export default function TradeDetailPage() {
                 <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Rules Followed</p>
                 <p className="mt-1 text-xs text-muted-foreground">Review your active trading rules for this trade.</p>
               </div>
-              <label className="flex shrink-0 items-center gap-2 text-sm text-foreground">
-                <input type="checkbox" checked={followedRules} onChange={(event) => handleFollowedRulesChange(event.target.checked)} disabled={savingRules} className="size-4 accent-primary" />
-                <span>{savingRules ? 'Saving…' : 'I followed them'}</span>
-              </label>
+              <span className="text-xs text-muted-foreground">{savingRuleId ? 'Saving…' : `${followedRuleIds.length}/${userRules.length} checked`}</span>
             </div>
             <div className="mt-3 flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
-              {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <div key={rule.id} className="p-3"><p className="text-sm font-medium text-foreground">{rule.title}</p><p className="mt-1 text-sm leading-relaxed text-muted-foreground">{rule.rule}</p></div>)}
+              {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={followedRuleIds.includes(rule.id)} onChange={(event) => handleRuleChange(rule.id, event.target.checked)} disabled={savingRuleId === rule.id} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.rule}</span></span></label>)}
             </div>
           </div>
         </div>
