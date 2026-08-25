@@ -121,6 +121,7 @@ interface TradingViewChartProps {
   replayDatafeed?: object
   /** Called once the widget is fully ready — receives the widget instance */
   onReady?: (widget: any) => void
+  onClick?: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -174,12 +175,15 @@ export function TradingViewChart({
   singleBar,
   replayDatafeed,
   onReady,
+  onClick,
 }: TradingViewChartProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const { theme: currentTheme } = useTheme()
   const widgetRef = useRef<any>(null)
+  const onClickRef = useRef(onClick)
+  useEffect(() => { onClickRef.current = onClick }, [onClick])
   // Store theme in a ref so it never triggers chart re-initialization
   const themeRef = useRef(currentTheme)
   useEffect(() => { themeRef.current = currentTheme }, [currentTheme])
@@ -303,6 +307,9 @@ export function TradingViewChart({
             return
           }
           setIsLoading(false)
+          try {
+            if (onClickRef.current) widget.activeChart()?.subscribeClick(null, () => onClickRef.current?.())
+          } catch (_) {}
           onReady?.(widget)
         })
 

@@ -542,14 +542,17 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
             theme="auto"
             height="100%"
             replayDatafeed={datafeedRef.current ?? undefined}
-            onReady={(w) => { widgetRef.current = w }}
+            onReady={handleChartReady}
+            onClick={handleChartClickCapture}
           />
           </div>
-          {session?.status === 'running' && <BacktestRiskPanel symbol={session.symbol} values={riskValues} onChange={setRiskValues} onPlaceTrade={async (position) => {
-            const response = await fetch(`/api/backtest/sessions/${id}/trades`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ direction: position.direction, entry_price: position.entry, exit_price: null, stop_loss: position.stopLoss, take_profit: position.takeProfit, lot_size: position.positionSize, entry_time: new Date(currentTime * 1000).toISOString(), exit_time: null, notes: `Risk ${position.riskPercent}% | R:R 1:${position.riskReward.toFixed(2)}` }) })
+          {session?.status === 'running' && <BacktestRiskPanel symbol={session.symbol} position={position} placementMode={placementMode} onArmPlacement={(direction) => { if (!hasActivePosition(position)) { setPosition({ ...position, status: 'placing', direction }); setPlacementMode(direction) } }} onCancelPlacement={() => { setPlacementMode(null); setPosition((prev) => prev.status === 'placing' ? IDLE_POSITION : prev) }} onUpdateLevel={(key, value) => setPosition((prev) => updateLevel(prev, key, value, getInstrumentRiskMetadata(session.symbol)))} onSetDirection={(direction) => setPosition((prev) => ({ ...prev, direction }))} onPlaceTrade={async (riskPosition) => {
+            if (hasActivePosition(position)) return
+            const response = await fetch(`/api/backtest/sessions/${id}/trades`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ direction: riskPosition.direction === 'long' ? 'buy' : 'sell', entry_price: riskPosition.entry, exit_price: null, stop_loss: riskPosition.stopLoss, take_profit: riskPosition.takeProfit, lot_size: riskPosition.positionSize, entry_time: new Date((position.entryTime ?? currentTime) * 1000).toISOString(), exit_time: null, notes: `Risk ${riskPosition.riskPercent}% | R:R 1:${riskPosition.riskReward.toFixed(2)}` }) })
             if (!response.ok) return
             const createdTrade = await response.json()
-            activeTradeRef.current = { id: createdTrade.id, direction: position.direction, stopLoss: position.stopLoss, takeProfit: position.takeProfit }
+            activeTradeRef.current = { id: createdTrade.id, direction: riskPosition.direction, stopLoss: riskPosition.stopLoss, takeProfit: riskPosition.takeProfit }
+            setPosition((prev) => ({ ...prev, status: 'open', tradeId: createdTrade.id }))
             controllerRef.current?.play(speed)
             setIsPlaying(true)
           }} />}
