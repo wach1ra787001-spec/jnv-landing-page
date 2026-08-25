@@ -204,9 +204,12 @@ export default function TradeDetailPage() {
         </div>
       </div>
 
-      {/* Trade Details */}
-      <Card className="p-6 bg-card border border-border/50">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* Details rail + chart workspace */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(180px,1fr)_minmax(0,9fr)] lg:items-stretch">
+        <div className="flex min-w-0 flex-col gap-4">
+          {/* Trade Details */}
+          <Card className="flex-1 p-4 bg-card border border-border/50">
+        <div className="flex flex-col gap-4">
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Direction</p>
             <div className="flex items-center gap-2 mt-2">
@@ -233,9 +236,9 @@ export default function TradeDetailPage() {
         </div>
       </Card>
 
-      {/* Timeline */}
-      <Card className="p-6 bg-card border border-border/50">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Timeline */}
+          <Card className="flex-1 p-4 bg-card border border-border/50">
+        <div className="flex flex-col gap-4">
           <div>
             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Entry Time</p>
             <p className="font-medium text-foreground mt-2">{entryDate.toLocaleString()}</p>
@@ -253,10 +256,11 @@ export default function TradeDetailPage() {
             <p className="font-medium text-foreground mt-2 capitalize">{trade.status}</p>
           </div>
         </div>
-      </Card>
+          </Card>
+        </div>
 
-      {/* TradingView Chart Card */}
-      <Card className="p-6 bg-card border border-border/50">
+        {/* TradingView Chart Card */}
+        <Card className="min-w-0 p-4 bg-card border border-border/50 lg:min-h-[620px]">
         <h3 className="text-lg font-semibold text-foreground mb-4">Chart Analysis</h3>
         <TradingViewChart
           symbol={trade.symbol}
@@ -287,7 +291,8 @@ export default function TradeDetailPage() {
             TradingView
           </a>
         </p>
-      </Card>
+        </Card>
+      </div>
 
       {/* Screenshot Card */}
       <Card className="p-6 bg-card border border-border/50">
