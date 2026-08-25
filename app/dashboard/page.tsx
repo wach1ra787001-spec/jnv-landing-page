@@ -225,7 +225,6 @@ export default async function DashboardPage() {
           currency={currency}
           weekOptions={weekOptions}
           selectedWeek={weekOptions[0].value}
-          onWeekChange={() => {}}
         />
       </div>
 
