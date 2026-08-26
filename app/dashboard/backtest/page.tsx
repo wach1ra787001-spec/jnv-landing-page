@@ -308,7 +308,9 @@ export default function BacktestPage() {
       const payload = await res.json().catch(() => null)
       if (!res.ok) {
         const message = res.status === 429
-          ? "Backtest creation is temporarily rate-limited. Wait a moment and submit once more."
+          ? payload?.code === "MONTHLY_QUOTA_EXCEEDED"
+            ? `${payload.error} Your plan allows ${payload.limit} backtest creations per month.`
+            : `${payload?.error || "Backtest creation is temporarily rate-limited."} Please wait a moment and try again.`
           : payload?.error || "Could not create the backtest session."
         throw new Error(message)
       }

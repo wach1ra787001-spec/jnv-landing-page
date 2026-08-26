@@ -79,16 +79,19 @@ export async function updateSession(request: NextRequest) {
       })
 
       if (rateLimit && (!rateLimit.success || rateLimit.quota?.success === false)) {
-        const retryAfter = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000))
+        const quota = rateLimit.quota
+        const quotaExceeded = quota?.success === false
+        const resetAt = quotaExceeded ? quota.reset : rateLimit.reset
+        const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))
         return NextResponse.json(
-          { error: 'Too many requests. Please try again later.' },
+          { error: quotaExceeded ? `Backtesting quota reached for your ${rateLimit.plan} plan.` : 'Too many requests. Please try again later.', code: quotaExceeded ? 'MONTHLY_QUOTA_EXCEEDED' : 'RATE_LIMITED', limit: quotaExceeded ? quota!.limit : rateLimit.limit },
           {
             status: 429,
             headers: {
               'Retry-After': String(retryAfter),
-              'X-RateLimit-Limit': String(rateLimit.limit),
+              'X-RateLimit-Limit': String(quotaExceeded ? quota!.limit : rateLimit.limit),
               'X-RateLimit-Remaining': '0',
-              'X-RateLimit-Reset': String(rateLimit.reset),
+              'X-RateLimit-Reset': String(resetAt),
               ...(rateLimit.quota ? {
                 'X-Quota-Limit': String(rateLimit.quota.limit),
                 'X-Quota-Remaining': String(rateLimit.quota.remaining),
