@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTheme } from 'next-themes'
 import { createMockDatafeed } from '@/lib/tradingview/mock-datafeed'
+import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
 function createSingleBarDatafeed(symbolName: string, bar: SingleBarData) {
@@ -182,6 +183,8 @@ export function TradingViewChart({
   const [isLoading, setIsLoading] = useState(true)
   const { theme: currentTheme, resolvedTheme } = useTheme()
   const widgetRef = useRef<any>(null)
+  const userSettingsRef = useRef<Record<string, string>>({})
+  const settingsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const onClickRef = useRef(onClick)
   useEffect(() => { onClickRef.current = onClick }, [onClick])
   // Store theme in a ref so it never triggers chart re-initialization
@@ -251,7 +254,7 @@ export function TradingViewChart({
       })
     }
 
-    const renderChart = () => {
+    const renderChart = async () => {
       if (cancelled) return
 
       try {
@@ -278,6 +281,23 @@ export function TradingViewChart({
         }
 
         const chartTheme = theme === 'auto' ? (resolvedTheme === 'light' ? 'light' : 'dark') : theme
+        const supabase = createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).maybeSingle()
+          const saved = profile?.preferences?.tradingview
+          if (saved && typeof saved === 'object') userSettingsRef.current = saved.settings ?? {}
+        }
+        const persistSettings = (key: string, value: string) => {
+          userSettingsRef.current[key] = value
+          if (!user) return
+          if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current)
+          settingsSaveTimerRef.current = setTimeout(async () => {
+            const { data: profile } = await supabase.from('profiles').select('preferences').eq('id', user.id).maybeSingle()
+            const preferences = profile?.preferences && typeof profile.preferences === 'object' ? profile.preferences : {}
+            await supabase.from('profiles').update({ preferences: { ...preferences, tradingview: { settings: userSettingsRef.current } } }).eq('id', user.id)
+          }, 600)
+        }
 
         const widget = new TradingView.widget({
           library_path: '/charting_library/',
@@ -292,7 +312,13 @@ export function TradingViewChart({
           container: containerRef.current,
           datafeed: replayDatafeed ?? (singleBar ? createSingleBarDatafeed(symbol, singleBar) : createMockDatafeed()),
           client_id: 'jnv-trading-journal',
-          user_id: 'jnv-user-minimal',
+          user_id: user?.id ?? 'guest',
+          settings_adapter: {
+            initialSettings: userSettingsRef.current,
+            setValue: persistSettings,
+            removeValue: (key: string) => persistSettings(key, ''),
+          },
+          disabled_features: ['volume_force_overlay'],
           // Guards against a degenerate (zero-height) price scale, which is
           // another way coordinateToValue can end up returning null on
           // mouse move. Reserves a fixed margin above/below the price range
@@ -301,7 +327,6 @@ export function TradingViewChart({
             'mainSeriesProperties.priceAxisProperties.autoScale': true,
             'scalesProperties.scaleSeriesOnly': false,
           },
-          disabled_features: ['volume_force_overlay'],
         })
 
         widgetRef.current = widget
@@ -346,6 +371,7 @@ export function TradingViewChart({
       cancelled = true
       sizeObserver?.disconnect()
       sizeObserver = null
+      if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current)
       if (widgetRef.current) {
         try {
           widgetRef.current.remove()
