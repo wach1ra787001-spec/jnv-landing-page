@@ -164,11 +164,14 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
     hasMeaningfulJournalNotes(row, notesByTradeId.get(row.trade_id) || []),
   ).length
 
+  const selectedAccount = accountById.get(accountId)
+  const accountRiskPercent = Number(selectedAccount?.risk_percent ?? 0) || null
   const dayToDaySnapshot = computeDayToDaySnapshot(
     allTrades || [],
     journalByTradeId,
     notesByTradeId,
     hasActiveRules,
+    accountRiskPercent,
     analysisDate,
   )
   const sevenDayTrend = computeSevenDayTrend(

@@ -52,9 +52,11 @@ export async function updateSession(request: NextRequest) {
 
     try {
       let plan = getPlanFromTier(user?.app_metadata?.subscription_tier ?? user?.app_metadata?.plan)
+      let isAdmin = false
       if (user?.id) {
-        const { data: profile } = await supabase.from('profiles').select('subscription_tier').eq('id', user.id).maybeSingle()
+        const { data: profile } = await supabase.from('profiles').select('subscription_tier, role').eq('id', user.id).maybeSingle()
         plan = getPlanFromTier(profile?.subscription_tier)
+        isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
       }
 
       const contentLength = Number(request.headers.get('content-length') ?? 0)
@@ -70,7 +72,7 @@ export async function updateSession(request: NextRequest) {
       // dashboard/chart lifecycle. Do not let harmless GETs exhaust the API
       // limiter; mutation requests remain rate- and quota-limited.
       const isBacktestRead = request.method === 'GET' && request.nextUrl.pathname.startsWith('/api/backtest/')
-      const rateLimit = isBacktestRead ? null : await checkRateLimit({
+      const rateLimit = isAdmin || isBacktestRead ? null : await checkRateLimit({
         pathname: request.nextUrl.pathname,
         ip,
         userId: user?.id,
@@ -79,16 +81,19 @@ export async function updateSession(request: NextRequest) {
       })
 
       if (rateLimit && (!rateLimit.success || rateLimit.quota?.success === false)) {
-        const retryAfter = Math.max(1, Math.ceil((rateLimit.reset - Date.now()) / 1000))
+        const quota = rateLimit.quota
+        const quotaExceeded = quota?.success === false
+        const resetAt = quotaExceeded ? quota.reset : rateLimit.reset
+        const retryAfter = Math.max(1, Math.ceil((resetAt - Date.now()) / 1000))
         return NextResponse.json(
-          { error: 'Too many requests. Please try again later.' },
+          { error: quotaExceeded ? `Backtesting quota reached for your ${rateLimit.plan} plan.` : 'Too many requests. Please try again later.', code: quotaExceeded ? 'MONTHLY_QUOTA_EXCEEDED' : 'RATE_LIMITED', limit: quotaExceeded ? quota!.limit : rateLimit.limit },
           {
             status: 429,
             headers: {
               'Retry-After': String(retryAfter),
-              'X-RateLimit-Limit': String(rateLimit.limit),
+              'X-RateLimit-Limit': String(quotaExceeded ? quota!.limit : rateLimit.limit),
               'X-RateLimit-Remaining': '0',
-              'X-RateLimit-Reset': String(rateLimit.reset),
+              'X-RateLimit-Reset': String(resetAt),
               ...(rateLimit.quota ? {
                 'X-Quota-Limit': String(rateLimit.quota.limit),
                 'X-Quota-Remaining': String(rateLimit.quota.remaining),

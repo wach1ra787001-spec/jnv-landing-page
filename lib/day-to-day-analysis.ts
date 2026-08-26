@@ -149,6 +149,7 @@ export function computeDayToDaySnapshot(
   journalByTradeId: Map<string, JournalRow>,
   notesByTradeId: Map<string, string[]>,
   hasActiveRules: boolean,
+  accountRiskPercent: number | null = null,
   now: Date = new Date(),
 ): DayToDaySnapshot {
   const todaysTrades = allTrades.filter(
@@ -168,7 +169,7 @@ export function computeDayToDaySnapshot(
       losses: 0,
       winRate: 0,
       avgR: 0,
-      plannedRiskPercent: 0,
+      plannedRiskPercent: accountRiskPercent ?? 0,
       actualRiskPercent: 0,
       disciplineScore: 0,
       dailyDrawdown: 0,
@@ -214,7 +215,6 @@ export function computeDayToDaySnapshot(
     }
 
     const risk = trade.risk_percent ?? 0
-    plannedRiskPercent += risk
     if (net < 0) {
       const ratio =
         trade.risk_amount && trade.risk_amount > 0
@@ -228,6 +228,8 @@ export function computeDayToDaySnapshot(
     const drawdown = peak - cumulative
     if (drawdown > maxDrawdown) maxDrawdown = drawdown
   }
+
+  plannedRiskPercent = accountRiskPercent ?? 0
 
   const tradesTaken = todaysTrades.length
   const winRate = tradesTaken > 0 ? (wins / tradesTaken) * 100 : 0
