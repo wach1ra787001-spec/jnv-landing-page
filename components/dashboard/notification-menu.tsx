@@ -29,9 +29,9 @@ export function NotificationMenu() {
   useEffect(() => {
     let active = true
     fetch(`/api/notifications?ts=${Date.now()}`, { method: "POST", cache: "no-store", headers: { "Cache-Control": "no-cache" } })
-      .then((response) => response.ok ? response.json() : { notifications: [] })
+      .then(async (response) => { if (!response.ok) { const detail = await response.text(); throw new Error(`Notification request failed (${response.status}): ${detail}`) } return response.json() })
       .then((data) => { if (active) { setNotifications(Array.isArray(data.notifications) ? data.notifications : []); setLoading(false) } })
-      .catch(() => { if (active) { setNotifications([]); setLoading(false) } })
+      .catch((error) => { console.error('[v0] Notification fetch failed:', error); if (active) { setNotifications([]); setLoading(false) } })
     return () => { active = false }
   }, [])
 

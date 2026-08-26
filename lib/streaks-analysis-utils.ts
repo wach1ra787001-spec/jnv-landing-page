@@ -19,13 +19,14 @@ export interface StreakTrade {
 
 function getPnl(trade: StreakTrade): number {
   const value = trade.net_pnl ?? trade.pnl
-  return typeof value === 'number' ? value : 0
+  const numericValue = typeof value === 'number' ? value : Number(value)
+  return Number.isFinite(numericValue) ? numericValue : 0
 }
 
 function getClosedTradesChronological(trades: StreakTrade[]): StreakTrade[] {
   return trades
-    .filter(t => t.entry_time && (t.status ? t.status === 'closed' : true) && (t.net_pnl != null || t.pnl != null))
-    .sort((a, b) => new Date(a.entry_time as string).getTime() - new Date(b.entry_time as string).getTime())
+    .filter(t => (t.exit_time || t.entry_time) && (t.status ? t.status.toLowerCase() === 'closed' : true) && (t.net_pnl != null || t.pnl != null))
+    .sort((a, b) => new Date((a.exit_time || a.entry_time) as string).getTime() - new Date((b.exit_time || b.entry_time) as string).getTime())
 }
 
 // ---------------------------------------------------------------------------

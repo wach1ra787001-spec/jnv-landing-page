@@ -13,7 +13,7 @@ export async function GET(request: Request) {
 
   const { data: trades, error } = await supabase
     .from("trades")
-    .select("id, entry_time, exit_time, net_pnl, pnl, status, followed_plan, strategy")
+    .select("id, entry_time, exit_time, pnl, status, followed_plan, discipline_rating, mistakes, strategy")
     .eq("user_id", user.id)
     .eq("status", "closed")
     .order("entry_time", { ascending: true })
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
   const current = streaks.currentStreak
   if (!current || current.type !== "loss" || current.length < 2) return NextResponse.json({ notifications: [] })
 
-  const chronological = (trades || []).filter((trade) => trade.entry_time).slice(-current.length)
+  const chronological = (trades || []).filter((trade) => trade.exit_time || trade.entry_time).slice(-current.length)
   const modelNotFollowed = chronological.some((trade) => trade.followed_plan !== true)
   if (!modelNotFollowed) return NextResponse.json({ notifications: [] })
 
