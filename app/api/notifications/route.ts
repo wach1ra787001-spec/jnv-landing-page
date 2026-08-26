@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 
   const { data: trades, error } = await supabase
     .from("trades")
-    .select("id, entry_time, exit_time, pnl, status, followed_plan, followed_rule_ids, discipline_rating, mistakes, strategy")
+    .select("id, entry_time, exit_time, pnl, status, strategy")
     .eq("user_id", user.id)
     .eq("status", "closed")
     .order("entry_time", { ascending: true })
@@ -30,10 +30,11 @@ export async function GET(request: Request) {
   const journalByTradeId = new Map((journals || []).map((journal) => [journal.trade_id, journal]))
   const consistency = calculateAverageConsistencyScore((trades || []).map((trade) => {
     const journal = journalByTradeId.get(trade.id)
-    return { hasActiveRules: true, activeRulesCount: 1, followedRuleIds: trade.followed_rule_ids, disciplineRating: journal?.discipline_rating, followedPlan: journal?.followed_plan, hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, []) }
+    return { hasActiveRules: true, activeRulesCount: 1, disciplineRating: journal?.discipline_rating, followedPlan: journal?.followed_plan, hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, []) }
   }))
+  const modelNotFollowed = (journals || []).some((journal) => journal.followed_plan === false || journal.discipline_rating != null && journal.discipline_rating < 3)
   const hasLossStreak = current?.type === "loss" && current.length >= 2
-  const shouldNotify = hasLossStreak && consistency < 50
+  const shouldNotify = hasLossStreak && consistency < 50 && modelNotFollowed
   if (!shouldNotify) return NextResponse.json({ notifications: [] })
 
   const chronological = (trades || []).filter((trade) => trade.exit_time || trade.entry_time).slice(-current!.length)
