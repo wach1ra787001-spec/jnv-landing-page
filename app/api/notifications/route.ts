@@ -33,13 +33,14 @@ export async function GET(request: Request) {
     return { hasActiveRules: true, activeRulesCount: 1, followedRuleIds: trade.followed_rule_ids, disciplineRating: journal?.discipline_rating, followedPlan: journal?.followed_plan, hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, []) }
   }))
   const hasLossStreak = current?.type === "loss" && current.length >= 2
-  if (consistency >= 50 && !hasLossStreak) return NextResponse.json({ notifications: [] })
+  const shouldNotify = hasLossStreak && consistency < 50
+  if (!shouldNotify) return NextResponse.json({ notifications: [] })
 
-  const chronological = (trades || []).filter((trade) => trade.exit_time || trade.entry_time).slice(-(hasLossStreak ? current!.length : 1))
+  const chronological = (trades || []).filter((trade) => trade.exit_time || trade.entry_time).slice(-current!.length)
   const lastTrade = chronological[chronological.length - 1]
   const streakLength = current?.length || 0
   const streakKey = `${hasLossStreak ? `streak-${streakLength}` : "consistency-below-50"}-${lastTrade?.id || "latest"}`
-  const notification = { id: streakKey, type: "rule", title: consistency < 50 ? "Consistency below 50%" : `${streakLength}-trade losing streak`, message: consistency < 50 ? `Your consistency is ${consistency}%. You are not following your trading model consistently. Review your rules before taking the next trade.` : `Your current losing streak includes trades where the model was not followed. Review your playbook rules before taking the next trade.`, timestamp: lastTrade?.entry_time || new Date().toISOString(), read: false }
+  const notification = { id: streakKey, type: "rule", title: `${streakLength}-trade losing streak`, message: `You have lost ${streakLength} trades in a row and your consistency is ${consistency}%. You are not following your trading model consistently. Review your rules before taking the next trade.`, timestamp: lastTrade?.entry_time || new Date().toISOString(), read: false }
   if (request.method === "POST") {
     const { data: profile } = await supabase.from("profiles").select("email, full_name").eq("id", user.id).maybeSingle()
     if (!profile?.email) return NextResponse.json({ notifications: [notification], emailSent: false })
