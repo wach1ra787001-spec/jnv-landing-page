@@ -89,6 +89,14 @@ export function isValidBar(b: any): boolean {
   return true
 }
 
+// Anything before the year 2000 is a parsing artifact for our data sources,
+// never a real bar. A single stray near-epoch timestamp poisons the chart's
+// entire time axis — TradingView auto-scales the x-axis to the full min/max
+// bar time, so one 1970-ish bar squeezes every real bar into a sliver at the
+// far right and makes the whole chart look broken (candles bunched at one
+// edge, huge empty gap, crosshair showing 1970 dates).
+const MIN_VALID_UNIX_SECONDS = 946684800 // 2000-01-01T00:00:00Z
+
 export function normalizeExternalBars(rawBars: any[]) {
   const mapped = rawBars
     .map((bar) => {
@@ -103,7 +111,17 @@ export function normalizeExternalBars(rawBars: any[]) {
       volume: Number(bar.volume ?? 0),
       }
     })
-  const sorted = mapped.filter(isValidBar).sort((a, b) => a.time - b.time)
+  const rejectedImplausible = mapped.filter((bar) => bar.time > 0 && bar.time < MIN_VALID_UNIX_SECONDS)
+  if (rejectedImplausible.length) {
+    console.warn('[v0] Rejected bars with implausible pre-2000 timestamps', {
+      count: rejectedImplausible.length,
+      sample: rejectedImplausible.slice(0, 3).map((b) => b.time),
+    })
+  }
+  const sorted = mapped
+    .filter((bar) => bar.time >= MIN_VALID_UNIX_SECONDS)
+    .filter(isValidBar)
+    .sort((a, b) => a.time - b.time)
 
   const bars = sorted.filter((bar, index) => index === 0 || bar.time !== sorted[index - 1].time)
   console.log('[v0] OHLC pipeline normalized', {

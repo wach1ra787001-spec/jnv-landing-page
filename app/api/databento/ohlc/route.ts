@@ -42,9 +42,25 @@ function parseTimestamp(value: string | undefined) {
   return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : null
 }
 
+// Databento has no data before the year 2000 for any dataset we use. A
+// timestamp that parses to before this bound is a parsing artifact (e.g. a
+// truncated/misaligned CSV row or a raw value that slipped past the unit
+// heuristics in parseTimestamp), NOT a real bar. Letting one through poisons
+// the chart's entire time axis — TradingView auto-scales the x-axis to the
+// full min/max bar time, so a single 1970-ish bar squeezes every real bar
+// into a sliver at the far right and makes the whole chart look broken.
+const MIN_VALID_UNIX_SECONDS = 946684800 // 2000-01-01T00:00:00Z
+
 function normalizeRecord(record: Record<string, string>) {
   const time = parseTimestamp(record.ts_event ?? record.ts_recv ?? record.timestamp)
-  if (!time || time <= 0) return null
+  if (!time || time < MIN_VALID_UNIX_SECONDS) {
+    if (time && time > 0) {
+      console.warn('[v0] Databento record rejected: implausible timestamp', {
+        raw: record.ts_event ?? record.ts_recv ?? record.timestamp, parsedSeconds: time,
+      })
+    }
+    return null
+  }
   const open = Number(record.open)
   const high = Number(record.high)
   const low = Number(record.low)
