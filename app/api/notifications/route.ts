@@ -51,7 +51,7 @@ export async function GET(request: Request) {
   const lastTrade = chronological[chronological.length - 1]
   const streakLength = current?.length || 0
   const streakKey = `${hasLossStreak ? `streak-${streakLength}` : "consistency-below-50"}-${lastTrade?.id || "latest"}`
-  const notification = { id: streakKey, type: "rule", title: `${streakLength}-trade losing streak`, message: `You have lost ${streakLength} trades in a row and your consistency is ${consistency}%. You are not following your trading model consistently. Review your rules before taking the next trade.`, timestamp: lastTrade?.entry_time || new Date().toISOString(), read: false }
+  const notification = { id: streakKey, type: "rule", title: `${streakLength}-trade losing streak`, message: `You have lost ${streakLength} trades in a row and your consistency is below 50%. You are not following your trading model consistently. Review your rules before taking the next trade.`, timestamp: lastTrade?.entry_time || new Date().toISOString(), read: false }
   if (request.method === "POST") {
     const { data: profile } = await supabase.from("profiles").select("email, full_name").eq("id", user.id).maybeSingle()
     if (!profile?.email) return NextResponse.json({ notifications: [notification], emailSent: false })
