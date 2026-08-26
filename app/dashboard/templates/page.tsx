@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -133,6 +134,22 @@ export default function TemplatesPage() {
   const [playbooks, setPlaybooks] = useState<Playbook[]>([])
   const [sortBy, setSortBy] = useState<"popular" | "newest" | "best-wr">("popular")
   const [loading, setLoading] = useState(true)
+  const [importingId, setImportingId] = useState<string | null>(null)
+  const router = useRouter()
+
+  async function useTemplate(playbook: Playbook) {
+    if (!window.confirm(`Use “${playbook.name}” as your personal playbook?`)) return
+    setImportingId(playbook.id)
+    try {
+      const response = await fetch('/api/playbooks/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templateId: playbook.id }) })
+      if (!response.ok) { const result = await response.json().catch(() => ({})); throw new Error(result.error || 'Failed to import template') }
+      router.push('/dashboard/personal-area/playbooks')
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Failed to import template')
+    } finally {
+      setImportingId(null)
+    }
+  }
 
   useEffect(() => {
     fetch('/api/playbooks?public=true')
@@ -293,6 +310,7 @@ export default function TemplatesPage() {
 
             {/* Actions */}
             <div className="flex gap-2 pt-4 border-t border-border mt-auto">
+              <Button size="sm" className="flex-1" onClick={() => useTemplate(playbook)} disabled={importingId === playbook.id}>{importingId === playbook.id ? 'Importing…' : 'Use this template'}</Button>
               <Button
                 variant="ghost"
                 size="sm"
