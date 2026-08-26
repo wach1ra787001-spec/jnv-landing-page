@@ -185,8 +185,18 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
         const tvInterval = DB_TO_TV[s?.timeframe] ?? "60"
         setInterval(tvInterval)
 
-        const start = Math.floor(new Date(s?.date_from ?? Date.now() - 30 * 86400000).getTime() / 1000)
-        const end = Math.floor(new Date(s?.date_to ?? Date.now()).getTime() / 1000)
+        const parseSessionDate = (value: unknown, fallback: number) => {
+          if (typeof value === "number" && Number.isFinite(value)) return value > 10_000_000_000 ? Math.floor(value / 1000) : Math.floor(value)
+          if (typeof value !== "string" || !value.trim()) return fallback
+          const normalized = value.trim()
+          const parsed = /^\d{4}-\d{2}-\d{2}$/.test(normalized)
+            ? Date.parse(`${normalized}T00:00:00.000Z`)
+            : Date.parse(normalized)
+          return Number.isFinite(parsed) ? Math.floor(parsed / 1000) : fallback
+        }
+        const nowSeconds = Math.floor(Date.now() / 1000)
+        const start = parseSessionDate(s?.date_from, nowSeconds - 30 * 86400)
+        const end = parseSessionDate(s?.date_to, nowSeconds)
         const schemaMapping = TIMEFRAME_TO_DATABENTO_SCHEMA[s?.timeframe] ?? TIMEFRAME_TO_DATABENTO_SCHEMA.M1
         const params = new URLSearchParams({
           symbol: s?.symbol ?? "EURUSD",
@@ -217,14 +227,18 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
           throw new Error(payload?.error || "Could not load market data")
         }
         const normalizedBars = normalizeExternalBars(payload?.bars ?? [])
-        const bars = schemaMapping.aggregateMinutes
-          ? aggregateBars(normalizedBars, schemaMapping.aggregateMinutes)
-          : normalizedBars
+        const sessionBars = normalizedBars.filter((bar) => bar.time >= start && bar.time <= end)
+        console.log('[v0] Backtest bars constrained to session range', { sessionId: id, requestedStart: start, requestedEnd: end, receivedStart: normalizedBars[0]?.time ?? null, receivedEnd: normalizedBars[normalizedBars.length - 1]?.time ?? null, constrainedCount: sessionBars.length })
+        const bars = (sessionBars.length ? sessionBars : normalizedBars).filter((bar) => bar.time >= start && bar.time <= end)
+          .slice()
+        const aggregatedBars = schemaMapping.aggregateMinutes
+          ? aggregateBars(bars, schemaMapping.aggregateMinutes)
+          : bars
         console.log('[v0] Backtest bars normalized for replay', {
-          sessionId: id, inputCount: payload?.bars?.length ?? 0, normalizedCount: normalizedBars.length, outputCount: bars.length,
-          firstTime: bars[0]?.time ?? null, lastTime: bars[bars.length - 1]?.time ?? null,
+          sessionId: id, inputCount: payload?.bars?.length ?? 0, normalizedCount: normalizedBars.length, outputCount: aggregatedBars.length,
+          firstTime: aggregatedBars[0]?.time ?? null, lastTime: aggregatedBars[aggregatedBars.length - 1]?.time ?? null,
         })
-        if (!bars.length) throw new Error("Databento returned no valid OHLC bars")
+        if (!aggregatedBars.length) throw new Error("Databento returned no valid OHLC bars")
         if (cancelled) return
         console.log('[v0] Databento bars ready for replay', {
           symbol: s?.symbol,
@@ -236,8 +250,8 @@ export default function BacktestChartPage({ params }: { params: Promise<{ id: st
           firstBar: bars[0] ? { time: bars[0].time, timeUnit: 'unix-seconds', open: bars[0].open, high: bars[0].high, low: bars[0].low, close: bars[0].close } : null,
           lastTime: bars[bars.length - 1]?.time,
         })
-        barsRef.current = bars
-        initDatafeed(s?.symbol ?? "EURUSD", tvInterval, bars)
+        barsRef.current = aggregatedBars
+        initDatafeed(s?.symbol ?? "EURUSD", tvInterval, aggregatedBars)
       } catch (error) {
         console.error('[v0] Backtest OHLC pipeline failed', error)
         if (!cancelled) setLoadError(error instanceof Error ? error.message : "Could not load this backtest")
