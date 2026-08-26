@@ -28,7 +28,12 @@ export function NotificationMenu() {
 
   useEffect(() => {
     let active = true
-    fetch(`/api/notifications?ts=${Date.now()}`, { method: "POST", cache: "no-store", headers: { "Cache-Control": "no-cache" } })
+    ;(async () => {
+      const { createClient } = await import("@/lib/supabase/client")
+      const { data: { session } } = await createClient().auth.getSession()
+      const headers = { "Cache-Control": "no-cache", ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }
+      return fetch(`/api/notifications?ts=${Date.now()}`, { method: "POST", cache: "no-store", headers })
+    })()
       .then(async (response) => { if (!response.ok) { const detail = await response.text(); throw new Error(`Notification request failed (${response.status}): ${detail}`) } return response.json() })
       .then((data) => { if (active) { setNotifications(Array.isArray(data.notifications) ? data.notifications : []); setLoading(false) } })
       .catch((error) => { console.error('[v0] Notification fetch failed:', error); if (active) { setNotifications([]); setLoading(false) } })

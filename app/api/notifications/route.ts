@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@/lib/supabase/server"
+import { createClient as createServerClient } from "@/lib/supabase/server"
+import { createClient as createSupabaseClient } from "@supabase/supabase-js"
 import { computeWinLossStreaks, type StreakTrade } from "@/lib/streaks-analysis-utils"
 import { calculateAverageConsistencyScore, hasMeaningfulJournalNotes } from "@/lib/consistency-score"
 import { sendLossStreakWarningEmail } from "@/lib/email/resend-service"
@@ -8,8 +9,17 @@ export const dynamic = "force-dynamic"
 export const revalidate = 0
 
 export async function GET(request: Request) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const cookieClient = await createServerClient()
+  let supabase = cookieClient
+  let { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    const token = request.headers.get("authorization")?.replace(/^Bearer\s+/i, "")
+    if (token) {
+      supabase = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+      const result = await supabase.auth.getUser(token)
+      user = result.data.user
+    }
+  }
   if (!user) return NextResponse.json({ notifications: [] }, { status: 401 })
 
   const { data: trades, error } = await supabase
