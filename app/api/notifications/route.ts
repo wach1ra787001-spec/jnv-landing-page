@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   const { data: trades, error } = await supabase
     .from("trades")
-    .select("id, entry_time, exit_time, pnl, status, strategy")
+    .select("id, entry_time, exit_time, pnl, status, strategy, risk_percent")
     .eq("user_id", user.id)
     .eq("status", "closed")
     .order("entry_time", { ascending: true })
@@ -36,15 +36,15 @@ export async function GET(request: Request) {
 
   const streaks = computeWinLossStreaks((trades || []) as StreakTrade[])
   const current = streaks.currentStreak
-  const { data: journals } = await supabase.from("trade_journal").select("trade_id, discipline_rating, followed_plan, content, session_notes, lessons_learned, mistakes, what_went_well").eq("user_id", user.id)
+  const { data: journals, error: journalsError } = await supabase.from("trade_journal").select("trade_id, confidence_level, content, lessons_learned").eq("user_id", user.id)
+  if (journalsError) console.error("[v0] Notification journal query failed:", journalsError)
   const journalByTradeId = new Map((journals || []).map((journal) => [journal.trade_id, journal]))
   const consistency = calculateAverageConsistencyScore((trades || []).map((trade) => {
     const journal = journalByTradeId.get(trade.id)
-    return { hasActiveRules: true, activeRulesCount: 1, disciplineRating: journal?.discipline_rating, followedPlan: journal?.followed_plan, hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, []) }
+    return { hasActiveRules: true, activeRulesCount: 1, disciplineRating: journal?.confidence_level, followedPlan: undefined, hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, []) }
   }))
-  const modelNotFollowed = (journals || []).some((journal) => journal.followed_plan === false || journal.discipline_rating != null && journal.discipline_rating < 3)
   const hasLossStreak = current?.type === "loss" && current.length >= 2
-  const shouldNotify = hasLossStreak && consistency < 50 && modelNotFollowed
+  const shouldNotify = hasLossStreak && consistency < 50
   if (!shouldNotify) return NextResponse.json({ notifications: [] })
 
   const chronological = (trades || []).filter((trade) => trade.exit_time || trade.entry_time).slice(-current!.length)
@@ -55,7 +55,8 @@ export async function GET(request: Request) {
   if (request.method === "POST") {
     const { data: profile } = await supabase.from("profiles").select("email, full_name").eq("id", user.id).maybeSingle()
     if (!profile?.email) return NextResponse.json({ notifications: [notification], emailSent: false })
-    const { data: existing } = await supabase.from("ai_email_logs").select("id").eq("user_id", user.id).eq("email_type", "loss_streak_warning").eq("subject", notification.title).limit(1)
+    const { data: existing, error: logLookupError } = await supabase.from("ai_email_logs").select("id").eq("user_id", user.id).eq("email_type", "loss_streak_warning").eq("subject", notification.title).limit(1)
+    if (logLookupError) console.error("[v0] Notification email log lookup failed:", logLookupError)
     if (!existing?.length) {
       try {
         const email = await sendLossStreakWarningEmail({ userEmail: profile.email, userName: profile.full_name, streakLength: streakLength || 2 })
