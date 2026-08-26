@@ -49,8 +49,6 @@ export default function PlaybooksPage() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [activeId, setActiveId] = useState<string | null>(null)
-  const [userRules, setUserRules] = useState<UserRule[]>([])
-  const [rulesLoading, setRulesLoading] = useState(true)
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -65,7 +63,6 @@ export default function PlaybooksPage() {
 
   useEffect(() => {
     fetchPlaybooks()
-    fetch('/api/rules').then(r => r.ok ? r.json() : []).then((rules: UserRule[]) => setUserRules(rules.filter(rule => rule.is_active !== false))).catch(() => setUserRules([])).finally(() => setRulesLoading(false))
   }, [])
 
   const fetchPlaybooks = async () => {
@@ -320,7 +317,7 @@ export default function PlaybooksPage() {
                       {p.rules?.linkedRuleIds && p.rules.linkedRuleIds.length > 0 && (
                         <div>
                           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Linked Rules</h4>
-                          <ul className="space-y-1">{p.rules.linkedRuleIds.map(id => { const rule = userRules.find(item => item.id === id); return <li key={id} className="text-sm text-foreground">{rule?.title || id}</li> })}</ul>
+                          <ul className="space-y-1">{p.rules.linkedRuleIds.map(id => <li key={id} className="text-sm text-foreground">{id}</li>)}</ul>
                         </div>
                       )}
 
