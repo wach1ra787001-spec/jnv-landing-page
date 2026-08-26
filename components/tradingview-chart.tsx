@@ -180,7 +180,7 @@ export function TradingViewChart({
   const containerRef = useRef<HTMLDivElement>(null)
   const [mounted, setMounted] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const { theme: currentTheme } = useTheme()
+  const { theme: currentTheme, resolvedTheme } = useTheme()
   const widgetRef = useRef<any>(null)
   const onClickRef = useRef(onClick)
   useEffect(() => { onClickRef.current = onClick }, [onClick])
@@ -188,6 +188,16 @@ export function TradingViewChart({
   const themeRef = useRef(currentTheme)
   useEffect(() => { themeRef.current = currentTheme }, [currentTheme])
 
+  useEffect(() => {
+    const widget = widgetRef.current
+    if (!widget || theme !== 'auto') return
+    const nextTheme = resolvedTheme === 'light' ? 'Light' : 'Dark'
+    try {
+      if (typeof widget.changeTheme === 'function') widget.changeTheme(nextTheme)
+    } catch (error) {
+      console.error('[v0] TradingView theme update failed:', error)
+    }
+  }, [resolvedTheme, theme])
 
   // Phase 1: Mount component and render container
   useEffect(() => {
@@ -267,7 +277,7 @@ export function TradingViewChart({
           widgetRef.current = null
         }
 
-        const chartTheme = theme === 'auto' ? themeRef.current || 'dark' : theme
+        const chartTheme = theme === 'auto' ? (resolvedTheme === 'light' ? 'light' : 'dark') : theme
 
         const widget = new TradingView.widget({
           library_path: '/charting_library/',
