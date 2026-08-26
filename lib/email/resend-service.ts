@@ -192,10 +192,13 @@ export async function sendTradeImportedEmail({
  * Test email to verify Resend configuration
  */
 export async function sendLossStreakWarningEmail({ userEmail, userName, streakLength }: { userEmail: string; userName?: string | null; streakLength: number }) {
-  if (!process.env.RESEND_FROM_EMAIL) throw new Error('Email service not configured (RESEND_FROM_EMAIL)')
+  const configuredFrom = process.env.RESEND_FROM_EMAIL?.trim()
+  const senderEmail = configuredFrom?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]
+  if (!senderEmail) throw new Error('Email service misconfigured: RESEND_FROM_EMAIL must contain a verified email address, for example JNV AI <notifications@your-domain.com>')
+  const from = configuredFrom?.includes('<') ? configuredFrom : `jnv AI <${senderEmail}>`
   const greeting = userName?.trim() ? `Hi ${userName.trim()},` : 'Hi there,'
   const html = `<div style="font-family:Arial,sans-serif;max-width:620px;line-height:1.65;color:#202124"><h2>Protect your process</h2><p>${greeting}</p><p>You&apos;ve lost ${streakLength} trades in a row — and you broke your trading rules.</p><p>This is not the time to force another trade.</p><p>Step away. Review the two trades. Identify which rule you broke and why.</p><p>Your edge comes from executing your system consistently, not from trying to win back losses.</p><p>Before your next trade, review your rules and make sure you&apos;re actually following them.</p><p>Protect the process. The results follow.</p><p>— jnv AI</p></div>`
-  const response = await resend.emails.send({ from: process.env.RESEND_FROM_EMAIL, to: userEmail, subject: `Trading warning: ${streakLength}-trade losing streak`, html })
+  const response = await resend.emails.send({ from, to: userEmail, subject: `Trading warning: ${streakLength}-trade losing streak`, html })
   if (response.error) throw new Error(response.error.message)
   return { success: true, messageId: response.data?.id }
 }
