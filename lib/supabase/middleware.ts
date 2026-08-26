@@ -52,9 +52,11 @@ export async function updateSession(request: NextRequest) {
 
     try {
       let plan = getPlanFromTier(user?.app_metadata?.subscription_tier ?? user?.app_metadata?.plan)
+      let isAdmin = false
       if (user?.id) {
-        const { data: profile } = await supabase.from('profiles').select('subscription_tier').eq('id', user.id).maybeSingle()
+        const { data: profile } = await supabase.from('profiles').select('subscription_tier, role').eq('id', user.id).maybeSingle()
         plan = getPlanFromTier(profile?.subscription_tier)
+        isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
       }
 
       const contentLength = Number(request.headers.get('content-length') ?? 0)
@@ -70,7 +72,7 @@ export async function updateSession(request: NextRequest) {
       // dashboard/chart lifecycle. Do not let harmless GETs exhaust the API
       // limiter; mutation requests remain rate- and quota-limited.
       const isBacktestRead = request.method === 'GET' && request.nextUrl.pathname.startsWith('/api/backtest/')
-      const rateLimit = isBacktestRead ? null : await checkRateLimit({
+      const rateLimit = isAdmin || isBacktestRead ? null : await checkRateLimit({
         pathname: request.nextUrl.pathname,
         ip,
         userId: user?.id,
