@@ -86,17 +86,10 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
     onTick?.(bar.time, cursorIdx, total - 1)
   }
 
-  // TradingView's Charting Library custom datafeed expects bar timestamps in
-  // milliseconds. The replay engine keeps timestamps in Unix seconds so API
-  // requests, persistence, and trade exits remain consistent.
-  function toTradingViewBar(bar: ReplayBar) {
-    return { ...bar, time: bar.time * 1000 }
-  }
-
   function pushRealtimeBar() {
     const bar = allBars[cursorIdx]
     if (bar && realtimeCallback && isValidBar(bar)) {
-      realtimeCallback(toTradingViewBar(bar))
+      realtimeCallback({ ...bar })
     }
     fireTick()
   }
@@ -267,7 +260,7 @@ export function createReplayDatafeed(options: ReplayDatafeedOptions): {
         if (filtered.length === 0) {
           onHistory([], { noData: true })
         } else {
-          onHistory(filtered.map(toTradingViewBar), { noData: false })
+          onHistory(filtered, { noData: false })
         }
       } catch (e) {
         console.error('[v0] Replay getBars failed', { symbol, interval: _resolution, error: String(e) })
