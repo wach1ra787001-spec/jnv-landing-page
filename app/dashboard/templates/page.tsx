@@ -141,7 +141,9 @@ export default function TemplatesPage() {
     if (!window.confirm(`Use “${playbook.name}” as your personal playbook?`)) return
     setImportingId(playbook.id)
     try {
-      const response = await fetch('/api/playbooks/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ templateId: playbook.id }) })
+      const { createClient } = await import('@/lib/supabase/client')
+      const { data: { session } } = await createClient().auth.getSession()
+      const response = await fetch('/api/playbooks/import', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }, body: JSON.stringify({ templateId: playbook.id }) })
       if (!response.ok) { const result = await response.json().catch(() => ({})); throw new Error(result.error || 'Failed to import template') }
       router.push('/dashboard/personal-area/playbooks')
     } catch (error) {

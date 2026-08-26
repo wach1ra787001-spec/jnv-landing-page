@@ -1,10 +1,20 @@
-import { createClient } from '@/lib/supabase/server'
+import { createClient as createServerClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const cookieClient = await createServerClient()
+    let supabase = cookieClient
+    let { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      const token = request.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
+      if (token) {
+        supabase = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!)
+        const result = await supabase.auth.getUser(token)
+        user = result.data.user
+      }
+    }
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const { templateId } = await request.json()
