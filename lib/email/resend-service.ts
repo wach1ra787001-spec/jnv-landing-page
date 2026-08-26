@@ -169,7 +169,7 @@ export async function sendTradeImportedEmail({
     `
 
     const response = await resend.emails.send({
-      from: `jnv AI <${process.env.RESEND_FROM_EMAIL?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || 'notifications@example.com'}>`,
+      from: process.env.RESEND_FROM_EMAIL || 'hello@jnvtradingjournal.com',
       to: userEmail,
       subject: `New ${symbol} Trade Ready to Journal`,
       html: emailHtml,
@@ -193,10 +193,7 @@ export async function sendTradeImportedEmail({
  */
 export async function sendLossStreakWarningEmail({ userEmail, userName, streakLength }: { userEmail: string; userName?: string | null; streakLength: number }) {
   if (!process.env.RESEND_API_KEY?.trim()) throw new Error('Email service misconfigured: RESEND_API_KEY is missing')
-  const configuredFrom = process.env.RESEND_FROM_EMAIL?.trim()
-  const senderEmail = configuredFrom?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]
-  if (!senderEmail) throw new Error('Email service misconfigured: RESEND_FROM_EMAIL must contain a verified email address, for example JNV AI <notifications@your-domain.com>')
-  const from = `jnv AI <${senderEmail}>`
+  const from = process.env.RESEND_FROM_EMAIL || 'hello@jnvtradingjournal.com'
   const greeting = userName?.trim() ? `Hi ${userName.trim()},` : 'Hi there,'
   const html = `<div style="font-family:Arial,sans-serif;max-width:620px;line-height:1.65;color:#202124"><h2>Protect your process</h2><p>${greeting}</p><p>You have lost ${streakLength} trades in a row and your consistency is below 50%. You are not following your trading model consistently.</p><p>This is not the time to force another trade.</p><p>Step away. Review the two trades. Identify which rule you broke and why.</p><p>Your edge comes from executing your system consistently, not from trying to win back losses.</p><p>Before your next trade, review your rules and make sure you&apos;re actually following them.</p><p>Protect the process. The results follow.</p><p>— jnv AI</p></div>`
   const response = await resend.emails.send({ from, to: userEmail, subject: `Trading warning: ${streakLength}-trade losing streak`, html })
@@ -211,7 +208,7 @@ export async function sendTestEmail(email: string) {
     }
 
     const response = await resend.emails.send({
-      from: `jnv AI <${process.env.RESEND_FROM_EMAIL?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0] || 'notifications@example.com'}>`,
+      from: process.env.RESEND_FROM_EMAIL || 'hello@jnvtradingjournal.com',
       to: email,
       subject: 'JNV Pro - Test Email',
       html: `
