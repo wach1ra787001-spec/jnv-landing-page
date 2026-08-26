@@ -54,17 +54,25 @@ export async function GET(request: Request) {
   const notification = { id: streakKey, type: "rule", title: `${streakLength}-trade losing streak`, message: `You have lost ${streakLength} trades in a row and your consistency is below 50%. You are not following your trading model consistently. Review your rules before taking the next trade.`, timestamp: lastTrade?.entry_time || new Date().toISOString(), read: false }
   if (request.method === "POST") {
     const { data: profile } = await supabase.from("profiles").select("email, full_name").eq("id", user.id).maybeSingle()
-    if (!profile?.email) return NextResponse.json({ notifications: [notification], emailSent: false })
+    if (!profile?.email) {
+      console.error("[v0] Loss streak email skipped: no email address on profile", { userId: user.id })
+      return NextResponse.json({ notifications: [notification], emailSent: false, emailError: "No email address is associated with this profile." })
+    }
     const { data: existing, error: logLookupError } = await supabase.from("ai_email_logs").select("id").eq("user_id", user.id).eq("email_type", "loss_streak_warning").eq("subject", notification.title).limit(1)
     if (logLookupError) console.error("[v0] Notification email log lookup failed:", logLookupError)
     if (!existing?.length) {
       try {
         const email = await sendLossStreakWarningEmail({ userEmail: profile.email, userName: profile.full_name, streakLength: streakLength || 2 })
-        await supabase.from("ai_email_logs").insert({ user_id: user.id, email_type: "loss_streak_warning", subject: notification.title, body: notification.message, resend_email_id: email.messageId, status: "sent", sent_at: new Date().toISOString() })
-        return NextResponse.json({ notifications: [notification], emailSent: true })
+        const { error: logError } = await supabase.from("ai_email_logs").insert({ user_id: user.id, email_type: "loss_streak_warning", subject: notification.title, body: notification.message, resend_email_id: email.messageId, status: "sent", sent_at: new Date().toISOString() })
+        if (logError) console.error("[v0] Loss streak email log insert failed:", logError)
+        return NextResponse.json({ notifications: [notification], emailSent: true, emailId: email.messageId })
       } catch (error) {
-        console.error("[v0] Loss streak email failed:", error)
+        const message = error instanceof Error ? error.message : "Unknown email delivery error"
+        console.error("[v0] Loss streak email failed:", { message, userId: user.id, recipient: profile.email })
+        return NextResponse.json({ notifications: [notification], emailSent: false, emailError: message })
       }
+    } else {
+      return NextResponse.json({ notifications: [notification], emailSent: false, emailError: "This losing-streak alert was already sent." })
     }
   }
   return NextResponse.json({ notifications: [notification], emailSent: false })

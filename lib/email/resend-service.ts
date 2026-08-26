@@ -192,6 +192,7 @@ export async function sendTradeImportedEmail({
  * Test email to verify Resend configuration
  */
 export async function sendLossStreakWarningEmail({ userEmail, userName, streakLength }: { userEmail: string; userName?: string | null; streakLength: number }) {
+  if (!process.env.RESEND_API_KEY?.trim()) throw new Error('Email service misconfigured: RESEND_API_KEY is missing')
   const configuredFrom = process.env.RESEND_FROM_EMAIL?.trim()
   const senderEmail = configuredFrom?.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]
   if (!senderEmail) throw new Error('Email service misconfigured: RESEND_FROM_EMAIL must contain a verified email address, for example JNV AI <notifications@your-domain.com>')
