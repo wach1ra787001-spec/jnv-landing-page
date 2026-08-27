@@ -54,6 +54,7 @@ export interface CreateTradeInput {
   account_id?: string | null
   playbook_id?: string | null
   followed_rule_ids?: string[]
+  followed_rules?: string
 }
 
 /**
@@ -167,6 +168,7 @@ export async function createTrade(tradeData: CreateTradeInput) {
     account_id: tradeData.account_id || null,
     playbook_id: tradeData.playbook_id || null,
     followed_rule_ids: Array.isArray(tradeData.followed_rule_ids) ? tradeData.followed_rule_ids : [],
+    followed_rules: tradeData.followed_rules || '',
   }
   
   console.log('[v0] Screenshot URLs being saved:', tradeData.screenshot_urls?.length || 0, 'files')

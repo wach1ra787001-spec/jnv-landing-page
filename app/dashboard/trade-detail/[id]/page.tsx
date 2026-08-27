@@ -84,9 +84,16 @@ export default function TradeDetailPage() {
                 }
                 return null
               }).filter(Boolean) as UserRule[]
-            const availableRules = [...linkedRules, ...customRules]
+            const directRuleLabels = typeof data.followed_rules === 'string'
+              ? data.followed_rules.split(/\r?\n|,/).map((label: string) => label.trim()).filter(Boolean)
+              : []
+            const directRules = directRuleLabels.map((title: string, index: number) => ({ id: `followed-${index}`, title, rule: title, is_active: true, isCustom: true }))
+            const availableRules = [...linkedRules, ...customRules, ...directRules.filter((rule: UserRule) => !customRules.some((item) => item.title === rule.title))]
             const persistedSelections = Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : []
-            const normalizedSelections = persistedSelections.map((value: unknown) => {
+            const selections = persistedSelections.length > 0
+              ? persistedSelections
+              : directRuleLabels
+            const normalizedSelections = selections.map((value: unknown) => {
               if (typeof value !== 'string') return null
               const byId = availableRules.find((rule: UserRule) => rule.id === value)
               if (byId) return byId.id
@@ -172,13 +179,14 @@ export default function TradeDetailPage() {
   const handleRuleChange = async (ruleId: string, checked: boolean) => {
     const previous = followedRuleIds
     const next = checked ? [...new Set([...previous, ruleId])] : previous.filter((id) => id !== ruleId)
+    const followedLabels = userRules.filter((rule) => next.includes(rule.id)).map((rule) => rule.title)
     setFollowedRuleIds(next)
     setSavingRuleId(ruleId)
     try {
       const response = await fetch(`/api/trades/${tradeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ followed_rule_ids: next }),
+        body: JSON.stringify({ followed_rule_ids: next, followed_rules: followedLabels.join('\n') }),
       })
       if (!response.ok) throw new Error('Failed to save rule status')
       setTrade((current) => current ? { ...current, followed_rule_ids: next, followed_rules: next.length > 0 } : current)
