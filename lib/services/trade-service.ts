@@ -52,6 +52,8 @@ export interface CreateTradeInput {
   /** User's UTC offset in hours (e.g., 3 for UTC+3, -4 for UTC-4). If not provided, trades table will use existing session value or null. */
   user_utc_offset?: number | null
   account_id?: string | null
+  playbook_id?: string | null
+  followed_rule_ids?: string[]
 }
 
 /**
@@ -163,6 +165,8 @@ export async function createTrade(tradeData: CreateTradeInput) {
     screenshot_urls: tradeData.screenshot_urls || [],
     session: sessionName,
     account_id: tradeData.account_id || null,
+    playbook_id: tradeData.playbook_id || null,
+    followed_rule_ids: Array.isArray(tradeData.followed_rule_ids) ? tradeData.followed_rule_ids : [],
   }
   
   console.log('[v0] Screenshot URLs being saved:', tradeData.screenshot_urls?.length || 0, 'files')
