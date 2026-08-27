@@ -334,15 +334,16 @@ export default function TradeDetailPage() {
         <h3 className="text-lg font-semibold text-foreground mb-4">Chart Analysis</h3>
         <TradingViewChart
           symbol={trade.symbol}
-          interval="D"
+          interval="1D"
           height={500}
           singleBar={(() => {
             const entryPrice = Number(trade.entry_price)
-            const exitPrice  = Number(trade.exit_price)
-            const open  = entryPrice
-            const close = exitPrice
-            const high  = Math.max(open, close) * 1.0005
-            const low   = Math.min(open, close) * 0.9995
+            const exitPrice = Number(trade.exit_price)
+            const open = Number.isFinite(entryPrice) ? entryPrice : 0
+            const close = Number.isFinite(exitPrice) ? exitPrice : open
+            const referencePrice = Math.max(Math.abs(open), Math.abs(close), 1)
+            const high = Math.max(open, close) + referencePrice * 0.0005
+            const low = Math.min(open, close) - referencePrice * 0.0005
             // Use entry_time if available, otherwise today midnight UTC
             const t = trade.entry_time
               ? Math.floor(new Date(trade.entry_time).getTime() / 1000)

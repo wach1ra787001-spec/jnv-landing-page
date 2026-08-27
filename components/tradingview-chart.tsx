@@ -355,6 +355,7 @@ export function TradingViewChart({
         // Fallback: clear loading state after 5s regardless
         setTimeout(() => { if (!cancelled) setIsLoading(false) }, 5000)
       } catch (error) {
+        console.error('[v0] TradingView chart initialization failed:', error)
         if (!cancelled) setIsLoading(false)
       }
     }
