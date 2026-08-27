@@ -25,7 +25,7 @@ export default async function ConsistencyAnalysisPage() {
 
   const tradesQuery = supabase
     .from("trades")
-    .select("id, entry_time, net_pnl, status, followed_rule_ids, account_id, risk_amount")
+    .select("id, entry_time, net_pnl, status, followed_rule_ids, account_id, risk_amount, playbook_id")
     .eq("user_id", user.id)
     .order("entry_time", { ascending: false })
 
@@ -37,7 +37,11 @@ export default async function ConsistencyAnalysisPage() {
 
   const tradeIds = (allTrades || []).map((trade) => trade.id)
 
-  const [{ data: journalRows }, { data: tradeNotesRows }, { count: activeRulesCount }, { data: accountRows }] =
+  const playbookIds = Array.from(
+    new Set((allTrades || []).map((trade) => trade.playbook_id).filter((id): id is string => Boolean(id))),
+  )
+
+  const [{ data: journalRows }, { data: tradeNotesRows }, { data: playbookRows }, { data: accountRows }] =
     await Promise.all([
       tradeIds.length > 0
         ? supabase
@@ -53,18 +57,34 @@ export default async function ConsistencyAnalysisPage() {
             .eq("user_id", user.id)
             .in("trade_id", tradeIds)
         : Promise.resolve({ data: [] }),
-      supabase
-        .from("user_rules")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .eq("is_active", true),
+      playbookIds.length > 0
+        ? supabase
+            .from("playbooks")
+            .select("id, rules")
+            .eq("user_id", user.id)
+            .in("id", playbookIds)
+        : Promise.resolve({ data: [] }),
       supabase
         .from("accounts")
         .select("id, initial_balance, risk_percent, risk_amount")
         .eq("user_id", user.id),
     ])
 
-  const hasActiveRules = (activeRulesCount || 0) > 0
+  // The canonical rule set for each trade is the linked playbook's rules
+  // (entry + exit + custom). There is no separate user_rules table.
+  const countPlaybookRules = (rules: unknown): number => {
+    if (!rules || typeof rules !== "object") return 0
+    const bucket = rules as Record<string, unknown>
+    return ["entry", "exit", "custom"].reduce((sum, section) => {
+      const list = bucket[section]
+      if (!Array.isArray(list)) return sum
+      return sum + list.filter((rule) => (typeof rule === "string" ? rule.trim().length > 0 : Boolean(rule))).length
+    }, 0)
+  }
+  const ruleCountByPlaybookId = new Map(
+    (playbookRows || []).map((playbook) => [playbook.id, countPlaybookRules(playbook.rules)]),
+  )
+  const hasActiveRules = Array.from(ruleCountByPlaybookId.values()).some((count) => count > 0)
   const accountById = new Map((accountRows || []).map((account) => [account.id, account]))
 
   const journalByTradeId = new Map((journalRows || []).map((row) => [row.trade_id, row]))
@@ -78,10 +98,11 @@ export default async function ConsistencyAnalysisPage() {
   const consistencyInputs: ConsistencyScoreInputs[] = (allTrades || []).map((trade) => {
     const journal = journalByTradeId.get(trade.id)
     const extraNotes = notesByTradeId.get(trade.id) || []
+    const tradeRuleCount = trade.playbook_id ? ruleCountByPlaybookId.get(trade.playbook_id) || 0 : 0
 
     return {
-      hasActiveRules,
-      activeRulesCount: activeRulesCount || 0,
+      hasActiveRules: tradeRuleCount > 0,
+      activeRulesCount: tradeRuleCount,
       followedRuleIds: trade.followed_rule_ids,
       disciplineRating: journal?.discipline_rating,
       followedPlan: journal?.followed_plan,
