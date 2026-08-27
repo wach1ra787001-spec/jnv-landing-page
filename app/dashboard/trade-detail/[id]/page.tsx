@@ -63,20 +63,38 @@ export default function TradeDetailPage() {
           setTrade(data)
           setFollowedRuleIds(Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : [])
           try {
-            if (data.playbook_id) {
-              const playbookResponse = await fetch(`/api/playbooks/${data.playbook_id}`)
-              if (playbookResponse.ok) {
-                const playbook = await playbookResponse.json()
-                const rulesColumn = playbook?.rules || {}
-                const ruleItems = [
-                  ...(Array.isArray(rulesColumn.entry) ? rulesColumn.entry : []),
-                  ...(Array.isArray(rulesColumn.exit) ? rulesColumn.exit : []),
-                  ...(Array.isArray(rulesColumn.custom) ? rulesColumn.custom : []),
-                ].filter((rule): rule is string => typeof rule === 'string' && rule.trim().length > 0)
-                  .map((text, index) => ({ id: `custom-${index}`, title: text, is_active: true, isCustom: true }))
-                setUserRules(ruleItems)
-              }
-            }
+            const [rulesResponse, playbookResponse] = await Promise.all([
+              fetch('/api/rules'),
+              data.playbook_id ? fetch(`/api/playbooks/${data.playbook_id}`) : Promise.resolve(null),
+            ])
+            const personalRules = rulesResponse.ok ? await rulesResponse.json() : []
+            const playbook = playbookResponse?.ok ? await playbookResponse.json() : null
+            const rulesColumn = playbook?.rules && typeof playbook.rules === 'object' ? playbook.rules : {}
+            const linkedRuleIds = Array.isArray(rulesColumn.linkedRuleIds) ? rulesColumn.linkedRuleIds : []
+            const linkedRules = personalRules
+              .filter((rule: UserRule) => linkedRuleIds.includes(rule.id))
+              .map((rule: UserRule) => ({ ...rule, isCustom: false }))
+            const customRules = ['entry', 'exit', 'custom'].flatMap((section) => Array.isArray(rulesColumn[section]) ? rulesColumn[section] : [])
+              .map((rule: unknown, index: number) => {
+                if (typeof rule === 'string' && rule.trim()) return { id: `custom-${index}`, title: rule.trim(), rule: rule.trim(), is_active: true, isCustom: true }
+                if (rule && typeof rule === 'object') {
+                  const item = rule as { id?: string; title?: string; rule?: string; description?: string }
+                  const title = item.title || item.rule || item.description
+                  if (title) return { id: item.id || `custom-${index}`, title, rule: item.rule || item.description, is_active: true, isCustom: true }
+                }
+                return null
+              }).filter(Boolean) as UserRule[]
+            const availableRules = [...linkedRules, ...customRules]
+            const persistedSelections = Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : []
+            const normalizedSelections = persistedSelections.map((value: unknown) => {
+              if (typeof value !== 'string') return null
+              const byId = availableRules.find((rule: UserRule) => rule.id === value)
+              if (byId) return byId.id
+              const byText = availableRules.find((rule: UserRule) => rule.title === value || rule.rule === value)
+              return byText?.id ?? value
+            }).filter((value: string | null): value is string => Boolean(value))
+            setFollowedRuleIds(normalizedSelections)
+            setUserRules(availableRules)
           } finally {
             setRulesLoading(false)
           }
