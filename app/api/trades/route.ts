@@ -41,6 +41,9 @@ export async function POST(request: NextRequest) {
       status,
       source,
       account_id,
+      playbook_id,
+      followed_rule_ids,
+      followed_rules,
     } = body
 
     // Validate required fields
@@ -53,7 +56,7 @@ export async function POST(request: NextRequest) {
 
     // Normalize direction to long or short (database constraint)
     const directionInput = String(direction || 'buy').toLowerCase().trim()
-    const normalizedDirection = (directionInput === 'buy' || directionInput === 'long') ? 'long' : 'short'
+    const normalizedDirection: 'long' | 'short' = (directionInput === 'buy' || directionInput === 'long') ? 'long' : 'short'
 
     // Validate and normalize source (defaults to 'manual' if not specified)
     let normalizedSource = 'manual'
@@ -88,6 +91,9 @@ export async function POST(request: NextRequest) {
       emotion_before: emotion_before || '',
       source: normalizedSource,
       account_id: account_id || null,
+      playbook_id: playbook_id || null,
+      followed_rule_ids: Array.isArray(followed_rule_ids) ? followed_rule_ids.filter((id: unknown): id is string => typeof id === 'string') : [],
+      followed_rules: Array.isArray(followed_rules) ? followed_rules.filter((rule: unknown): rule is string => typeof rule === 'string').join('\n') : '',
     }
 
     console.log('[v0] Creating trade with data:', tradeData)

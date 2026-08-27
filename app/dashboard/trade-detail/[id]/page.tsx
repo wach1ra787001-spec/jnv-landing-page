@@ -63,20 +63,45 @@ export default function TradeDetailPage() {
           setTrade(data)
           setFollowedRuleIds(Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : [])
           try {
-            if (data.playbook_id) {
-              const playbookResponse = await fetch(`/api/playbooks/${data.playbook_id}`)
-              if (playbookResponse.ok) {
-                const playbook = await playbookResponse.json()
-                const rulesColumn = playbook?.rules || {}
-                const ruleItems = [
-                  ...(Array.isArray(rulesColumn.entry) ? rulesColumn.entry : []),
-                  ...(Array.isArray(rulesColumn.exit) ? rulesColumn.exit : []),
-                  ...(Array.isArray(rulesColumn.custom) ? rulesColumn.custom : []),
-                ].filter((rule): rule is string => typeof rule === 'string' && rule.trim().length > 0)
-                  .map((text, index) => ({ id: `custom-${index}`, title: text, is_active: true, isCustom: true }))
-                setUserRules(ruleItems)
-              }
-            }
+            const [rulesResponse, playbookResponse] = await Promise.all([
+              fetch('/api/rules'),
+              data.playbook_id ? fetch(`/api/playbooks/${data.playbook_id}`) : Promise.resolve(null),
+            ])
+            const personalRules = rulesResponse.ok ? await rulesResponse.json() : []
+            const playbook = playbookResponse?.ok ? await playbookResponse.json() : null
+            const rulesColumn = playbook?.rules && typeof playbook.rules === 'object' ? playbook.rules : {}
+            const linkedRuleIds = Array.isArray(rulesColumn.linkedRuleIds) ? rulesColumn.linkedRuleIds : []
+            const linkedRules = personalRules
+              .filter((rule: UserRule) => linkedRuleIds.includes(rule.id))
+              .map((rule: UserRule) => ({ ...rule, isCustom: false }))
+            const customRules = ['entry', 'exit', 'custom'].flatMap((section) => Array.isArray(rulesColumn[section]) ? rulesColumn[section] : [])
+              .map((rule: unknown, index: number) => {
+                if (typeof rule === 'string' && rule.trim()) return { id: `custom-${index}`, title: rule.trim(), rule: rule.trim(), is_active: true, isCustom: true }
+                if (rule && typeof rule === 'object') {
+                  const item = rule as { id?: string; title?: string; rule?: string; description?: string }
+                  const title = item.title || item.rule || item.description
+                  if (title) return { id: item.id || `custom-${index}`, title, rule: item.rule || item.description, is_active: true, isCustom: true }
+                }
+                return null
+              }).filter(Boolean) as UserRule[]
+            const directRuleLabels = typeof data.followed_rules === 'string'
+              ? data.followed_rules.split(/\r?\n|,/).map((label: string) => label.trim()).filter(Boolean)
+              : []
+            const directRules = directRuleLabels.map((title: string, index: number) => ({ id: `followed-${index}`, title, rule: title, is_active: true, isCustom: true }))
+            const availableRules = [...linkedRules, ...customRules, ...directRules.filter((rule: UserRule) => !customRules.some((item) => item.title === rule.title))]
+            const persistedSelections = Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : []
+            const selections = persistedSelections.length > 0
+              ? persistedSelections
+              : directRuleLabels
+            const normalizedSelections = selections.map((value: unknown) => {
+              if (typeof value !== 'string') return null
+              const byId = availableRules.find((rule: UserRule) => rule.id === value)
+              if (byId) return byId.id
+              const byText = availableRules.find((rule: UserRule) => rule.title === value || rule.rule === value)
+              return byText?.id ?? value
+            }).filter((value: string | null): value is string => Boolean(value))
+            setFollowedRuleIds(normalizedSelections)
+            setUserRules(availableRules)
           } finally {
             setRulesLoading(false)
           }
@@ -154,13 +179,14 @@ export default function TradeDetailPage() {
   const handleRuleChange = async (ruleId: string, checked: boolean) => {
     const previous = followedRuleIds
     const next = checked ? [...new Set([...previous, ruleId])] : previous.filter((id) => id !== ruleId)
+    const followedLabels = userRules.filter((rule) => next.includes(rule.id)).map((rule) => rule.title)
     setFollowedRuleIds(next)
     setSavingRuleId(ruleId)
     try {
       const response = await fetch(`/api/trades/${tradeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ followed_rule_ids: next }),
+        body: JSON.stringify({ followed_rule_ids: next, followed_rules: followedLabels.join('\n') }),
       })
       if (!response.ok) throw new Error('Failed to save rule status')
       setTrade((current) => current ? { ...current, followed_rule_ids: next, followed_rules: next.length > 0 } : current)
@@ -316,15 +342,16 @@ export default function TradeDetailPage() {
         <h3 className="text-lg font-semibold text-foreground mb-4">Chart Analysis</h3>
         <TradingViewChart
           symbol={trade.symbol}
-          interval="D"
+          interval="1D"
           height={500}
           singleBar={(() => {
             const entryPrice = Number(trade.entry_price)
-            const exitPrice  = Number(trade.exit_price)
-            const open  = entryPrice
-            const close = exitPrice
-            const high  = Math.max(open, close) * 1.0005
-            const low   = Math.min(open, close) * 0.9995
+            const exitPrice = Number(trade.exit_price)
+            const open = Number.isFinite(entryPrice) ? entryPrice : 0
+            const close = Number.isFinite(exitPrice) ? exitPrice : open
+            const referencePrice = Math.max(Math.abs(open), Math.abs(close), 1)
+            const high = Math.max(open, close) + referencePrice * 0.0005
+            const low = Math.min(open, close) - referencePrice * 0.0005
             // Use entry_time if available, otherwise today midnight UTC
             const t = trade.entry_time
               ? Math.floor(new Date(trade.entry_time).getTime() / 1000)

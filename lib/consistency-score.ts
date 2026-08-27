@@ -18,11 +18,12 @@
  * best-fit proxies available today:
  *   - `discipline_rating` (1-10 self-rating captured in trade_journal) is
  *     used as the fraction of rules followed for the Rules component.
- *   - `followed_plan` (single boolean captured in trade_journal) is used as
- *     the signal for BOTH the "followed risk model" and "followed my model"
- *     components, since a trading "plan" is understood to encompass both.
- * When per-rule and per-category tracking is added, swap the inputs below
- * for the real values without changing the weighting logic.
+ *   - Risk compliance is calculated from the trade and account risk limits.
+ *   - Trade Model is awarded when all rules are followed, risk is compliant,
+ *     and the trade has meaningful journal notes. The legacy `followed_plan`
+ *     checkbox is intentionally not required for this score.
+ * When per-category tracking is added, swap the inputs below for the real
+ * values without changing the weighting logic.
  */
 
 export const CONSISTENCY_WEIGHTS = {
@@ -41,7 +42,7 @@ export interface ConsistencyScoreInputs {
   followedRuleIds?: string[] | null
   /** 1-10 self-rating used only for legacy trades without per-rule selections. */
   disciplineRating: number | null | undefined
-  /** Did the user follow their plan for this trade? */
+  /** Legacy journal field retained for compatibility; not required for Trade Model scoring. */
   followedPlan: boolean | null | undefined
   /** Trade risk amount and selected account limits. Missing values are non-compliant. */
   tradeRiskAmount?: number | null
@@ -90,7 +91,7 @@ export function calculateTradeConsistencyScore(
   const riskModelScore = riskCompliant ? CONSISTENCY_WEIGHTS.riskModel : 0
 
   // Trade Model is earned only when rules, risk, and journaling are all complete.
-  const tradeModelScore = rulesFollowed && riskCompliant && journalCompleted && followedPlan === true
+  const tradeModelScore = rulesFollowed && riskCompliant && journalCompleted
     ? CONSISTENCY_WEIGHTS.tradeModel
     : 0
 

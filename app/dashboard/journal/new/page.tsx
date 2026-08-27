@@ -45,6 +45,7 @@ const DEFAULT_FORM = {
   account_id:    '',
   playbook_id:   '',
   followed_rule_ids: [] as string[],
+  followed_rules: [] as string[],
 }
 
 const toDbDirection = (d: string) => d === 'buy' ? 'long' : 'short'
@@ -191,8 +192,9 @@ export default function AddNewTradePage() {
         screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : null,
         account_id: formData.account_id,
         playbook_id: formData.playbook_id || null,
-        followed_rule_ids: formData.followed_rule_ids,
-      }
+  followed_rule_ids: formData.followed_rule_ids,
+  followed_rules: formData.followed_rules,
+  }
 
       const response = await fetch('/api/trades', {
         method: 'POST',
@@ -531,7 +533,7 @@ export default function AddNewTradePage() {
               {playbooks.length === 0 && !loadingPlaybooks && (
                 <p className="text-xs text-muted-foreground mt-2">No playbooks found. Create a playbook to select strategies.</p>
               )}
-              {formData.playbook_id && (() => { const playbook = playbooks.find((item) => item.id === formData.playbook_id); const playbookRules = [...(playbook?.rules?.entry || []), ...(playbook?.rules?.exit || []), ...(playbook?.rules?.custom || [])].filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0); return <div className="mt-4 rounded-lg border border-border/50 bg-muted/20 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-medium text-foreground">Rules to follow</p><span className="text-xs text-muted-foreground">{formData.followed_rule_ids.length}/{playbookRules.length} followed</span></div><div className="space-y-2">{playbookRules.map((label: string, index: number) => ({ id: `custom-${index}`, label })).map((rule) => <label key={rule.id} className="flex items-start gap-3 rounded-md p-2 hover:bg-muted/40"><input type="checkbox" checked={formData.followed_rule_ids.includes(rule.id)} onChange={(e) => handleChange('followed_rule_ids', e.target.checked ? [...formData.followed_rule_ids, rule.id] : formData.followed_rule_ids.filter((id: string) => id !== rule.id))} className="mt-0.5 size-4 accent-primary" /><span className="text-sm text-foreground">{rule.label}</span></label>)}</div></div> })()}
+              {formData.playbook_id && (() => { const playbook = playbooks.find((item) => item.id === formData.playbook_id); const playbookRules = [...(playbook?.rules?.entry || []), ...(playbook?.rules?.exit || []), ...(playbook?.rules?.custom || [])].filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0); return <div className="mt-4 rounded-lg border border-border/50 bg-muted/20 p-4"><div className="mb-3 flex items-center justify-between"><p className="text-sm font-medium text-foreground">Rules to follow</p><span className="text-xs text-muted-foreground">{formData.followed_rule_ids.length}/{playbookRules.length} followed</span></div><div className="space-y-2">{playbookRules.map((label: string, index: number) => ({ id: `custom-${index}`, label })).map((rule) => <label key={rule.id} className="flex items-start gap-3 rounded-md p-2 hover:bg-muted/40"><input type="checkbox" checked={formData.followed_rule_ids.includes(rule.id)} onChange={(e) => { const nextIds = e.target.checked ? [...formData.followed_rule_ids, rule.id] : formData.followed_rule_ids.filter((id: string) => id !== rule.id); const nextLabels = e.target.checked ? [...formData.followed_rules, rule.label] : formData.followed_rules.filter((label: string) => label !== rule.label); handleChange('followed_rule_ids', nextIds); handleChange('followed_rules', nextLabels) }} className="mt-0.5 size-4 accent-primary" /><span className="text-sm text-foreground">{rule.label}</span></label>)}</div></div> })()}
             </div>
             <div>
               <label className="text-sm font-medium text-foreground">Emotion Before Trade</label>

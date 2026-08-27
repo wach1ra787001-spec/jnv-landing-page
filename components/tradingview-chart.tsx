@@ -15,11 +15,13 @@ function createSingleBarDatafeed(symbolName: string, bar: SingleBarData) {
   // Build a window of 15 daily context bars (7 before + trade bar + 7 after).
   // TradingView needs a non-trivial price range to initialise its Y-axis and
   // drawing-tool coordinate math — a single isolated bar causes null cursors.
-  const DAY = 86400
+  // This embedded chart build consumes datafeed times as JavaScript epoch
+  // milliseconds. Passing Unix seconds makes 2025 dates render in January 1970.
+  const DAY = 86400 * 1000
   const decimals = Math.round(Math.log10(pricescale))
   const round = (n: number) => parseFloat(n.toFixed(decimals))
   // Align trade bar to midnight UTC so padding bars are evenly spaced
-  const tradeDay = Math.floor(bar.time / DAY) * DAY
+  const tradeDay = Math.floor((bar.time * 1000) / DAY) * DAY
   const midPrice = (bar.open + bar.close) / 2
   // Spread for padding bars: 0.5% of midPrice gives a visible but tidy range
   const spread = midPrice * 0.005
@@ -35,7 +37,7 @@ function createSingleBarDatafeed(symbolName: string, bar: SingleBarData) {
     if (i === 0) {
       // The actual trade bar — use real OHLC values
       allBars.push({
-        time:  tradeDay,
+        time:  Math.floor(tradeDay),
         open:  round(bar.open),
         high:  round(bar.high),
         low:   round(bar.low),
@@ -86,12 +88,14 @@ function createSingleBarDatafeed(symbolName: string, bar: SingleBarData) {
       onHistory: (bars: any[], meta: { noData: boolean }) => void,
     ) => {
       let result: SingleBarData[]
+      const requestFrom = periodParams.from < 100_000_000_000 ? periodParams.from * 1000 : periodParams.from
+      const requestTo = periodParams.to < 100_000_000_000 ? periodParams.to * 1000 : periodParams.to
       if (periodParams.countBack && periodParams.countBack > 0) {
-        // countBack request — return up to countBack bars ending at `to`
-        const eligible = allBars.filter(b => b.time <= periodParams.to)
+        // countBack request — return up to countBack bars ending at `to`.
+        const eligible = allBars.filter(b => b.time <= requestTo)
         result = eligible.slice(Math.max(0, eligible.length - periodParams.countBack))
       } else {
-        result = allBars.filter(b => b.time >= periodParams.from && b.time <= periodParams.to)
+        result = allBars.filter(b => b.time >= requestFrom && b.time <= requestTo)
       }
       result.length > 0
         ? onHistory(result, { noData: false })
@@ -351,6 +355,7 @@ export function TradingViewChart({
         // Fallback: clear loading state after 5s regardless
         setTimeout(() => { if (!cancelled) setIsLoading(false) }, 5000)
       } catch (error) {
+        console.error('[v0] TradingView chart initialization failed:', error)
         if (!cancelled) setIsLoading(false)
       }
     }
