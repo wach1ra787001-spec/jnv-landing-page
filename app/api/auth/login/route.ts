@@ -90,10 +90,22 @@ export async function POST(request: NextRequest) {
   }
 
   await redis.del(`jnv:auth:login:${identity}`)
-  const response = NextResponse.json({ success: true, redirectTo: "/dashboard" })
-  cookiesToSet.forEach(({ name, value, options }) => {
-    response.cookies.set(name, value, options as Parameters<typeof response.cookies.set>[2])
-  })
+  // Set the session cookies on the actual response returned to the browser.
+  // Do not rely on the request cookie store here: that store only affects the
+  // current server invocation and cannot establish the session for the next
+  // navigation to /dashboard.
+  const response = NextResponse.json(
+    { success: true, redirectTo: "/dashboard" },
+    { headers: { "Cache-Control": "no-store" } },
+  )
+  for (const { name, value, options } of cookiesToSet) {
+    response.cookies.set({
+      name,
+      value,
+      ...(options as any),
+      path: typeof options.path === "string" ? options.path : "/",
+    })
+  }
   return response
 }
 
