@@ -56,15 +56,19 @@ export default function LoginPage() {
     setError(null)
 
     try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+      // Sign in through the browser Supabase client so its auth storage writes
+      // the session cookie/local session before the dashboard navigation.
+      // This avoids losing Set-Cookie headers across the sandbox proxy.
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password,
       })
-      const result = await response.json()
 
-      if (!response.ok) {
-        setError(result.error ?? "Unable to sign in. Please try again.")
+      if (authError) {
+        const message = authError.message.toLowerCase()
+        setError(message.includes("email not confirmed")
+          ? "Please confirm your email address before signing in."
+          : "Invalid email or password.")
         setIsLoading(false)
         return
       }
@@ -72,7 +76,7 @@ export default function LoginPage() {
       const appOrigin = isProductionDomainHost(window.location.hostname)
         ? getAppOrigin(window.location.hostname)
         : window.location.origin
-      window.location.assign(`${appOrigin}${result.redirectTo ?? "/dashboard"}`)
+      window.location.assign(`${appOrigin}/dashboard`)
     } catch {
       setError("Unable to sign in. Please try again.")
       setIsLoading(false)
