@@ -63,36 +63,30 @@ export default function TradeDetailPage() {
           setTrade(data)
           setFollowedRuleIds(Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : [])
           try {
-            const [rulesResponse, playbookResponse] = await Promise.all([
-              fetch('/api/rules'),
-              data.playbook_id ? fetch(`/api/playbooks/${data.playbook_id}`) : Promise.resolve(null),
-            ])
-            const personalRules = rulesResponse.ok ? await rulesResponse.json() : []
+            // The full rule set lives on the linked playbook (entry + exit +
+            // custom). There is no user_rules table — the playbook is the
+            // single source of truth, matching how the journal form builds and
+            // indexes rules as `custom-${index}`.
+            const playbookResponse = data.playbook_id ? await fetch(`/api/playbooks/${data.playbook_id}`) : null
             const playbook = playbookResponse?.ok ? await playbookResponse.json() : null
             const rulesColumn = playbook?.rules && typeof playbook.rules === 'object' ? playbook.rules : {}
-            const linkedRuleIds = Array.isArray(rulesColumn.linkedRuleIds) ? rulesColumn.linkedRuleIds : []
-            const linkedRules = personalRules
-              .filter((rule: UserRule) => linkedRuleIds.includes(rule.id))
-              .map((rule: UserRule) => ({ ...rule, isCustom: false }))
-            const customRules = ['entry', 'exit', 'custom'].flatMap((section) => Array.isArray(rulesColumn[section]) ? rulesColumn[section] : [])
-              .map((rule: unknown, index: number) => {
-                if (typeof rule === 'string' && rule.trim()) return { id: `custom-${index}`, title: rule.trim(), rule: rule.trim(), is_active: true, isCustom: true }
-                if (rule && typeof rule === 'object') {
-                  const item = rule as { id?: string; title?: string; rule?: string; description?: string }
-                  const title = item.title || item.rule || item.description
-                  if (title) return { id: item.id || `custom-${index}`, title, rule: item.rule || item.description, is_active: true, isCustom: true }
-                }
-                return null
-              }).filter(Boolean) as UserRule[]
+            const playbookRules = ['entry', 'exit', 'custom']
+              .flatMap((section) => Array.isArray(rulesColumn[section]) ? rulesColumn[section] : [])
+              .filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0)
+              .map((label: string, index: number) => ({ id: `custom-${index}`, title: label.trim(), rule: label.trim(), is_active: true, isCustom: true }))
+
+            // Legacy fallback: trades saved before playbook linking only have
+            // the followed_rules text labels, so surface those directly.
             const directRuleLabels = typeof data.followed_rules === 'string'
               ? data.followed_rules.split(/\r?\n|,/).map((label: string) => label.trim()).filter(Boolean)
               : []
-            const directRules = directRuleLabels.map((title: string, index: number) => ({ id: `followed-${index}`, title, rule: title, is_active: true, isCustom: true }))
-            const availableRules = [...linkedRules, ...customRules, ...directRules.filter((rule: UserRule) => !customRules.some((item) => item.title === rule.title))]
+            const directRules = directRuleLabels
+              .filter((label: string) => !playbookRules.some((rule) => rule.title === label))
+              .map((title: string, index: number) => ({ id: `followed-${index}`, title, rule: title, is_active: true, isCustom: true }))
+
+            const availableRules = [...playbookRules, ...directRules]
             const persistedSelections = Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : []
-            const selections = persistedSelections.length > 0
-              ? persistedSelections
-              : directRuleLabels
+            const selections = persistedSelections.length > 0 ? persistedSelections : directRuleLabels
             const normalizedSelections = selections.map((value: unknown) => {
               if (typeof value !== 'string') return null
               const byId = availableRules.find((rule: UserRule) => rule.id === value)
@@ -380,8 +374,22 @@ export default function TradeDetailPage() {
             <h3 className="text-lg font-semibold text-foreground">Rules Followed</h3>
             <p className="mt-1 text-sm text-muted-foreground">Review your active trading rules for this trade.</p>
           </div>
-          <span className="text-xs text-muted-foreground">{savingRuleId ? 'Saving…' : `${followedRuleIds.length}/${userRules.length} checked`}</span>
+          <span className="text-xs text-muted-foreground">{savingRuleId ? 'Saving…' : `${followedRuleIds.length}/${userRules.length} followed`}</span>
         </div>
+        {!rulesLoading && userRules.length > 0 && (() => {
+          const missed = userRules.filter((rule) => !followedRuleIds.includes(rule.id))
+          if (missed.length === 0) {
+            return <p className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-500">All {userRules.length} rules followed on this trade.</p>
+          }
+          return (
+            <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+              <p className="text-sm font-medium text-amber-500">{missed.length} of {userRules.length} rule{missed.length === 1 ? '' : 's'} not followed:</p>
+              <ul className="mt-1 list-disc pl-5 text-sm text-amber-500/90">
+                {missed.map((rule) => <li key={rule.id}>{rule.title}</li>)}
+              </ul>
+            </div>
+          )
+        })()}
         <div className="mt-4 flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
           {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={followedRuleIds.includes(rule.id)} onChange={(event) => handleRuleChange(rule.id, event.target.checked)} disabled={savingRuleId === rule.id} className="mt-0.5 size-4 shrink-0 accent-primary" /><span className="min-w-0"><span className="block text-sm font-medium text-foreground">{rule.title}</span>{rule.rule && <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.rule}</span>}</span><span className={cn('ml-auto shrink-0 text-xs font-medium', followedRuleIds.includes(rule.id) ? 'text-emerald-500' : 'text-muted-foreground')}>{followedRuleIds.includes(rule.id) ? 'Followed' : 'Not followed'}</span></label>)}
         </div>
