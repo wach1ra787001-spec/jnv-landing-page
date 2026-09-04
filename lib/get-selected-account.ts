@@ -78,11 +78,33 @@ export async function getSelectedAccountId(supabase: SupabaseClient, userId: str
  * server pages that need to resolve an active account.
  */
 export async function getUserAccounts(supabase: SupabaseClient, userId: string): Promise<AccountSummary[]> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("accounts")
-    .select("id, account_name, account_type, currency")
+    .select("id, account_name, account_type, currency, broker_connection_id")
     .eq("user_id", userId)
     .order("created_at", { ascending: false })
 
-  return data || []
+  if (error) {
+    console.error("[v0] Error fetching user accounts:", error)
+    return []
+  }
+
+  const accounts = data || []
+  const linkedConnectionIds = new Set(accounts.map((account) => account.broker_connection_id).filter(Boolean))
+  const { data: connections } = await supabase
+    .from("broker_connections")
+    .select("id, account_name, account_login, broker, currency")
+    .eq("user_id", userId)
+    .eq("is_connected", true)
+
+  const connectedAccounts = (connections || [])
+    .filter((connection) => !linkedConnectionIds.has(connection.id))
+    .map((connection) => ({
+      id: `broker-${connection.id}`,
+      account_name: connection.account_name || `${connection.broker} ${connection.account_login ? `#${connection.account_login}` : "account"}`,
+      account_type: connection.broker,
+      currency: connection.currency || "USD",
+    }))
+
+  return [...accounts, ...connectedAccounts]
 }

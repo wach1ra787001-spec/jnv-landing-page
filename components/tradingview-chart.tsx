@@ -6,6 +6,26 @@ import { createMockDatafeed } from '@/lib/tradingview/mock-datafeed'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
+function createTradeHistoryDatafeed(symbolName: string, tradeId: string, interval: string) {
+  return {
+    onReady: (cb: (config: object) => void) => setTimeout(() => cb({ supported_resolutions: ['1', '5', '15', '30', '60', '240', '1D'] }), 0),
+    resolveSymbol: (_: string, cb: (info: object) => void) => setTimeout(() => cb({ name: symbolName, ticker: symbolName, description: symbolName, type: 'forex', session: '0000-2359:1234567', timezone: 'UTC', exchange: '', minmov: 1, pricescale: 100000, has_intraday: true, has_daily: true, supported_resolutions: ['1', '5', '15', '30', '60', '240', '1D'], data_status: 'streaming' }), 0),
+    getBars: async (_: any, _resolution: string, period: { from: number; to: number }, onHistory: (bars: any[], meta: { noData: boolean }) => void, onError: (error: string) => void) => {
+      try {
+        const response = await fetch(`/api/tradelocker/candles?tradeId=${encodeURIComponent(tradeId)}&resolution=${encodeURIComponent(interval)}&from=${Math.floor(period.from)}&to=${Math.floor(period.to)}`)
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error || 'Unable to load TradeLocker candles')
+        const rows = payload?.bars || payload?.candles || payload?.data || []
+        const bars = rows.map((row: any) => ({ time: Number(row.time ?? row.timestamp ?? row.t) < 100000000000 ? Number(row.time ?? row.timestamp ?? row.t) * 1000 : Number(row.time ?? row.timestamp ?? row.t), open: Number(row.open ?? row.o), high: Number(row.high ?? row.h), low: Number(row.low ?? row.l), close: Number(row.close ?? row.c), volume: Number(row.volume ?? row.v ?? 0) })).filter((bar: any) => bar.time && [bar.open, bar.high, bar.low, bar.close].every(Number.isFinite)).sort((a: any, b: any) => a.time - b.time)
+        onHistory(bars, { noData: bars.length === 0 })
+      } catch (error) { onError(error instanceof Error ? error.message : 'Unable to load candles') }
+    },
+    subscribeBars: () => {},
+    unsubscribeBars: () => {},
+    searchSymbols: () => {},
+  }
+}
+
 function createSingleBarDatafeed(symbolName: string, bar: SingleBarData) {
   const upper = symbolName.toUpperCase()
   const pricescale = /US\d{2,3}|SPX|NDX|NAS|DAX|DE\d{2}|XAU|GOLD|BTC|ETH/.test(upper)
@@ -124,6 +144,8 @@ interface TradingViewChartProps {
   singleBar?: SingleBarData
   /** Pass a pre-created replay datafeed instance to use instead of the default mock */
   replayDatafeed?: object
+  /** Loads TradeLocker candles for a historical trade without changing backtesting. */
+  tradeHistoryId?: string
   /** Called once the widget is fully ready — receives the widget instance */
   onReady?: (widget: any) => void
   onClick?: () => void
@@ -179,6 +201,7 @@ export function TradingViewChart({
   height = 500,
   singleBar,
   replayDatafeed,
+  tradeHistoryId,
   onReady,
   onClick,
 }: TradingViewChartProps) {
@@ -314,7 +337,7 @@ export function TradingViewChart({
           enable_publishing: false,
           allow_symbol_change: true,
           container: containerRef.current,
-          datafeed: replayDatafeed ?? (singleBar ? createSingleBarDatafeed(symbol, singleBar) : createMockDatafeed()),
+          datafeed: replayDatafeed ?? (tradeHistoryId ? createTradeHistoryDatafeed(symbol, tradeHistoryId, interval) : singleBar ? createSingleBarDatafeed(symbol, singleBar) : createMockDatafeed()),
           client_id: 'jnv-trading-journal',
           user_id: user?.id ?? 'guest',
           settings_adapter: {
@@ -335,7 +358,7 @@ export function TradingViewChart({
 
         widgetRef.current = widget
 
-        widget.onChartReady(() => {
+          widget.onChartReady(async () => {
           if (cancelled) {
             // A newer effect superseded this one while the widget was
             // initializing — tear this one down instead of surfacing it.
@@ -346,6 +369,33 @@ export function TradingViewChart({
             return
           }
           setIsLoading(false)
+          if (tradeHistoryId) {
+            try {
+              const metaResponse = await fetch(`/api/tradelocker/candles?tradeId=${encodeURIComponent(tradeHistoryId)}&resolution=${encodeURIComponent(interval)}&from=0&to=${Math.floor(Date.now() / 1000)}`)
+              const metaPayload = await metaResponse.json()
+              const trade = metaPayload?.trade
+              const chart = widget.activeChart?.()
+              const toSeconds = (value: unknown) => {
+                const numeric = typeof value === 'number' ? value : Date.parse(String(value)) / 1000
+                return numeric > 100000000000 ? numeric / 1000 : numeric
+              }
+              if (trade && chart && Number.isFinite(toSeconds(trade.entryTime)) && Number.isFinite(Number(trade.entryPrice))) {
+                const entryTime = toSeconds(trade.entryTime)
+                const exitTime = trade.exitTime ? toSeconds(trade.exitTime) : entryTime
+                const entryPrice = Number(trade.entryPrice)
+                const exitPrice = Number(trade.exitPrice)
+                const isLong = String(trade.direction).toLowerCase().includes('long') || String(trade.direction).toLowerCase().includes('buy')
+                const shape = (time: number, price: number, text: string, color: string, shapeName: string) => chart.createShape({ time, price }, { shape: shapeName, text, lock: true, disableSelection: true, overrides: { color, textColor: color } })
+                shape(entryTime, entryPrice, `${isLong ? 'Long' : 'Short'} entry ${entryPrice}`, isLong ? '#16a34a' : '#dc2626', isLong ? 'arrow_up' : 'arrow_down')
+                if (Number.isFinite(exitPrice)) shape(exitTime, exitPrice, `Exit ${exitPrice}`, '#2563eb', isLong ? 'arrow_down' : 'arrow_up')
+                const level = (price: unknown, title: string, color: string) => { const value = Number(price); if (!Number.isFinite(value) || value === 0) return; chart.createShape([{ time: entryTime, price: value }, { time: exitTime, price: value }], { shape: 'trend_line', text: title, lock: true, disableSelection: true, overrides: { lineColor: color, color } }) }
+                level(trade.stopLoss, 'Stop Loss', '#dc2626')
+                level(trade.takeProfit, 'Take Profit', '#16a34a')
+                const context = Math.max((exitTime - entryTime) * 0.5, 3600)
+                chart.setVisibleRange({ from: Math.max(0, entryTime - context), to: exitTime + context })
+              }
+            } catch (error) { console.error('[v0] Trade overlay rendering failed:', error) }
+          }
           try {
             if (onClickRef.current) widget.activeChart()?.subscribeClick(null, () => onClickRef.current?.())
           } catch (_) {}
@@ -386,7 +436,7 @@ export function TradingViewChart({
     }
   // Re-init when symbol, interval, or replay datafeed instance changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, symbol, interval, replayDatafeed, singleBar])
+  }, [mounted, symbol, interval, replayDatafeed, singleBar, tradeHistoryId])
 
   if (!mounted) {
     return (

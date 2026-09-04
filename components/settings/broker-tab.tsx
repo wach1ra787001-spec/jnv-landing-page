@@ -164,7 +164,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) {
-        setTradeLockerError(result.error ? `${result.error}${result.diagnostic?.status ? ` (HTTP ${result.diagnostic.status}, ${result.diagnostic.environment}, server: ${result.diagnostic.server})` : ''}` : 'TradeLocker connection failed')
+        setTradeLockerError(result.error ? `${result.error}${result.diagnostic?.status ? ` (HTTP ${result.diagnostic.status}, ${result.diagnostic.environment}, server: ${result.diagnostic.server || 'not provided'})` : ''}` : 'TradeLocker connection failed')
         return
       }
       setTradeLockerAccounts(result.accounts || [])
