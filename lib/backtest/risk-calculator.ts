@@ -45,6 +45,7 @@ export function calculateRiskPosition(input: Omit<RiskPosition, 'riskAmount' | '
 export function getInstrumentRiskMetadata(symbol: string): InstrumentRiskMetadata {
   const normalized = symbol.replace(/[\/\-\s]/g, '').toUpperCase()
   if (normalized.includes('XAU') || normalized.includes('GOLD')) return { tickSize: 0.01, tickValue: 1, contractSize: 100, pricePrecision: 2 }
+  if (/^(NAS100|US30|SPX500|GER40|UK100|JPN225|USTEC|US100)/.test(normalized)) return { tickSize: 0.1, tickValue: 1, contractSize: 1, pricePrecision: 1 }
   if (/^[A-Z]{6}$/.test(normalized)) return { tickSize: 0.00001, tickValue: 1, contractSize: 100000, pricePrecision: 5 }
   return {}
 }
