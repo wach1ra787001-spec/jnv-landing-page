@@ -103,6 +103,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
   const [tradeLockerForm, setTradeLockerForm] = useState({ email: '', password: '', server: '' })
   const [tradeLockerAccounts, setTradeLockerAccounts] = useState<Array<{ id: number; name: string }>>([])
   const [tradeLockerError, setTradeLockerError] = useState<string | null>(null)
+  const [tradeLockerAuthenticating, setTradeLockerAuthenticating] = useState(false)
 
   useEffect(() => {
     fetchConnectionStatus()
@@ -153,10 +154,25 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
 
   const connectTradeLocker = async () => {
     setTradeLockerError(null)
-    const response = await fetch('/api/tradelocker/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tradeLockerForm) })
-    const result = await response.json().catch(() => ({}))
-    if (!response.ok) { setTradeLockerError(result.error || 'TradeLocker connection failed'); return }
-    setTradeLockerAccounts(result.accounts || [])
+    setTradeLockerAuthenticating(true)
+    try {
+      const response = await fetch('/api/tradelocker/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(tradeLockerForm),
+      })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setTradeLockerError(result.error || 'TradeLocker connection failed')
+        return
+      }
+      setTradeLockerAccounts(result.accounts || [])
+      if (!result.accounts?.length) setTradeLockerError('No TradeLocker accounts were found for this login.')
+    } catch {
+      setTradeLockerError('Could not reach TradeLocker. Check your connection and try again.')
+    } finally {
+      setTradeLockerAuthenticating(false)
+    }
   }
 
   const selectTradeLockerAccount = async (accountId: number) => {
@@ -323,7 +339,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
                   <div><Label htmlFor="tl-server">Server</Label><Input id="tl-server" required placeholder="Broker server name" value={tradeLockerForm.server} onChange={(event) => setTradeLockerForm({ ...tradeLockerForm, server: event.target.value })} /></div>
                 </div>
                 {tradeLockerError && <p className="text-sm text-destructive">{tradeLockerError}</p>}
-                {!tradeLockerAccounts.length ? <Button type="submit">Authenticate</Button> : <div className="flex flex-wrap gap-2">{tradeLockerAccounts.map((account) => <Button type="button" key={account.id} onClick={() => void selectTradeLockerAccount(account.id)}>Use {account.name}</Button>)}</div>}
+                {!tradeLockerAccounts.length ? <Button type="submit" disabled={tradeLockerAuthenticating}>{tradeLockerAuthenticating ? 'Authenticating...' : 'Authenticate'}</Button> : <div className="flex flex-wrap gap-2">{tradeLockerAccounts.map((account) => <Button type="button" key={account.id} onClick={() => void selectTradeLockerAccount(account.id)}>Use {account.name}</Button>)}</div>}
               </form>
             )}
 
