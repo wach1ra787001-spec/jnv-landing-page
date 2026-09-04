@@ -106,10 +106,13 @@ export default function TradeJournalPage() {
         setShowModal(false)
         fetchTrades()
       } else {
-        appToast.tradeSaveFailed()
+        const errorBody = await response.json().catch(() => null)
+        console.error('[v0] Trade save failed:', response.status, errorBody)
+        appToast.tradeSaveFailed(errorBody?.error || errorBody?.details || 'Unable to save trade')
       }
-    } catch {
-      appToast.tradeSaveFailed()
+    } catch (error) {
+      console.error('[v0] Trade save request failed:', error)
+      appToast.tradeSaveFailed('Unable to reach the server')
     }
   }
 

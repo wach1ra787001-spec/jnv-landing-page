@@ -31,14 +31,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'File too large. Max size is 5MB.' }, { status: 400 })
     }
 
-    // Create unique filename with user ID prefix for organization
+    // Store profile images in public Blob storage so shared playbooks can
+    // render the copied image URL without depending on an external host.
     const timestamp = Date.now()
     const extension = file.name.split('.').pop() || 'png'
-    const filename = `trades/${user.id}/${timestamp}.${extension}`
-
-    // Upload to Vercel Blob with public access (your new Blob store is public)
+    const filename = `avatars/${user.id}/${timestamp}.${extension}`
     const blob = await put(filename, file, {
       access: 'public',
+      addRandomSuffix: true,
     })
 
     return NextResponse.json({ url: blob.url })

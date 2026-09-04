@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Plus, Loader2, Trash2, Edit2, X, ChevronDown, ChevronUp, Zap, ZapOff, Settings, Globe, Lock } from 'lucide-react'
+import { Plus, Loader2, Trash2, Edit2, X, ChevronDown, ChevronUp, Zap, ZapOff, Settings, Globe, Lock, Share2 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -250,7 +250,18 @@ export default function PlaybooksPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                  <div className="flex max-w-full items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                    {p.is_public && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 max-w-[7rem] shrink truncate px-2 text-xs sm:max-w-none"
+                        onClick={() => { void navigator.clipboard?.writeText(`${window.location.origin}/playbooks/${p.id}`); toast.success('Playbook link copied') }}
+                      >
+                        <Share2 className="mr-1.5 h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate">Share</span>
+                      </Button>
+                    )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label={`Settings for ${p.title}`}>
@@ -393,7 +404,7 @@ export default function PlaybooksPage() {
                 </label>
                 {form.is_public && <div className="space-y-3">
                   <div className="space-y-1.5"><label className="text-sm font-medium text-foreground">Name shown publicly</label><Input placeholder="Your preferred display name" value={form.public_display_name} onChange={e => setForm({ ...form, public_display_name: e.target.value })} /></div>
-                  <div className="space-y-1.5"><label className="text-sm font-medium text-foreground">Profile photo</label><Input type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={e => { const file = e.target.files?.[0]; if (file) void handleAvatarUpload(file) }} /><Input type="url" placeholder="Or paste a public image URL" value={form.public_avatar_url} onChange={e => setForm({ ...form, public_avatar_url: e.target.value })} /></div>
+                  <div className="space-y-1.5"><label className="text-sm font-medium text-foreground">Profile photo</label><Input type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={e => { const file = e.target.files?.[0]; if (file) void handleAvatarUpload(file) }} /><p className="text-xs text-muted-foreground">Upload an image to store it securely on Vercel Blob. External image links are not required.</p></div>
                   <div className="space-y-1.5"><label className="text-sm font-medium text-foreground">YouTube videos</label><textarea rows={3} placeholder="One YouTube URL per line" value={form.youtube_links} onChange={e => setForm({ ...form, youtube_links: e.target.value })} className="w-full px-3 py-2 rounded-md border border-input bg-background text-foreground text-sm resize-none focus:outline-none focus:ring-2 focus:ring-ring" /><p className="text-xs text-muted-foreground">Add videos that explain this playbook.</p></div>
                 </div>}
               </div>

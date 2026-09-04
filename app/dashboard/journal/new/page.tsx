@@ -191,9 +191,19 @@ export default function AddNewTradePage() {
         status: 'closed',
         screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : null,
         account_id: formData.account_id,
-        playbook_id: formData.playbook_id || null,
-  followed_rule_ids: formData.followed_rule_ids,
-  followed_rules: formData.followed_rules,
+        playbook_name: playbooks.find((playbook) => playbook.id === formData.playbook_id)?.title || null,
+        playbook_version: playbooks.find((playbook) => playbook.id === formData.playbook_id)?.version || 1,
+        playbook_rules_snapshot: (() => {
+          const playbook = playbooks.find((item) => item.id === formData.playbook_id)
+          if (!playbook) return null
+          const rules = [...(playbook.rules?.entry || []), ...(playbook.rules?.exit || []), ...(playbook.rules?.custom || [])]
+            .filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0)
+          return rules.map((label: string, index: number) => ({
+            id: `custom-${index}`,
+            label,
+            followed: formData.followed_rule_ids.includes(`custom-${index}`),
+          }))
+        })(),
   }
 
       const response = await fetch('/api/trades', {
@@ -226,7 +236,7 @@ export default function AddNewTradePage() {
     const stopLoss = parseFloat(formData.stop_loss)
     const takeProft = parseFloat(formData.take_profit)
 
-    if (!entryPrice || !exitPrice || !lotSize) {
+    if (!Number.isFinite(entryPrice) || !Number.isFinite(exitPrice) || !Number.isFinite(lotSize) || lotSize <= 0) {
       appToast.error('Entry Price, Exit Price, and Lot Size are required for auto-calculation')
       return
     }
@@ -245,7 +255,11 @@ export default function AddNewTradePage() {
     } else {
       priceChange = entryPrice - exitPrice
     }
-    const pnl = priceChange * lotSize * 10
+    // Forex P&L uses the standard 100,000-unit contract size per lot.
+    // Example: GBPUSD 1.35291 → 1.35541 at 0.11 lots = $27.50.
+    // Gold uses a 100 oz contract size instead.
+    const contractSize = formData.symbol.toUpperCase().includes('XAU') ? 100 : 100_000
+    const pnl = priceChange * lotSize * contractSize
     
     // Calculate P&L percentage based on account balance
     const accountBalance = selectedAccount?.initial_balance || 0
