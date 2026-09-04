@@ -358,7 +358,7 @@ export function TradingViewChart({
 
         widgetRef.current = widget
 
-        widget.onChartReady(() => {
+          widget.onChartReady(async () => {
           if (cancelled) {
             // A newer effect superseded this one while the widget was
             // initializing — tear this one down instead of surfacing it.
@@ -369,6 +369,33 @@ export function TradingViewChart({
             return
           }
           setIsLoading(false)
+          if (tradeHistoryId) {
+            try {
+              const metaResponse = await fetch(`/api/tradelocker/candles?tradeId=${encodeURIComponent(tradeHistoryId)}&resolution=${encodeURIComponent(interval)}&from=0&to=${Math.floor(Date.now() / 1000)}`)
+              const metaPayload = await metaResponse.json()
+              const trade = metaPayload?.trade
+              const chart = widget.activeChart?.()
+              const toSeconds = (value: unknown) => {
+                const numeric = typeof value === 'number' ? value : Date.parse(String(value)) / 1000
+                return numeric > 100000000000 ? numeric / 1000 : numeric
+              }
+              if (trade && chart && Number.isFinite(toSeconds(trade.entryTime)) && Number.isFinite(Number(trade.entryPrice))) {
+                const entryTime = toSeconds(trade.entryTime)
+                const exitTime = trade.exitTime ? toSeconds(trade.exitTime) : entryTime
+                const entryPrice = Number(trade.entryPrice)
+                const exitPrice = Number(trade.exitPrice)
+                const isLong = String(trade.direction).toLowerCase().includes('long') || String(trade.direction).toLowerCase().includes('buy')
+                const shape = (time: number, price: number, text: string, color: string, shapeName: string) => chart.createShape({ time, price }, { shape: shapeName, text, lock: true, disableSelection: true, overrides: { color, textColor: color } })
+                shape(entryTime, entryPrice, `${isLong ? 'Long' : 'Short'} entry ${entryPrice}`, isLong ? '#16a34a' : '#dc2626', isLong ? 'arrow_up' : 'arrow_down')
+                if (Number.isFinite(exitPrice)) shape(exitTime, exitPrice, `Exit ${exitPrice}`, '#2563eb', isLong ? 'arrow_down' : 'arrow_up')
+                const level = (price: unknown, title: string, color: string) => { const value = Number(price); if (!Number.isFinite(value) || value === 0) return; chart.createShape([{ time: entryTime, price: value }, { time: exitTime, price: value }], { shape: 'trend_line', text: title, lock: true, disableSelection: true, overrides: { lineColor: color, color } }) }
+                level(trade.stopLoss, 'Stop Loss', '#dc2626')
+                level(trade.takeProfit, 'Take Profit', '#16a34a')
+                const context = Math.max((exitTime - entryTime) * 0.5, 3600)
+                chart.setVisibleRange({ from: Math.max(0, entryTime - context), to: exitTime + context })
+              }
+            } catch (error) { console.error('[v0] Trade overlay rendering failed:', error) }
+          }
           try {
             if (onClickRef.current) widget.activeChart()?.subscribeClick(null, () => onClickRef.current?.())
           } catch (_) {}
@@ -409,7 +436,7 @@ export function TradingViewChart({
     }
   // Re-init when symbol, interval, or replay datafeed instance changes
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted, symbol, interval, replayDatafeed, singleBar])
+  }, [mounted, symbol, interval, replayDatafeed, singleBar, tradeHistoryId])
 
   if (!mounted) {
     return (

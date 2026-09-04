@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'tradeId, from, and to are required' }, { status: 400 })
     }
 
-    const { data: trade } = await supabase.from('trades').select('symbol, entry_time, exit_time, broker_connection_id, account_id').eq('id', tradeId).eq('user_id', user.id).maybeSingle()
+    const { data: trade } = await supabase.from('trades').select('symbol, direction, entry_price, exit_price, entry_time, exit_time, stop_loss, take_profit, broker_connection_id, account_id').eq('id', tradeId).eq('user_id', user.id).maybeSingle()
     if (!trade) return NextResponse.json({ error: 'Trade not found' }, { status: 404 })
 
     let connectionId = trade.broker_connection_id
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const response = await fetch(upstream, { headers: { Authorization: `Bearer ${accessToken}`, accNum: String(connection.account_login || connection.tradelocker_account_id) }, cache: 'no-store', signal: AbortSignal.timeout(15000) })
     const payload = await response.json().catch(() => null)
     if (!response.ok) return NextResponse.json({ error: payload?.message || `TradeLocker candle request failed (${response.status})` }, { status: 502 })
-    return NextResponse.json(payload)
+    return NextResponse.json({ ...payload, trade: { symbol: trade.symbol, direction: trade.direction, entryPrice: trade.entry_price, exitPrice: trade.exit_price, entryTime: trade.entry_time, exitTime: trade.exit_time, stopLoss: trade.stop_loss, takeProfit: trade.take_profit } })
   } catch (error) {
     console.error('[v0] TradeLocker candle request failed:', error)
     return NextResponse.json({ error: 'Failed to fetch TradeLocker candles' }, { status: 500 })
