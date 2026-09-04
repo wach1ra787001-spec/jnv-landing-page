@@ -128,6 +128,11 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
           )
         }
       }
+      const tradeLockerResponse = await fetch('/api/tradelocker/status')
+      if (tradeLockerResponse.ok) {
+        const tradeLocker = await tradeLockerResponse.json()
+        setBrokers((prev) => prev.map((broker) => broker.id === 'tradelocker' ? { ...broker, connected: Boolean(tradeLocker?.is_connected), accountNumber: tradeLocker?.selected_account_id ? String(tradeLocker.selected_account_id) : null } : broker))
+      }
     } catch (error) {
       console.error('Failed to fetch connection status')
     }
@@ -287,8 +292,8 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
                   </Button>
                 ) : (
                   <>
-                    {broker.connected && broker.id === 'ctrader' && (
-                      <Button variant="outline" size="sm" onClick={handleSyncClick} disabled={syncing}>
+                    {broker.connected && (broker.id === 'ctrader' || broker.id === 'tradelocker') && (
+                      <Button variant="outline" size="sm" onClick={broker.id === 'tradelocker' ? async () => { setSyncing(true); setSyncError(null); const response = await fetch('/api/tradelocker/sync', { method: 'POST' }); const result = await response.json().catch(() => ({})); if (!response.ok) setSyncError(result.error || 'TradeLocker sync failed'); else await fetchConnectionStatus(); setSyncing(false) } : handleSyncClick} disabled={syncing}>
                         {syncing ? 'Syncing...' : 'Sync Now'}
                       </Button>
                     )}
