@@ -226,7 +226,7 @@ export default function AddNewTradePage() {
     const stopLoss = parseFloat(formData.stop_loss)
     const takeProft = parseFloat(formData.take_profit)
 
-    if (!entryPrice || !exitPrice || !lotSize) {
+    if (!Number.isFinite(entryPrice) || !Number.isFinite(exitPrice) || !Number.isFinite(lotSize) || lotSize <= 0) {
       appToast.error('Entry Price, Exit Price, and Lot Size are required for auto-calculation')
       return
     }
@@ -245,7 +245,11 @@ export default function AddNewTradePage() {
     } else {
       priceChange = entryPrice - exitPrice
     }
-    const pnl = priceChange * lotSize * 10
+    // Forex P&L uses the standard 100,000-unit contract size per lot.
+    // Example: GBPUSD 1.35291 → 1.35541 at 0.11 lots = $27.50.
+    // Gold uses a 100 oz contract size instead.
+    const contractSize = formData.symbol.toUpperCase().includes('XAU') ? 100 : 100_000
+    const pnl = priceChange * lotSize * contractSize
     
     // Calculate P&L percentage based on account balance
     const accountBalance = selectedAccount?.initial_balance || 0
