@@ -35,26 +35,30 @@ export async function GET(request: NextRequest) {
 
     const accountRows = accounts ?? []
     const linkedConnectionIds = new Set(accountRows.map((account) => account.broker_connection_id).filter(Boolean))
-    const fallbackAccounts = (connections ?? [])
-      .filter((connection) => !linkedConnectionIds.has(connection.id))
-      .map((connection) => ({
-        id: `broker-${connection.id}`,
-        user_id: user.id,
-        account_name: connection.account_name || `TradeLocker ${connection.account_login ? `#${connection.account_login}` : 'account'}`,
-        account_type: 'tradelocker',
-        broker_connection_id: connection.id,
-        currency: connection.currency || 'USD',
-        initial_balance: connection.initial_balance ?? null,
-        notes: connection.broker_name ? `Broker: ${connection.broker_name}` : null,
-        is_active: true,
-        created_at: connection.created_at,
-        updated_at: connection.updated_at,
-        broker_login: connection.account_login,
-        tradelocker_account_id: connection.tradelocker_account_id,
-        server: connection.tradelocker_server,
-      }))
+    const missingConnections = (connections ?? []).filter((connection) => !linkedConnectionIds.has(connection.id))
 
-    return NextResponse.json([...accountRows, ...fallbackAccounts])
+    if (missingConnections.length > 0) {
+      const { data: materializedAccounts, error: materializeError } = await supabase
+        .from('accounts')
+        .insert(missingConnections.map((connection) => ({
+          user_id: user.id,
+          account_name: connection.account_name || `TradeLocker ${connection.account_login ? `#${connection.account_login}` : 'account'}`,
+          account_type: 'tradelocker',
+          broker_connection_id: connection.id,
+          currency: connection.currency || 'USD',
+          initial_balance: connection.initial_balance ?? null,
+          notes: connection.broker_name ? `Broker: ${connection.broker_name}` : null,
+          risk_percent: 1,
+          risk_amount: 1,
+          is_active: true,
+        })))
+        .select('*')
+
+      if (!materializeError && materializedAccounts) accountRows.push(...materializedAccounts)
+      else console.error('[v0] Failed to materialize connected accounts:', materializeError)
+    }
+
+    return NextResponse.json(accountRows)
   } catch (error) {
     console.error('[v0] Error in GET /api/accounts:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
