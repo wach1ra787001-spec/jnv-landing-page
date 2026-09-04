@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, Suspense } from 'react'
+import { useParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -16,6 +17,7 @@ import { TradingViewChart } from '@/components/tradingview-chart'
 import { formatSymbolForTradingView, type TradingViewInterval } from '@/lib/tradingview/utils'
 
 export default function TradingViewChartPage() {
+  const params = useParams<{ id: string }>()
   const [symbol, setSymbol] = useState('EURUSD')
   const [interval, setInterval] = useState<TradingViewInterval>('60')
   const [isLoading, setIsLoading] = useState(false)
@@ -111,6 +113,7 @@ export default function TradingViewChartPage() {
               interval={interval}
               height="100%"
               theme="auto"
+              tradeHistoryId={params.id}
             />
           </div>
         </Suspense>

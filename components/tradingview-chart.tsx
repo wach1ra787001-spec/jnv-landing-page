@@ -6,6 +6,26 @@ import { createMockDatafeed } from '@/lib/tradingview/mock-datafeed'
 import { createClient } from '@/lib/supabase/client'
 import { cn } from '@/lib/utils'
 
+function createTradeHistoryDatafeed(symbolName: string, tradeId: string, interval: string) {
+  return {
+    onReady: (cb: (config: object) => void) => setTimeout(() => cb({ supported_resolutions: ['1', '5', '15', '30', '60', '240', '1D'] }), 0),
+    resolveSymbol: (_: string, cb: (info: object) => void) => setTimeout(() => cb({ name: symbolName, ticker: symbolName, description: symbolName, type: 'forex', session: '0000-2359:1234567', timezone: 'UTC', exchange: '', minmov: 1, pricescale: 100000, has_intraday: true, has_daily: true, supported_resolutions: ['1', '5', '15', '30', '60', '240', '1D'], data_status: 'streaming' }), 0),
+    getBars: async (_: any, _resolution: string, period: { from: number; to: number }, onHistory: (bars: any[], meta: { noData: boolean }) => void, onError: (error: string) => void) => {
+      try {
+        const response = await fetch(`/api/tradelocker/candles?tradeId=${encodeURIComponent(tradeId)}&resolution=${encodeURIComponent(interval)}&from=${Math.floor(period.from)}&to=${Math.floor(period.to)}`)
+        const payload = await response.json()
+        if (!response.ok) throw new Error(payload.error || 'Unable to load TradeLocker candles')
+        const rows = payload?.bars || payload?.candles || payload?.data || []
+        const bars = rows.map((row: any) => ({ time: Number(row.time ?? row.timestamp ?? row.t) < 100000000000 ? Number(row.time ?? row.timestamp ?? row.t) * 1000 : Number(row.time ?? row.timestamp ?? row.t), open: Number(row.open ?? row.o), high: Number(row.high ?? row.h), low: Number(row.low ?? row.l), close: Number(row.close ?? row.c), volume: Number(row.volume ?? row.v ?? 0) })).filter((bar: any) => bar.time && [bar.open, bar.high, bar.low, bar.close].every(Number.isFinite)).sort((a: any, b: any) => a.time - b.time)
+        onHistory(bars, { noData: bars.length === 0 })
+      } catch (error) { onError(error instanceof Error ? error.message : 'Unable to load candles') }
+    },
+    subscribeBars: () => {},
+    unsubscribeBars: () => {},
+    searchSymbols: () => {},
+  }
+}
+
 function createSingleBarDatafeed(symbolName: string, bar: SingleBarData) {
   const upper = symbolName.toUpperCase()
   const pricescale = /US\d{2,3}|SPX|NDX|NAS|DAX|DE\d{2}|XAU|GOLD|BTC|ETH/.test(upper)
@@ -124,6 +144,8 @@ interface TradingViewChartProps {
   singleBar?: SingleBarData
   /** Pass a pre-created replay datafeed instance to use instead of the default mock */
   replayDatafeed?: object
+  /** Loads TradeLocker candles for a historical trade without changing backtesting. */
+  tradeHistoryId?: string
   /** Called once the widget is fully ready — receives the widget instance */
   onReady?: (widget: any) => void
   onClick?: () => void
@@ -179,6 +201,7 @@ export function TradingViewChart({
   height = 500,
   singleBar,
   replayDatafeed,
+  tradeHistoryId,
   onReady,
   onClick,
 }: TradingViewChartProps) {
@@ -314,7 +337,7 @@ export function TradingViewChart({
           enable_publishing: false,
           allow_symbol_change: true,
           container: containerRef.current,
-          datafeed: replayDatafeed ?? (singleBar ? createSingleBarDatafeed(symbol, singleBar) : createMockDatafeed()),
+          datafeed: replayDatafeed ?? (tradeHistoryId ? createTradeHistoryDatafeed(symbol, tradeHistoryId, interval) : singleBar ? createSingleBarDatafeed(symbol, singleBar) : createMockDatafeed()),
           client_id: 'jnv-trading-journal',
           user_id: user?.id ?? 'guest',
           settings_adapter: {
