@@ -18,6 +18,16 @@ export async function POST(request: Request) {
   }
 
   try {
+    const maskedEmail = email.length > 3 ? `${email.slice(0, 2)}…${email.slice(-1)}` : '***'
+    console.log('[v0] TradeLocker JWT request', {
+      endpoint: `${API_BASE}/auth/jwt/token`,
+      environment: API_BASE.includes('demo') ? 'demo' : 'live',
+      email: maskedEmail,
+      passwordPresent: password.length > 0,
+      passwordLength: password.length,
+      server,
+      payloadKeys: ['email', 'password', 'server'],
+    })
     const response = await fetch(`${API_BASE}/auth/jwt/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -25,8 +35,15 @@ export async function POST(request: Request) {
       cache: 'no-store',
     })
     const result = await response.json().catch(() => null)
+    console.log('[v0] TradeLocker JWT response', {
+      status: response.status,
+      ok: response.ok,
+      responseKeys: result && typeof result === 'object' ? Object.keys(result) : [],
+      code: result?.code ?? result?.errorCode ?? null,
+      message: typeof result?.message === 'string' ? result.message : null,
+    })
     if (!response.ok || !result?.accessToken || !result?.refreshToken) {
-      return NextResponse.json({ error: result?.message || 'TradeLocker authentication failed' }, { status: 401 })
+      return NextResponse.json({ error: result?.message || 'TradeLocker authentication failed', diagnostic: { status: response.status, environment: API_BASE.includes('demo') ? 'demo' : 'live', server } }, { status: 401 })
     }
 
     const accountsResponse = await fetch(`${API_BASE}/auth/jwt/all-accounts`, {
