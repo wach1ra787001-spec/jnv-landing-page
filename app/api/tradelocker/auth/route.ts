@@ -2,8 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import { encryptTradeLockerToken } from '@/lib/tradelocker-crypto'
 import { NextResponse } from 'next/server'
 
-const API_BASE = process.env.TRADELOCKER_API_BASE || 'https://live.tradelocker.com/backend-api'
-const API_ENVIRONMENT = API_BASE.includes('demo') ? 'demo' : 'live'
+const LIVE_API_BASE = 'https://live.tradelocker.com/backend-api'
+const DEMO_API_BASE = 'https://demo.tradelocker.com/backend-api'
+const CONFIGURED_API_BASE = process.env.TRADELOCKER_API_BASE || LIVE_API_BASE
 
 export async function POST(request: Request) {
   const supabase = await createClient()
@@ -20,44 +21,47 @@ export async function POST(request: Request) {
 
   try {
     const maskedEmail = email.length > 3 ? `${email.slice(0, 2)}…${email.slice(-1)}` : '***'
-    console.log('[v0] TradeLocker JWT request', {
-      endpoint: `${API_BASE}/auth/jwt/token`,
-      environment: API_ENVIRONMENT,
-      email: maskedEmail,
-      passwordPresent: password.length > 0,
-      passwordLength: password.length,
-      server,
-      payloadKeys: ['email', 'password', 'server'],
-    })
-    let response: Response
-    try {
-      response = await fetch(`${API_BASE}/auth/jwt/token`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password, server }),
-        cache: 'no-store',
-        signal: AbortSignal.timeout(15000),
-      })
-    } catch (requestError) {
-      const reason = requestError instanceof Error ? requestError.message : 'Unknown network error'
-      console.error('[v0] TradeLocker JWT network failure', { environment: API_ENVIRONMENT, server, reason })
-      return NextResponse.json({ error: `TradeLocker API request failed (${reason})`, diagnostic: { environment: API_ENVIRONMENT, server } }, { status: 502 })
-    }
-    const responseText = await response.text()
+    const apiBases = CONFIGURED_API_BASE === DEMO_API_BASE ? [DEMO_API_BASE, LIVE_API_BASE] : [CONFIGURED_API_BASE, DEMO_API_BASE]
+    let apiBase = apiBases[0]
+    let response: Response | null = null
     let result: any = null
-    try { result = responseText ? JSON.parse(responseText) : null } catch { result = null }
-    console.log('[v0] TradeLocker JWT response', {
-      status: response.status,
-      ok: response.ok,
-      responseKeys: result && typeof result === 'object' ? Object.keys(result) : [],
-      code: result?.code ?? result?.errorCode ?? null,
-      message: typeof result?.message === 'string' ? result.message : null,
-    })
-    if (!response.ok || !result?.accessToken || !result?.refreshToken) {
-      return NextResponse.json({ error: result?.message || `TradeLocker authentication failed (HTTP ${response.status})`, diagnostic: { status: response.status, statusText: response.statusText, environment: API_ENVIRONMENT, server, responseKeys: result && typeof result === 'object' ? Object.keys(result) : [], code: result?.code ?? result?.errorCode ?? null } }, { status: 401 })
+    let lastFailure: { status: number; statusText: string; environment: string; responseKeys: string[]; code: unknown; message: string | null } | null = null
+
+    for (const candidateBase of apiBases) {
+      const environment = candidateBase === DEMO_API_BASE ? 'demo' : 'live'
+      console.log('[v0] TradeLocker JWT request', { endpoint: `${candidateBase}/auth/jwt/token`, environment, email: maskedEmail, passwordPresent: password.length > 0, passwordLength: password.length, server, payloadKeys: ['email', 'password', 'server'] })
+      try {
+        const candidateResponse = await fetch(`${candidateBase}/auth/jwt/token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, server }),
+          cache: 'no-store',
+          signal: AbortSignal.timeout(15000),
+        })
+        const responseText = await candidateResponse.text()
+        let candidateResult: any = null
+        try { candidateResult = responseText ? JSON.parse(responseText) : null } catch { candidateResult = null }
+        const failure = { status: candidateResponse.status, statusText: candidateResponse.statusText, environment, responseKeys: candidateResult && typeof candidateResult === 'object' ? Object.keys(candidateResult) : [], code: candidateResult?.code ?? candidateResult?.errorCode ?? null, message: typeof candidateResult?.message === 'string' ? candidateResult.message : null }
+        console.log('[v0] TradeLocker JWT response', { ...failure, ok: candidateResponse.ok })
+        if (candidateResponse.ok && candidateResult?.accessToken && candidateResult?.refreshToken) {
+          apiBase = candidateBase
+          response = candidateResponse
+          result = candidateResult
+          break
+        }
+        lastFailure = failure
+      } catch (requestError) {
+        const reason = requestError instanceof Error ? requestError.message : 'Unknown network error'
+        console.error('[v0] TradeLocker JWT network failure', { environment, server, reason })
+        lastFailure = { status: 0, statusText: reason, environment, responseKeys: [], code: null, message: reason }
+      }
     }
 
-    const accountsResponse = await fetch(`${API_BASE}/auth/jwt/all-accounts`, {
+    if (!response || !result?.accessToken || !result?.refreshToken) {
+      return NextResponse.json({ error: lastFailure?.message || 'TradeLocker authentication failed', diagnostic: lastFailure }, { status: lastFailure?.status ? 401 : 502 })
+    }
+
+    const accountsResponse = await fetch(`${apiBase}/auth/jwt/all-accounts`, {
       headers: { Authorization: `Bearer ${result.accessToken}` },
       cache: 'no-store',
     })
