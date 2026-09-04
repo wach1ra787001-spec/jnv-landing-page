@@ -55,9 +55,9 @@ export const appToast = {
     })
   },
 
-  tradeSaveFailed: () => {
+  tradeSaveFailed: (description = 'Please try again') => {
     toast.error('Failed to save trade', {
-      description: 'Please try again',
+      description,
     })
   },
 
