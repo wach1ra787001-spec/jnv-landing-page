@@ -41,9 +41,9 @@ export async function POST(request: NextRequest) {
       status,
       source,
       account_id,
-      playbook_id,
-      followed_rule_ids,
-      followed_rules,
+      playbook_name,
+      playbook_version,
+      playbook_rules_snapshot,
     } = body
 
     // Validate required fields
@@ -91,9 +91,9 @@ export async function POST(request: NextRequest) {
       emotion_before: emotion_before || '',
       source: normalizedSource,
       account_id: account_id || null,
-      playbook_id: playbook_id || null,
-      followed_rule_ids: Array.isArray(followed_rule_ids) ? followed_rule_ids.filter((id: unknown): id is string => typeof id === 'string') : [],
-      followed_rules: Array.isArray(followed_rules) ? followed_rules.filter((rule: unknown): rule is string => typeof rule === 'string').join('\n') : '',
+      playbook_name: typeof playbook_name === 'string' ? playbook_name.trim() || null : null,
+      playbook_version: Number.isFinite(Number(playbook_version)) ? Number(playbook_version) : null,
+      playbook_rules_snapshot: Array.isArray(playbook_rules_snapshot) ? playbook_rules_snapshot : null,
     }
 
     console.log('[v0] Creating trade with data:', tradeData)

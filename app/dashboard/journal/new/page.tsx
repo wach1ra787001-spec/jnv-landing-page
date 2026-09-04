@@ -191,9 +191,19 @@ export default function AddNewTradePage() {
         status: 'closed',
         screenshot_urls: screenshotUrls.length > 0 ? screenshotUrls : null,
         account_id: formData.account_id,
-        playbook_id: formData.playbook_id || null,
-  followed_rule_ids: formData.followed_rule_ids,
-  followed_rules: formData.followed_rules,
+        playbook_name: playbooks.find((playbook) => playbook.id === formData.playbook_id)?.title || null,
+        playbook_version: playbooks.find((playbook) => playbook.id === formData.playbook_id)?.version || 1,
+        playbook_rules_snapshot: (() => {
+          const playbook = playbooks.find((item) => item.id === formData.playbook_id)
+          if (!playbook) return null
+          const rules = [...(playbook.rules?.entry || []), ...(playbook.rules?.exit || []), ...(playbook.rules?.custom || [])]
+            .filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0)
+          return rules.map((label: string, index: number) => ({
+            id: `custom-${index}`,
+            label,
+            followed: formData.followed_rule_ids.includes(`custom-${index}`),
+          }))
+        })(),
   }
 
       const response = await fetch('/api/trades', {
