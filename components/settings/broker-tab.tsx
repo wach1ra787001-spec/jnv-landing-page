@@ -198,23 +198,21 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
   }
 
   const handleDisconnectClick = async (brokerId: string) => {
-    if (brokerId === "ctrader") {
-      if (!confirm('Disconnect your cTrader account? Previously imported trades will remain.')) {
+    if (brokerId !== 'ctrader' && brokerId !== 'tradelocker') return
+    const brokerName = brokerId === 'ctrader' ? 'cTrader' : 'TradeLocker'
+    if (!confirm(`Disconnect your ${brokerName} account? Previously imported trades will remain.`)) return
+
+    try {
+      const response = await fetch(`/api/${brokerId}/disconnect`, { method: 'POST' })
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        setSyncError(result.error || `Failed to disconnect ${brokerName}`)
         return
       }
-
-      try {
-        const response = await fetch('/api/ctrader/disconnect', {
-          method: 'POST',
-        })
-
-        if (response.ok) {
-          await fetchConnectionStatus()
-          setSyncError(null)
-        }
-      } catch (error) {
-        console.error('Failed to disconnect')
-      }
+      await fetchConnectionStatus()
+      setSyncError(null)
+    } catch {
+      setSyncError(`Failed to disconnect ${brokerName}`)
     }
   }
 
