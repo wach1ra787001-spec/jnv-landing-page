@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     let apiBase = apiBases[0]
     let response: Response | null = null
     let result: any = null
-    let lastFailure: { status: number; statusText: string; environment: string; responseKeys: string[]; code: unknown; message: string | null } | null = null
+    let lastFailure: { status: number; statusText: string; environment: string; server: string; responseKeys: string[]; code: unknown; message: string | null } | null = null
 
     for (const candidateBase of apiBases) {
       const environment = candidateBase === DEMO_API_BASE ? 'demo' : 'live'
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         const responseText = await candidateResponse.text()
         let candidateResult: any = null
         try { candidateResult = responseText ? JSON.parse(responseText) : null } catch { candidateResult = null }
-        const failure = { status: candidateResponse.status, statusText: candidateResponse.statusText, environment, responseKeys: candidateResult && typeof candidateResult === 'object' ? Object.keys(candidateResult) : [], code: candidateResult?.code ?? candidateResult?.errorCode ?? null, message: typeof candidateResult?.message === 'string' ? candidateResult.message : null }
+        const failure = { status: candidateResponse.status, statusText: candidateResponse.statusText, environment, server, responseKeys: candidateResult && typeof candidateResult === 'object' ? Object.keys(candidateResult) : [], code: candidateResult?.code ?? candidateResult?.errorCode ?? null, message: typeof candidateResult?.message === 'string' ? candidateResult.message : null }
         console.log('[v0] TradeLocker JWT response', { ...failure, ok: candidateResponse.ok })
         if (candidateResponse.ok && candidateResult?.accessToken && candidateResult?.refreshToken) {
           apiBase = candidateBase
@@ -53,7 +53,7 @@ export async function POST(request: Request) {
       } catch (requestError) {
         const reason = requestError instanceof Error ? requestError.message : 'Unknown network error'
         console.error('[v0] TradeLocker JWT network failure', { environment, server, reason })
-        lastFailure = { status: 0, statusText: reason, environment, responseKeys: [], code: null, message: reason }
+        lastFailure = { status: 0, statusText: reason, environment, server, responseKeys: [], code: null, message: reason }
       }
     }
 
