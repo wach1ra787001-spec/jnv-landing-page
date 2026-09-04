@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CheckCircle2, Circle, ChevronDown, ChevronUp } from "lucide-react"
+import { CheckCircle2, Circle, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react"
 import { BrokerLogo } from "@/components/broker-logo"
 import { BrokerConnection } from "@/types/ctrader"
 import { MT5ConnectionModal } from "@/components/mt5-connection-modal"
@@ -104,6 +104,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
   const [tradeLockerAccounts, setTradeLockerAccounts] = useState<Array<{ id: number; name: string }>>([])
   const [tradeLockerError, setTradeLockerError] = useState<string | null>(null)
   const [tradeLockerAuthenticating, setTradeLockerAuthenticating] = useState(false)
+  const [showTradeLockerPassword, setShowTradeLockerPassword] = useState(false)
 
   useEffect(() => {
     fetchConnectionStatus()
@@ -163,7 +164,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
       })
       const result = await response.json().catch(() => ({}))
       if (!response.ok) {
-        setTradeLockerError(result.error || 'TradeLocker connection failed')
+        setTradeLockerError(result.error ? `${result.error}${result.diagnostic?.status ? ` (HTTP ${result.diagnostic.status}, ${result.diagnostic.environment}, server: ${result.diagnostic.server})` : ''}` : 'TradeLocker connection failed')
         return
       }
       setTradeLockerAccounts(result.accounts || [])
@@ -197,23 +198,21 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
   }
 
   const handleDisconnectClick = async (brokerId: string) => {
-    if (brokerId === "ctrader") {
-      if (!confirm('Disconnect your cTrader account? Previously imported trades will remain.')) {
+    if (brokerId !== 'ctrader' && brokerId !== 'tradelocker') return
+    const brokerName = brokerId === 'ctrader' ? 'cTrader' : 'TradeLocker'
+    if (!confirm(`Disconnect your ${brokerName} account? Previously imported trades will remain.`)) return
+
+    try {
+      const response = await fetch(`/api/${brokerId}/disconnect`, { method: 'POST' })
+      if (!response.ok) {
+        const result = await response.json().catch(() => ({}))
+        setSyncError(result.error || `Failed to disconnect ${brokerName}`)
         return
       }
-
-      try {
-        const response = await fetch('/api/ctrader/disconnect', {
-          method: 'POST',
-        })
-
-        if (response.ok) {
-          await fetchConnectionStatus()
-          setSyncError(null)
-        }
-      } catch (error) {
-        console.error('Failed to disconnect')
-      }
+      await fetchConnectionStatus()
+      setSyncError(null)
+    } catch {
+      setSyncError(`Failed to disconnect ${brokerName}`)
     }
   }
 
@@ -335,7 +334,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
               <form className="border-t border-border/50 bg-muted/20 p-4 space-y-3" onSubmit={(event) => { event.preventDefault(); void connectTradeLocker() }}>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div><Label htmlFor="tl-email">Email</Label><Input id="tl-email" type="email" required value={tradeLockerForm.email} onChange={(event) => setTradeLockerForm({ ...tradeLockerForm, email: event.target.value })} /></div>
-                  <div><Label htmlFor="tl-password">Password</Label><Input id="tl-password" type="password" required value={tradeLockerForm.password} onChange={(event) => setTradeLockerForm({ ...tradeLockerForm, password: event.target.value })} /></div>
+                  <div><Label htmlFor="tl-password">Password</Label><div className="relative"><Input id="tl-password" type={showTradeLockerPassword ? "text" : "password"} required value={tradeLockerForm.password} onChange={(event) => setTradeLockerForm({ ...tradeLockerForm, password: event.target.value })} className="pr-10" /><Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 size-10" onClick={() => setShowTradeLockerPassword((visible) => !visible)} aria-label={showTradeLockerPassword ? "Hide password" : "Show password"} aria-pressed={showTradeLockerPassword}>{showTradeLockerPassword ? <EyeOff data-icon="inline-start" /> : <Eye data-icon="inline-start" />}</Button></div></div>
                   <div><Label htmlFor="tl-server">Server</Label><Input id="tl-server" required placeholder="Broker server name" value={tradeLockerForm.server} onChange={(event) => setTradeLockerForm({ ...tradeLockerForm, server: event.target.value })} /></div>
                 </div>
                 {tradeLockerError && <p className="text-sm text-destructive">{tradeLockerError}</p>}
