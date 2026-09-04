@@ -71,7 +71,7 @@ export async function POST(request: Request) {
     for (const account of rows) {
       const accountId = Number(account.accNum ?? account.accountId ?? account.id)
       if (!Number.isFinite(accountId)) continue
-      const { error } = await supabase.from('broker_connections').upsert({
+      const connectionData = {
         user_id: user.id,
         broker: 'tradelocker',
         tradelocker_account_id: accountId,
@@ -80,14 +80,25 @@ export async function POST(request: Request) {
         encrypted_access_token: encryptTradeLockerToken(result.accessToken),
         encrypted_refresh_token: encryptTradeLockerToken(result.refreshToken),
         token_expires_at: expiresAt,
-        account_login: String(account.login ?? accountId),
+        account_login: String(account.login ?? account.accNum ?? accountId),
         account_name: account.name ?? null,
         broker_name: account.broker ?? server,
         is_connected: true,
         last_sync_error: null,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,broker,tradelocker_account_id' })
-      if (error) throw error
+      }
+      const { data: existingConnection, error: lookupError } = await supabase
+        .from('broker_connections')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('broker', 'tradelocker')
+        .eq('tradelocker_account_id', accountId)
+        .maybeSingle()
+      if (lookupError) throw lookupError
+      const { error: saveError } = existingConnection
+        ? await supabase.from('broker_connections').update(connectionData).eq('id', existingConnection.id)
+        : await supabase.from('broker_connections').insert(connectionData)
+      if (saveError) throw saveError
     }
 
     return NextResponse.json({ accounts: rows.map((account: any) => ({
