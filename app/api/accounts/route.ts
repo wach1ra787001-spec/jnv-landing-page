@@ -21,7 +21,44 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to fetch accounts' }, { status: 500 })
     }
 
-    return NextResponse.json(accounts)
+    const { data: connections, error: connectionsError } = await supabase
+      .from('broker_connections')
+      .select('*')
+      .eq('user_id', user.id)
+      .eq('is_connected', true)
+      .eq('broker', 'tradelocker')
+
+    if (connectionsError) {
+      console.error('[v0] Error fetching connected broker accounts:', connectionsError)
+      return NextResponse.json(accounts)
+    }
+
+    const accountRows = accounts ?? []
+    const linkedConnectionIds = new Set(accountRows.map((account) => account.broker_connection_id).filter(Boolean))
+    const missingConnections = (connections ?? []).filter((connection) => !linkedConnectionIds.has(connection.id))
+
+    if (missingConnections.length > 0) {
+      const { data: materializedAccounts, error: materializeError } = await supabase
+        .from('accounts')
+        .insert(missingConnections.map((connection) => ({
+          user_id: user.id,
+          account_name: connection.account_name || `TradeLocker ${connection.account_login ? `#${connection.account_login}` : 'account'}`,
+          account_type: 'tradelocker',
+          broker_connection_id: connection.id,
+          currency: connection.currency || 'USD',
+          initial_balance: connection.initial_balance ?? null,
+          notes: connection.broker_name ? `Broker: ${connection.broker_name}` : null,
+          risk_percent: 1,
+          risk_amount: 1,
+          is_active: true,
+        })))
+        .select('*')
+
+      if (!materializeError && materializedAccounts) accountRows.push(...materializedAccounts)
+      else console.error('[v0] Failed to materialize connected accounts:', materializeError)
+    }
+
+    return NextResponse.json(accountRows)
   } catch (error) {
     console.error('[v0] Error in GET /api/accounts:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
