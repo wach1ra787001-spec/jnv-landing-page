@@ -46,7 +46,7 @@ export default function TradeHistoryPage() {
 
   const fetchTrades = async () => {
     try {
-      const response = await fetch('/api/trades')
+      const response = await fetch('/api/trades?view=history')
       if (response.ok) {
         const data = await response.json()
         // Transform database records to Trade interface

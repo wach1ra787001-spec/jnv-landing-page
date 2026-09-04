@@ -48,6 +48,10 @@ export function TradeJournalEntryCard({
   const isProfit = (trade.net_pnl ?? trade.pnl) >= 0
   const pnl = trade.net_pnl ?? trade.pnl
 
+  const markReviewed = async () => {
+    await fetch(`/api/trades/${trade.id}/review`, { method: 'POST' })
+  }
+
   const handleSaveNotes = async () => {
     if (!notes.trim()) return
     setSaving(true)
@@ -112,7 +116,13 @@ export function TradeJournalEntryCard({
       {/* Trade header row */}
       <button
         type="button"
-        onClick={() => setExpanded(v => !v)}
+        onClick={() => {
+          if (!expanded) {
+            void markReviewed()
+            onJournaled?.(trade.id)
+          }
+          setExpanded(v => !v)
+        }}
         className="w-full flex items-center gap-3 p-4 hover:bg-muted/30 transition-colors text-left"
       >
         {/* Direction badge */}

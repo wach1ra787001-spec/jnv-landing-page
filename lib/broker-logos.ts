@@ -29,6 +29,12 @@ export const BROKER_LOGOS: Record<string, BrokerLogoInfo> = {
     logo: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-epm8LeIqsxMnbkZbfM3N2VWByW00wD.png',
     description: 'TradingView Platform',
   },
+  tradelocker: {
+    name: 'TradeLocker',
+    shortName: 'TL',
+    logo: '/images/tradelocker-logo.png',
+    description: 'TradeLocker Platform',
+  },
   ctrader: {
     name: 'cTrader',
     shortName: 'cT',

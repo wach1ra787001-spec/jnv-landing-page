@@ -12,6 +12,7 @@ import { BrokerLogo } from "@/components/broker-logo"
 import { BrokerConnection } from "@/types/ctrader"
 import { MT5ConnectionModal } from "@/components/mt5-connection-modal"
 import { CSVImportWizard } from "@/components/settings/csv-import-wizard"
+import { appToast } from "@/lib/toast-utils"
 
 interface Broker {
   id: string
@@ -213,6 +214,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
 
       if (response.ok) {
         const result = await response.json()
+        appToast.tradesImported(result.imported || 0)
         await fetchConnectionStatus()
       } else {
         const error = await response.json()
@@ -293,7 +295,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
                 ) : (
                   <>
                     {broker.connected && (broker.id === 'ctrader' || broker.id === 'tradelocker') && (
-                      <Button variant="outline" size="sm" onClick={broker.id === 'tradelocker' ? async () => { setSyncing(true); setSyncError(null); const response = await fetch('/api/tradelocker/sync', { method: 'POST' }); const result = await response.json().catch(() => ({})); if (!response.ok) setSyncError(result.error || 'TradeLocker sync failed'); else await fetchConnectionStatus(); setSyncing(false) } : handleSyncClick} disabled={syncing}>
+                      <Button variant="outline" size="sm" onClick={broker.id === 'tradelocker' ? async () => { setSyncing(true); setSyncError(null); const response = await fetch('/api/tradelocker/sync', { method: 'POST' }); const result = await response.json().catch(() => ({})); if (!response.ok) setSyncError(result.error || 'TradeLocker sync failed'); else { appToast.tradesImported(result.imported || 0); await fetchConnectionStatus(); } setSyncing(false) } : handleSyncClick} disabled={syncing}>
                         {syncing ? 'Syncing...' : 'Sync Now'}
                       </Button>
                     )}
