@@ -166,9 +166,6 @@ export async function createTrade(tradeData: CreateTradeInput) {
     screenshot_urls: tradeData.screenshot_urls || [],
     session: sessionName,
     account_id: tradeData.account_id || null,
-    playbook_id: tradeData.playbook_id || null,
-    followed_rule_ids: Array.isArray(tradeData.followed_rule_ids) ? tradeData.followed_rule_ids : [],
-    followed_rules: tradeData.followed_rules || '',
   }
   
   console.log('[v0] Screenshot URLs being saved:', tradeData.screenshot_urls?.length || 0, 'files')
