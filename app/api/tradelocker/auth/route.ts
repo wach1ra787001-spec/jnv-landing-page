@@ -69,18 +69,19 @@ export async function POST(request: Request) {
     const expiresAt = result.expireDate ? new Date(result.expireDate).toISOString() : null
     const rows = Array.isArray(accounts) ? accounts : accounts?.accounts || []
     for (const account of rows) {
-      const accountId = Number(account.accNum ?? account.accountId ?? account.id)
-      if (!Number.isFinite(accountId)) continue
+      const tradeLockerAccountId = Number(account.accountId ?? account.id ?? account.accNum)
+      const brokerLogin = account.accNum ?? account.login ?? null
+      if (!Number.isFinite(tradeLockerAccountId)) continue
       const connectionData = {
         user_id: user.id,
         broker: 'tradelocker',
-        tradelocker_account_id: accountId,
-        selected_account_id: accountId,
+        tradelocker_account_id: tradeLockerAccountId,
+        selected_account_id: tradeLockerAccountId,
         tradelocker_server: server,
         encrypted_access_token: encryptTradeLockerToken(result.accessToken),
         encrypted_refresh_token: encryptTradeLockerToken(result.refreshToken),
         token_expires_at: expiresAt,
-        account_login: String(account.login ?? account.accNum ?? accountId),
+        account_login: brokerLogin ? String(brokerLogin) : String(tradeLockerAccountId),
         account_name: account.name ?? null,
         broker_name: account.broker ?? server,
         is_connected: true,
@@ -92,17 +93,48 @@ export async function POST(request: Request) {
         .select('id')
         .eq('user_id', user.id)
         .eq('broker', 'tradelocker')
-        .eq('tradelocker_account_id', accountId)
+        .eq('tradelocker_account_id', tradeLockerAccountId)
         .maybeSingle()
       if (lookupError) throw lookupError
       const { error: saveError } = existingConnection
         ? await supabase.from('broker_connections').update(connectionData).eq('id', existingConnection.id)
         : await supabase.from('broker_connections').insert(connectionData)
       if (saveError) throw saveError
+      const { data: connection } = await supabase
+        .from('broker_connections')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('broker', 'tradelocker')
+        .eq('tradelocker_account_id', tradeLockerAccountId)
+        .maybeSingle()
+      if (!connection) throw new Error('TradeLocker connection was not persisted')
+
+      const accountName = account.name ?? `TradeLocker ${brokerLogin ? `#${brokerLogin}` : `#${tradeLockerAccountId}`}`
+      const accountRecord = {
+        user_id: user.id,
+        account_name: accountName,
+        account_type: 'TradeLocker',
+        broker_connection_id: connection.id,
+        currency: account.currency ?? 'USD',
+        initial_balance: account.balance ?? account.initialBalance ?? null,
+        is_active: true,
+        updated_at: new Date().toISOString(),
+      }
+      const { data: existingAccount } = await supabase
+        .from('accounts')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('broker_connection_id', connection.id)
+        .maybeSingle()
+      const accountSave = existingAccount
+        ? await supabase.from('accounts').update(accountRecord).eq('id', existingAccount.id).select().single()
+        : await supabase.from('accounts').insert(accountRecord).select().single()
+      if (accountSave.error) throw accountSave.error
     }
 
     return NextResponse.json({ accounts: rows.map((account: any) => ({
-      id: Number(account.accNum ?? account.accountId ?? account.id),
+      id: Number(account.accountId ?? account.id ?? account.accNum),
+      brokerLogin: account.accNum ?? account.login ?? null,
       name: account.name ?? account.login ?? 'TradeLocker account',
     })) })
   } catch (error) {
