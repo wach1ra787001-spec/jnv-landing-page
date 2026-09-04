@@ -4,7 +4,8 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
   try {
-    const data = await getUserTrades()
+    const view = request.nextUrl.searchParams.get('view')
+    const data = await getUserTrades(view === 'journal' || view === 'history' ? view : 'all')
     return NextResponse.json(data)
   } catch (error) {
     console.error('[v0] Fetch trades error:', error)

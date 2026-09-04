@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { CheckCircle2, Circle, ChevronDown, ChevronUp } from "lucide-react"
 import { BrokerLogo } from "@/components/broker-logo"
 import { BrokerConnection } from "@/types/ctrader"
 import { MT5ConnectionModal } from "@/components/mt5-connection-modal"
 import { CSVImportWizard } from "@/components/settings/csv-import-wizard"
+import { appToast } from "@/lib/toast-utils"
 
 interface Broker {
   id: string
@@ -52,6 +55,14 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
       accountNumber: null,
     },
     {
+      id: "tradelocker",
+      name: "TradeLocker",
+      description: "Connect your TradeLocker account for automatic trade imports",
+      source: "tradelocker",
+      connected: false,
+      accountNumber: null,
+    },
+    {
       id: "ctrader",
       name: "cTrader",
       description: "Connect your cTrader account for automatic trade imports",
@@ -88,6 +99,10 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
   const [syncError, setSyncError] = useState<string | null>(null)
   const [mt5ModalOpen, setMt5ModalOpen] = useState(false)
   const [csvExpanded, setCsvExpanded] = useState(false)
+  const [tradeLockerOpen, setTradeLockerOpen] = useState(false)
+  const [tradeLockerForm, setTradeLockerForm] = useState({ email: '', password: '', server: '' })
+  const [tradeLockerAccounts, setTradeLockerAccounts] = useState<Array<{ id: number; name: string }>>([])
+  const [tradeLockerError, setTradeLockerError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchConnectionStatus()
@@ -114,6 +129,11 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
           )
         }
       }
+      const tradeLockerResponse = await fetch('/api/tradelocker/status')
+      if (tradeLockerResponse.ok) {
+        const tradeLocker = await tradeLockerResponse.json()
+        setBrokers((prev) => prev.map((broker) => broker.id === 'tradelocker' ? { ...broker, connected: Boolean(tradeLocker?.is_connected), accountNumber: tradeLocker?.selected_account_id ? String(tradeLocker.selected_account_id) : null } : broker))
+      }
     } catch (error) {
       console.error('Failed to fetch connection status')
     }
@@ -125,7 +145,25 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
       onConnectMT5?.()
     } else if (brokerId === "ctrader") {
       window.location.href = '/api/ctrader/auth'
+    } else if (brokerId === "tradelocker") {
+      setTradeLockerError(null)
+      setTradeLockerOpen(true)
     }
+  }
+
+  const connectTradeLocker = async () => {
+    setTradeLockerError(null)
+    const response = await fetch('/api/tradelocker/auth', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tradeLockerForm) })
+    const result = await response.json().catch(() => ({}))
+    if (!response.ok) { setTradeLockerError(result.error || 'TradeLocker connection failed'); return }
+    setTradeLockerAccounts(result.accounts || [])
+  }
+
+  const selectTradeLockerAccount = async (accountId: number) => {
+    const response = await fetch('/api/tradelocker/accounts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ accountId }) })
+    if (!response.ok) { setTradeLockerError('Could not select this account'); return }
+    setBrokers((prev) => prev.map((broker) => broker.id === 'tradelocker' ? { ...broker, connected: true, accountNumber: String(accountId) } : broker))
+    setTradeLockerOpen(false)
   }
 
   const handleMT5ConnectionSuccess = (accountDetails: any) => {
@@ -176,6 +214,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
 
       if (response.ok) {
         const result = await response.json()
+        appToast.tradesImported(result.imported || 0)
         await fetchConnectionStatus()
       } else {
         const error = await response.json()
@@ -255,8 +294,8 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
                   </Button>
                 ) : (
                   <>
-                    {broker.connected && broker.id === 'ctrader' && (
-                      <Button variant="outline" size="sm" onClick={handleSyncClick} disabled={syncing}>
+                    {broker.connected && (broker.id === 'ctrader' || broker.id === 'tradelocker') && (
+                      <Button variant="outline" size="sm" onClick={broker.id === 'tradelocker' ? async () => { setSyncing(true); setSyncError(null); const response = await fetch('/api/tradelocker/sync', { method: 'POST' }); const result = await response.json().catch(() => ({})); if (!response.ok) setSyncError(result.error || 'TradeLocker sync failed'); else { appToast.tradesImported(result.imported || 0); await fetchConnectionStatus(); } setSyncing(false) } : handleSyncClick} disabled={syncing}>
                         {syncing ? 'Syncing...' : 'Sync Now'}
                       </Button>
                     )}
@@ -275,6 +314,18 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
                 )}
               </div>
             </div>
+
+            {broker.id === 'tradelocker' && tradeLockerOpen && (
+              <form className="border-t border-border/50 bg-muted/20 p-4 space-y-3" onSubmit={(event) => { event.preventDefault(); void connectTradeLocker() }}>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div><Label htmlFor="tl-email">Email</Label><Input id="tl-email" type="email" required value={tradeLockerForm.email} onChange={(event) => setTradeLockerForm({ ...tradeLockerForm, email: event.target.value })} /></div>
+                  <div><Label htmlFor="tl-password">Password</Label><Input id="tl-password" type="password" required value={tradeLockerForm.password} onChange={(event) => setTradeLockerForm({ ...tradeLockerForm, password: event.target.value })} /></div>
+                  <div><Label htmlFor="tl-server">Server</Label><Input id="tl-server" required placeholder="Broker server name" value={tradeLockerForm.server} onChange={(event) => setTradeLockerForm({ ...tradeLockerForm, server: event.target.value })} /></div>
+                </div>
+                {tradeLockerError && <p className="text-sm text-destructive">{tradeLockerError}</p>}
+                {!tradeLockerAccounts.length ? <Button type="submit">Authenticate</Button> : <div className="flex flex-wrap gap-2">{tradeLockerAccounts.map((account) => <Button type="button" key={account.id} onClick={() => void selectTradeLockerAccount(account.id)}>Use {account.name}</Button>)}</div>}
+              </form>
+            )}
 
             {/* CSV Wizard — expands inline under the CSV row */}
             {broker.id === 'csv' && csvExpanded && (

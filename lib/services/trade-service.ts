@@ -3,7 +3,7 @@ import { detectTradeSession } from '@/lib/session-detection-engine'
 import { getSelectedAccountId } from '@/lib/get-selected-account'
 
 // Valid source values allowed by database constraint (matches database ENUM)
-const VALID_SOURCES = ['manual', 'mt5', 'mt4', 'ctrader', 'tradingview', 'csv'] as const
+const VALID_SOURCES = ['manual', 'mt5', 'mt4', 'ctrader', 'tradelocker', 'tradingview', 'csv'] as const
 export type TradeSource = typeof VALID_SOURCES[number]
 
 /**
@@ -226,7 +226,7 @@ export async function createTrade(tradeData: CreateTradeInput) {
   return createdTrade
 }
 
-export async function getUserTrades() {
+export async function getUserTrades(view: 'all' | 'journal' | 'history' = 'all') {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -257,8 +257,19 @@ export async function getUserTrades() {
     throw error
   }
 
-  console.log('[v0] Fetched trades:', data?.length || 0, 'for account:', accountId)
-  return data || []
+  let trades = data || []
+  if (view !== 'all') {
+    const { data: journals, error: journalError } = await supabase
+      .from('trade_journal')
+      .select('trade_id')
+      .eq('user_id', user.id)
+    if (journalError) throw journalError
+    const reviewedIds = new Set((journals || []).map((journal) => journal.trade_id))
+    trades = trades.filter((trade) => view === 'history' ? reviewedIds.has(trade.id) : !reviewedIds.has(trade.id))
+  }
+
+  console.log('[v0] Fetched trades:', trades.length, 'for account:', accountId, 'view:', view)
+  return trades
 }
 
 export async function getTradeById(id: string) {

@@ -70,7 +70,7 @@ export default function TradeJournalPage() {
   const fetchTrades = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/trades')
+      const res = await fetch('/api/trades?view=journal')
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
       // Sort newest first
@@ -258,7 +258,7 @@ export default function TradeJournalPage() {
               key={trade.id}
               trade={trade}
               defaultExpanded={trade.id === highlightId}
-              onJournaled={() => {}}
+              onJournaled={(tradeId) => setTrades(current => current.filter(item => item.id !== tradeId))}
             />
           ))}
         </div>

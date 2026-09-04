@@ -48,6 +48,12 @@ export const appToast = {
     toast.success('Sync completed successfully')
   },
 
+  tradesImported: (count: number) => {
+    toast.success('Trades imported', {
+      description: `${count} new trade${count === 1 ? '' : 's'} added to Trade Journal.`,
+    })
+  },
+
   // Error notifications
   error: (message: string, description?: string) => {
     toast.error(message, {
