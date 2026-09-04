@@ -258,7 +258,10 @@ export default function AddNewTradePage() {
     // Forex P&L uses the standard 100,000-unit contract size per lot.
     // Example: GBPUSD 1.35291 → 1.35541 at 0.11 lots = $27.50.
     // Gold uses a 100 oz contract size instead.
-    const contractSize = formData.symbol.toUpperCase().includes('XAU') ? 100 : 100_000
+    const normalizedSymbol = formData.symbol.toUpperCase().replace(/[\s/_-]/g, '')
+    const isGold = normalizedSymbol.includes('XAU') || normalizedSymbol.includes('GOLD')
+    const isIndex = /^(NAS100|US30|SPX500|GER40|UK100|JPN225|USTEC|US100)/.test(normalizedSymbol)
+    const contractSize = isGold ? 100 : isIndex ? 1 : 100_000
     const pnl = priceChange * lotSize * contractSize
     
     // Calculate P&L percentage based on account balance

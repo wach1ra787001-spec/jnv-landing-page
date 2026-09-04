@@ -60,7 +60,8 @@ const calcPnL = (
   symbol: string
 ): { pnl: number; percent: number } => {
     const isGold = symbol.toUpperCase().includes('XAU')
-  const contractSize = isGold ? 100 : 100_000
+    const isIndex = /^(NAS100|US30|SPX500|GER40|UK100|JPN225|USTEC|US100)/.test(symbol.toUpperCase().replace(/[\s/_-]/g, ''))
+    const contractSize = isGold ? 100 : isIndex ? 1 : 100_000
   const priceDiff = direction === 'buy' ? exit - entry : entry - exit
   // Forex PnL is quote-currency price movement × units. For example,
   // GBPUSD 1.35291 → 1.35541 at 0.11 lots = 0.00250 × 11,000 = $27.50.
