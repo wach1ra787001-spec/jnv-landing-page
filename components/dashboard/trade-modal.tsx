@@ -59,9 +59,11 @@ const calcPnL = (
   lotSize: number,
   symbol: string
 ): { pnl: number; percent: number } => {
-  const isGold = symbol.toUpperCase().includes('XAU')
+    const isGold = symbol.toUpperCase().includes('XAU')
   const contractSize = isGold ? 100 : 100_000
   const priceDiff = direction === 'buy' ? exit - entry : entry - exit
+  // Forex PnL is quote-currency price movement × units. For example,
+  // GBPUSD 1.35291 → 1.35541 at 0.11 lots = 0.00250 × 11,000 = $27.50.
   const pnl = priceDiff * lotSize * contractSize
   const invested = entry * lotSize * contractSize
   const percent = invested !== 0 ? (pnl / invested) * 100 : 0
@@ -114,6 +116,7 @@ export function TradeModal({ isOpen, onClose, onSubmit, editingTrade }: TradeMod
   const [showEmotionSettings, setShowEmotionSettings] = useState(false)
   const [customEmotion, setCustomEmotion]     = useState('')
   const [isSubmitting, setIsSubmitting]       = useState(false)
+  const pnlManuallyEditedRef                  = useRef(false)
   const fileInputRef                          = useRef<HTMLInputElement>(null)
   const abortRef                              = useRef<AbortController | null>(null)
 
@@ -121,6 +124,7 @@ export function TradeModal({ isOpen, onClose, onSubmit, editingTrade }: TradeMod
   useEffect(() => {
     if (!isOpen) return
 
+    pnlManuallyEditedRef.current = false
     if (editingTrade) {
       setFormData({
         symbol:         editingTrade.symbol ?? '',
@@ -177,6 +181,7 @@ export function TradeModal({ isOpen, onClose, onSubmit, editingTrade }: TradeMod
   }
 
   const recalcPnL = (data = formData) => {
+    if (pnlManuallyEditedRef.current) return
     const entry = parseFloat(data.entry_price)
     const exit  = parseFloat(data.exit_price)
     const lot   = parseFloat(data.lot_size)
@@ -489,7 +494,10 @@ export function TradeModal({ isOpen, onClose, onSubmit, editingTrade }: TradeMod
                 <Input
                   type="number" step="0.01" placeholder="Auto-calculated or manual"
                   value={formData.pnl}
-                  onChange={set('pnl')}
+                  onChange={(e) => {
+                    pnlManuallyEditedRef.current = true
+                    set('pnl')(e)
+                  }}
                   className={cn(
                     formData.pnl && parseFloat(formData.pnl) > 0 && 'text-green-600',
                     formData.pnl && parseFloat(formData.pnl) < 0 && 'text-red-600',
