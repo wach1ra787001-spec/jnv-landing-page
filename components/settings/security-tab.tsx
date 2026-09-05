@@ -4,8 +4,7 @@ import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Laptop, Smartphone, Monitor, Globe } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { Laptop, Smartphone, Monitor } from "lucide-react"
 
 interface Session {
   id: string
@@ -50,7 +49,6 @@ export function SecurityTab() {
   })
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
 
   useEffect(() => {
     loadSessions()
@@ -59,27 +57,9 @@ export function SecurityTab() {
   const loadSessions = async () => {
     try {
       setLoading(true)
-      const supabase = createClient()
-      
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.access_token) {
-        setCurrentSessionId(session.access_token)
-      }
-
-      // Fetch active and recent sessions
-      const { data, error } = await supabase
-        .from("user_sessions")
-        .select("*")
-        .order("last_seen_at", { ascending: false })
-        .limit(20)
-
-      if (error) {
-        console.error("Error loading sessions:", error)
-        return
-      }
-
-      setSessions(data || [])
+      const response = await fetch("/api/security/sessions", { cache: "no-store" })
+      if (!response.ok) throw new Error("Unable to load sessions")
+      setSessions(await response.json())
     } catch (error) {
       console.error("Error in loadSessions:", error)
     } finally {
@@ -87,25 +67,21 @@ export function SecurityTab() {
     }
   }
 
-  const handlePasswordChange = () => {
-    console.log("Changing password...")
+  const handlePasswordChange = async () => {
+    const response = await fetch("/api/security/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.new, confirmPassword: passwords.confirm }) })
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}))
+      alert(result.error || "Unable to update password")
+      return
+    }
+    setPasswords({ current: "", new: "", confirm: "" })
+    alert("Password updated")
   }
 
   const handleEndSession = async (sessionId: string) => {
     try {
-      const supabase = createClient()
-      
-      const { error } = await supabase
-        .from("user_sessions")
-        .update({ 
-          logged_out_at: new Date().toISOString(),
-          is_current: false 
-        })
-        .eq("id", sessionId)
-
-      if (error) throw error
-      
-      // Reload sessions
+      const response = await fetch("/api/security/sessions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) })
+      if (!response.ok) throw new Error("Unable to end session")
       await loadSessions()
     } catch (error) {
       console.error("Error ending session:", error)
@@ -114,23 +90,8 @@ export function SecurityTab() {
 
   const handleLogoutOtherDevices = async () => {
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) return
-
-      // Update all sessions except current one to logged out
-      const { error } = await supabase
-        .from("user_sessions")
-        .update({ 
-          logged_out_at: new Date().toISOString(),
-          is_current: false 
-        })
-        .eq("user_id", user.id)
-        .neq("session_id", currentSessionId)
-
-      if (error) throw error
-      
+      const response = await fetch("/api/security/sessions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allOther: true }) })
+      if (!response.ok) throw new Error("Unable to end other sessions")
       await loadSessions()
     } catch (error) {
       console.error("Error logging out other devices:", error)
