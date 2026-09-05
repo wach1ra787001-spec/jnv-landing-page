@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { syncCTraderAccounts } from '@/lib/ctrader-sync-job'
+import { hasValidCronSecret } from '@/lib/security/request-guards'
 
 /**
  * Cron endpoint for automatic cTrader account synchronization
@@ -16,10 +17,7 @@ import { syncCTraderAccounts } from '@/lib/ctrader-sync-job'
  * Or use external service like EasyCron to POST to this endpoint
  */
 export async function POST(req: NextRequest) {
-  // Verify cron secret for security
-  const cronSecret = req.headers.get('authorization')?.replace('Bearer ', '')
-  
-  if (!process.env.CRON_SECRET || cronSecret !== process.env.CRON_SECRET) {
+  if (!hasValidCronSecret(req)) {
     console.warn('[cTrader Cron] Unauthorized cron request')
     return NextResponse.json(
       { error: 'Unauthorized' },
