@@ -140,15 +140,16 @@ export function SecurityTab() {
   return (
     <div className="space-y-8">
       {/* Change Password Section */}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">Change Password</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Update your password to keep your account secure
-          </p>
-        </div>
+      <div className="space-y-4 md:flex md:justify-center">
+        <div className="md:w-full md:max-w-md">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Change Password</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Update your password to keep your account secure
+            </p>
+          </div>
 
-        <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
+          <form onSubmit={handlePasswordChange} className="space-y-4 mt-4">
           <div className="space-y-2">
             <Label htmlFor="currentPassword" className="text-sm font-medium text-foreground">
               Current Password
@@ -199,6 +200,7 @@ export function SecurityTab() {
             {passwordError && <p className="text-sm text-destructive" role="alert">{passwordError}</p>}
           </div>
         </form>
+        </div>
       </div>
 
       <div className="space-y-4">
