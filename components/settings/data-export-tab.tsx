@@ -58,10 +58,39 @@ export function DataExportTab() {
     setDurationError(null)
     setIsDurationDialogOpen(false)
     setIsExporting(true)
-    // Simulate export delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsExporting(false)
-    console.log("Exporting in format:", selectedFormat)
+
+    try {
+      const rangeLabel = duration === "custom"
+        ? `${customStart} to ${customEnd}`
+        : duration === "all"
+          ? "All available data"
+          : `Last ${duration} days`
+      const fileDate = new Date().toISOString().slice(0, 10)
+      const baseName = `jnv-report-${fileDate}`
+      const report = {
+        generatedAt: new Date().toISOString(),
+        duration: rangeLabel,
+        format: selectedFormat,
+        data: [],
+      }
+      const csv = `Report,${baseName}\\nDuration,${rangeLabel}\\nGenerated At,${report.generatedAt}\\n`
+      const pdf = `%PDF-1.4\\n1 0 obj\\n<< /Type /Catalog /Pages 2 0 R >>\\nendobj\\n2 0 obj\\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\\nendobj\\n3 0 obj\\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\\nendobj\\n4 0 obj\\n<< /Length 96 >>\\nstream\\nBT /F1 14 Tf 72 720 Td (JNV Trading Report) Tj 0 -24 Td (Duration: ${rangeLabel}) Tj ET\\nendstream\\nendobj\\n5 0 obj\\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\\nendobj\\ntrailer\\n<< /Root 1 0 R >>\\n%%EOF`
+      const isPdf = selectedFormat === "pdf"
+      const content = selectedFormat === "json" ? JSON.stringify(report, null, 2) : isPdf ? pdf : csv
+      const mimeType = selectedFormat === "json" ? "application/json" : isPdf ? "application/pdf" : "text/csv"
+      const extension = selectedFormat === "json" ? "json" : isPdf ? "pdf" : "csv"
+      const blob = new Blob([content], { type: mimeType })
+      const downloadUrl = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = downloadUrl
+      link.download = `${baseName}.${extension}`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(downloadUrl)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   return (
