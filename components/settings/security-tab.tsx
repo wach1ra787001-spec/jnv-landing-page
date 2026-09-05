@@ -6,6 +6,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Laptop, Smartphone, Monitor } from "lucide-react"
 
+interface SecurityEvent {
+  id: string
+  event_type: string
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
+
 interface Session {
   id: string
   device_name: string
@@ -48,6 +56,7 @@ export function SecurityTab() {
     confirm: "",
   })
   const [sessions, setSessions] = useState<Session[]>([])
+  const [events, setEvents] = useState<SecurityEvent[]>([])
   const [loading, setLoading] = useState(true)
   const [passwordStatus, setPasswordStatus] = useState<string | null>(null)
   const [passwordError, setPasswordError] = useState<string | null>(null)
@@ -56,6 +65,7 @@ export function SecurityTab() {
 
   useEffect(() => {
     loadSessions()
+    loadEvents()
   }, [])
 
   const loadSessions = async () => {
@@ -68,6 +78,16 @@ export function SecurityTab() {
       console.error("Error in loadSessions:", error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadEvents = async () => {
+    try {
+      const response = await fetch("/api/security/events", { cache: "no-store" })
+      if (!response.ok) throw new Error("Unable to load security activity")
+      setEvents(await response.json())
+    } catch (error) {
+      console.error("Error loading security activity:", error)
     }
   }
 
@@ -179,6 +199,28 @@ export function SecurityTab() {
             {passwordError && <p className="text-sm text-destructive" role="alert">{passwordError}</p>}
           </div>
         </form>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <h4 className="text-sm font-semibold text-foreground whitespace-nowrap">Security Activity</h4>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+        {events.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No recent security activity.</p>
+        ) : (
+          <div className="space-y-2">
+            {events.map((event) => (
+              <div key={event.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{event.event_type.replaceAll("_", " ")}</p>
+                  <p className="text-xs text-muted-foreground">{event.user_agent || "Unknown device"}{event.ip_address ? ` • ${event.ip_address}` : ""}</p>
+                </div>
+                <time className="shrink-0 text-xs text-muted-foreground" dateTime={event.created_at}>{formatTimeAgo(event.created_at)}</time>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Active Sessions Section */}
