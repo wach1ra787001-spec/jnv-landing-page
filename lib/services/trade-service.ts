@@ -144,6 +144,19 @@ export async function createTrade(tradeData: CreateTradeInput) {
     console.log('[v0] No UTC offset available - session will not be detected')
   }
 
+  let ownedAccountId = tradeData.account_id || null
+  if (ownedAccountId) {
+    const { data: ownedAccount, error: accountError } = await supabase
+      .from('accounts')
+      .select('id')
+      .eq('id', ownedAccountId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (accountError) throw accountError
+    if (!ownedAccount) throw new Error('Account does not belong to the authenticated user')
+    ownedAccountId = ownedAccount.id
+  }
+
   const insertData: any = {
     user_id: user.id,
     symbol: tradeData.symbol.trim().toUpperCase(),
@@ -165,7 +178,7 @@ export async function createTrade(tradeData: CreateTradeInput) {
     source: normalizedSource,
     screenshot_urls: tradeData.screenshot_urls || [],
     session: sessionName,
-    account_id: tradeData.account_id || null,
+    account_id: ownedAccountId,
     playbook_name: tradeData.playbook_name || null,
     playbook_version: tradeData.playbook_version || null,
     playbook_rules_snapshot: Array.isArray(tradeData.playbook_rules_snapshot) ? tradeData.playbook_rules_snapshot : null,
