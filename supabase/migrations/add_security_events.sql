@@ -13,9 +13,16 @@ create index if not exists security_events_user_created_idx
 
 alter table public.security_events enable row level security;
 
+drop policy if exists "Users can read their own security events" on public.security_events;
 create policy "Users can read their own security events"
   on public.security_events for select
   to authenticated
   using ((select auth.uid()) = user_id);
 
-grant select on public.security_events to authenticated;
+drop policy if exists "Users can insert their own security events" on public.security_events;
+create policy "Users can insert their own security events"
+  on public.security_events for insert
+  to authenticated
+  with check ((select auth.uid()) = user_id);
+
+grant select, insert on public.security_events to authenticated;
