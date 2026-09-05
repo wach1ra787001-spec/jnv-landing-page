@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error('[v0] Error resending verification email:', error)
       return NextResponse.json(
-        { error: 'Failed to resend verification email', details: error.message },
+        { error: 'If an account exists, a verification email will be sent.' },
         { status: 500 }
       )
     }
