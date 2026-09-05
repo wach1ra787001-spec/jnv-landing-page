@@ -60,30 +60,20 @@ export function DataExportTab() {
     setIsExporting(true)
 
     try {
-      const rangeLabel = duration === "custom"
-        ? `${customStart} to ${customEnd}`
+      const today = new Date()
+      const endDate = duration === "custom" ? customEnd : today.toISOString().slice(0, 10)
+      const startDate = duration === "custom"
+        ? customStart
         : duration === "all"
-          ? "All available data"
-          : `Last ${duration} days`
-      const fileDate = new Date().toISOString().slice(0, 10)
-      const baseName = `jnv-report-${fileDate}`
-      const report = {
-        generatedAt: new Date().toISOString(),
-        duration: rangeLabel,
-        format: selectedFormat,
-        data: [],
-      }
-      const csv = `Report,${baseName}\\nDuration,${rangeLabel}\\nGenerated At,${report.generatedAt}\\n`
-      const pdf = `%PDF-1.4\\n1 0 obj\\n<< /Type /Catalog /Pages 2 0 R >>\\nendobj\\n2 0 obj\\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\\nendobj\\n3 0 obj\\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\\nendobj\\n4 0 obj\\n<< /Length 96 >>\\nstream\\nBT /F1 14 Tf 72 720 Td (JNV Trading Report) Tj 0 -24 Td (Duration: ${rangeLabel}) Tj ET\\nendstream\\nendobj\\n5 0 obj\\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\\nendobj\\ntrailer\\n<< /Root 1 0 R >>\\n%%EOF`
-      const isPdf = selectedFormat === "pdf"
-      const content = selectedFormat === "json" ? JSON.stringify(report, null, 2) : isPdf ? pdf : csv
-      const mimeType = selectedFormat === "json" ? "application/json" : isPdf ? "application/pdf" : "text/csv"
-      const extension = selectedFormat === "json" ? "json" : isPdf ? "pdf" : "csv"
-      const blob = new Blob([content], { type: mimeType })
+          ? "2000-01-01"
+          : new Date(today.getTime() - Number(duration) * 86400000).toISOString().slice(0, 10)
+      const response = await fetch(`/api/data-export?format=${encodeURIComponent(selectedFormat)}&start=${startDate}&end=${endDate}`)
+      if (!response.ok) throw new Error("Unable to generate report")
+      const blob = await response.blob()
       const downloadUrl = URL.createObjectURL(blob)
       const link = document.createElement("a")
       link.href = downloadUrl
-      link.download = `${baseName}.${extension}`
+      link.download = `jnv-report-${endDate}.${selectedFormat}`
       document.body.appendChild(link)
       link.click()
       link.remove()
