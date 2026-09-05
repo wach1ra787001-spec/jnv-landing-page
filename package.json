@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:security": "node scripts/security-authorization-matrix.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.17",
