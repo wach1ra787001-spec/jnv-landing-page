@@ -54,7 +54,6 @@ export async function POST(request: Request) {
     const {
       seq,
       event_type,
-      jnv_user_id,
       terminal_id,
       account_login,
       sent_at,
@@ -75,7 +74,7 @@ export async function POST(request: Request) {
       .insert({
         seq,
         event_type,
-        jnv_user_id,
+        jnv_user_id: auth.userId,
         terminal_id,
         account_login,
         sent_at,
