@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -49,6 +49,10 @@ export function SecurityTab() {
   })
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
+  const [passwordStatus, setPasswordStatus] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [savingPassword, setSavingPassword] = useState(false)
 
   useEffect(() => {
     loadSessions()
@@ -67,24 +71,36 @@ export function SecurityTab() {
     }
   }
 
-  const handlePasswordChange = async () => {
-    const response = await fetch("/api/security/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.new, confirmPassword: passwords.confirm }) })
-    if (!response.ok) {
+  const handlePasswordChange = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setPasswordStatus(null)
+    setPasswordError(null)
+    setSavingPassword(true)
+    try {
+      const response = await fetch("/api/security/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.new, confirmPassword: passwords.confirm }) })
       const result = await response.json().catch(() => ({}))
-      alert(result.error || "Unable to update password")
-      return
+      if (!response.ok) {
+        setPasswordError(result.error || "Unable to update password")
+        return
+      }
+      setPasswords({ current: "", new: "", confirm: "" })
+      setPasswordStatus("Password updated successfully.")
+    } catch {
+      setPasswordError("Unable to update password. Please try again.")
+    } finally {
+      setSavingPassword(false)
     }
-    setPasswords({ current: "", new: "", confirm: "" })
-    alert("Password updated")
   }
 
   const handleEndSession = async (sessionId: string) => {
     try {
+      setActionError(null)
       const response = await fetch("/api/security/sessions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) })
       if (!response.ok) throw new Error("Unable to end session")
       await loadSessions()
     } catch (error) {
       console.error("Error ending session:", error)
+      setActionError("Unable to end that session. Please try again.")
     }
   }
 
@@ -112,7 +128,7 @@ export function SecurityTab() {
           </p>
         </div>
 
-        <div className="space-y-4 max-w-md">
+        <form onSubmit={handlePasswordChange} className="space-y-4 max-w-md">
           <div className="space-y-2">
             <Label htmlFor="currentPassword" className="text-sm font-medium text-foreground">
               Current Password
@@ -155,10 +171,14 @@ export function SecurityTab() {
             />
           </div>
 
-          <Button onClick={handlePasswordChange} className="mt-2">
-            Update Password
-          </Button>
-        </div>
+          <div className="flex items-center gap-3">
+            <Button type="submit" className="mt-2" disabled={savingPassword}>
+              {savingPassword ? "Updating..." : "Update Password"}
+            </Button>
+            {passwordStatus && <p className="text-sm text-chart-1" role="status">{passwordStatus}</p>}
+            {passwordError && <p className="text-sm text-destructive" role="alert">{passwordError}</p>}
+          </div>
+        </form>
       </div>
 
       {/* Active Sessions Section */}
@@ -180,6 +200,7 @@ export function SecurityTab() {
           )}
         </div>
 
+        {actionError && <p className="text-sm text-destructive" role="alert">{actionError}</p>}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading sessions...</p>
         ) : activeSessions.length === 0 ? (
