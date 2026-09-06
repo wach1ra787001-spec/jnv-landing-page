@@ -46,7 +46,8 @@ export default function TradeHistoryPage() {
 
   const fetchTrades = async () => {
     try {
-      const response = await fetch('/api/trades?view=history')
+      const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ''
+      const response = await fetch(`/api/trades?view=history${accountQuery}`)
       if (response.ok) {
         const data = await response.json()
         // Transform database records to Trade interface
@@ -84,7 +85,7 @@ export default function TradeHistoryPage() {
       
       if (response.ok) {
         setTrades(trades.filter(t => t.id !== deleteConfirm.tradeId))
-        appToast.tradeSaved('', '0', '0', true, 'Trade deleted successfully')
+        appToast.tradeSaved('', '0', '0', true)
         setDeleteConfirm({ show: false, tradeId: null })
       } else {
         appToast.tradeSaveFailed()

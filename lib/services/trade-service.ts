@@ -239,7 +239,10 @@ export async function createTrade(tradeData: CreateTradeInput) {
   return createdTrade
 }
 
-export async function getUserTrades(view: 'all' | 'journal' | 'history' = 'all') {
+export async function getUserTrades(
+  view: 'all' | 'journal' | 'history' = 'all',
+  accountIdOverride?: string | null,
+) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -251,7 +254,9 @@ export async function getUserTrades(view: 'all' | 'journal' | 'history' = 'all')
 
   // Resolve the active account: explicit cookie selection first, then the
   // saved default, then the most recently created account.
-  const accountId = await getSelectedAccountId(supabase, user.id)
+  const accountId = accountIdOverride === undefined
+    ? await getSelectedAccountId(supabase, user.id)
+    : accountIdOverride
 
   let query = supabase
     .from('trades')
