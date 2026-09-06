@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "test:security": "node scripts/security-authorization-matrix.mjs"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.17",
@@ -74,6 +75,7 @@
     "date-fns-tz": "^3.2.0",
     "embla-carousel-react": "8.6.0",
     "input-otp": "1.4.2",
+    "jszip": "^3.10.1",
     "lightweight-charts": "^5.1.0",
     "lucide-react": "^0.564.0",
     "next": "16.1.6",
@@ -95,6 +97,8 @@
     "@types/node": "^22",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.4",
     "postcss": "^8.5",
     "tailwindcss": "^4.2.0",
     "tw-animate-css": "1.3.3",

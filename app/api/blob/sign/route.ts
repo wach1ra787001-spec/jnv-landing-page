@@ -22,12 +22,16 @@ export async function POST(request: NextRequest) {
 
     const { urls } = await request.json()
 
-    if (!urls || !Array.isArray(urls) || urls.length === 0) {
-      return NextResponse.json({ error: 'No URLs provided' }, { status: 400 })
+    if (!urls || !Array.isArray(urls) || urls.length === 0 || urls.length > 25 || urls.some((url) => typeof url !== 'string')) {
+      return NextResponse.json({ error: 'Provide between 1 and 25 valid URLs' }, { status: 400 })
     }
 
-    console.log('[v0] Generating signed URLs for', urls.length, 'blobs')
-    const signedUrls = await generateSignedBlobUrls(urls)
+    const ownedUrls = urls.filter((url: string) => url.includes(`/avatars/${user.id}/`) || url.includes(`/trades/${user.id}/`))
+    if (ownedUrls.length !== urls.length) {
+      return NextResponse.json({ error: 'You can only sign URLs owned by your account' }, { status: 403 })
+    }
+
+    const signedUrls = await generateSignedBlobUrls(ownedUrls)
 
     return NextResponse.json({ urls: signedUrls })
   } catch (error) {

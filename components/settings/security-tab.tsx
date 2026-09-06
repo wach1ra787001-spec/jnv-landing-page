@@ -1,11 +1,18 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Laptop, Smartphone, Monitor, Globe } from "lucide-react"
-import { createClient } from "@/lib/supabase/client"
+import { Laptop, Smartphone, Monitor } from "lucide-react"
+
+interface SecurityEvent {
+  id: string
+  event_type: string
+  ip_address: string | null
+  user_agent: string | null
+  created_at: string
+}
 
 interface Session {
   id: string
@@ -49,37 +56,24 @@ export function SecurityTab() {
     confirm: "",
   })
   const [sessions, setSessions] = useState<Session[]>([])
+  const [events, setEvents] = useState<SecurityEvent[]>([])
   const [loading, setLoading] = useState(true)
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null)
+  const [passwordStatus, setPasswordStatus] = useState<string | null>(null)
+  const [passwordError, setPasswordError] = useState<string | null>(null)
+  const [actionError, setActionError] = useState<string | null>(null)
+  const [savingPassword, setSavingPassword] = useState(false)
 
   useEffect(() => {
     loadSessions()
+    loadEvents()
   }, [])
 
   const loadSessions = async () => {
     try {
       setLoading(true)
-      const supabase = createClient()
-      
-      // Get current session
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.access_token) {
-        setCurrentSessionId(session.access_token)
-      }
-
-      // Fetch active and recent sessions
-      const { data, error } = await supabase
-        .from("user_sessions")
-        .select("*")
-        .order("last_seen_at", { ascending: false })
-        .limit(20)
-
-      if (error) {
-        console.error("Error loading sessions:", error)
-        return
-      }
-
-      setSessions(data || [])
+      const response = await fetch("/api/security/sessions", { cache: "no-store" })
+      if (!response.ok) throw new Error("Unable to load sessions")
+      setSessions(await response.json())
     } catch (error) {
       console.error("Error in loadSessions:", error)
     } finally {
@@ -87,50 +81,53 @@ export function SecurityTab() {
     }
   }
 
-  const handlePasswordChange = () => {
-    console.log("Changing password...")
+  const loadEvents = async () => {
+    try {
+      const response = await fetch("/api/security/events", { cache: "no-store" })
+      if (!response.ok) throw new Error("Unable to load security activity")
+      setEvents(await response.json())
+    } catch (error) {
+      console.error("Error loading security activity:", error)
+    }
+  }
+
+  const handlePasswordChange = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setPasswordStatus(null)
+    setPasswordError(null)
+    setSavingPassword(true)
+    try {
+      const response = await fetch("/api/security/password", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ currentPassword: passwords.current, newPassword: passwords.new, confirmPassword: passwords.confirm }) })
+      const result = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setPasswordError(result.error || "Unable to update password")
+        return
+      }
+      setPasswords({ current: "", new: "", confirm: "" })
+      setPasswordStatus("Password updated successfully.")
+    } catch {
+      setPasswordError("Unable to update password. Please try again.")
+    } finally {
+      setSavingPassword(false)
+    }
   }
 
   const handleEndSession = async (sessionId: string) => {
     try {
-      const supabase = createClient()
-      
-      const { error } = await supabase
-        .from("user_sessions")
-        .update({ 
-          logged_out_at: new Date().toISOString(),
-          is_current: false 
-        })
-        .eq("id", sessionId)
-
-      if (error) throw error
-      
-      // Reload sessions
+      setActionError(null)
+      const response = await fetch("/api/security/sessions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sessionId }) })
+      if (!response.ok) throw new Error("Unable to end session")
       await loadSessions()
     } catch (error) {
       console.error("Error ending session:", error)
+      setActionError("Unable to end that session. Please try again.")
     }
   }
 
   const handleLogoutOtherDevices = async () => {
     try {
-      const supabase = createClient()
-      const { data: { user } } = await supabase.auth.getUser()
-      
-      if (!user) return
-
-      // Update all sessions except current one to logged out
-      const { error } = await supabase
-        .from("user_sessions")
-        .update({ 
-          logged_out_at: new Date().toISOString(),
-          is_current: false 
-        })
-        .eq("user_id", user.id)
-        .neq("session_id", currentSessionId)
-
-      if (error) throw error
-      
+      const response = await fetch("/api/security/sessions", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ allOther: true }) })
+      if (!response.ok) throw new Error("Unable to end other sessions")
       await loadSessions()
     } catch (error) {
       console.error("Error logging out other devices:", error)
@@ -143,15 +140,16 @@ export function SecurityTab() {
   return (
     <div className="space-y-8">
       {/* Change Password Section */}
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">Change Password</h3>
-          <p className="text-sm text-muted-foreground mt-1">
-            Update your password to keep your account secure
-          </p>
-        </div>
+      <div className="flex justify-center">
+        <div className="w-full max-w-2xl md:max-w-md space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Change Password</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Update your password to keep your account secure
+            </p>
+          </div>
 
-        <div className="space-y-4 max-w-md">
+          <form onSubmit={handlePasswordChange} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="currentPassword" className="text-sm font-medium text-foreground">
               Current Password
@@ -194,10 +192,37 @@ export function SecurityTab() {
             />
           </div>
 
-          <Button onClick={handlePasswordChange} className="mt-2">
-            Update Password
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button type="submit" className="mt-2" disabled={savingPassword}>
+              {savingPassword ? "Updating..." : "Update Password"}
+            </Button>
+            {passwordStatus && <p className="text-sm text-chart-1" role="status">{passwordStatus}</p>}
+            {passwordError && <p className="text-sm text-destructive" role="alert">{passwordError}</p>}
+          </div>
+        </form>
         </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <h4 className="text-sm font-semibold text-foreground whitespace-nowrap">Security Activity</h4>
+          <div className="flex-1 h-px bg-border" />
+        </div>
+        {events.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No recent security activity.</p>
+        ) : (
+          <div className="space-y-2">
+            {events.map((event) => (
+              <div key={event.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-3">
+                <div>
+                  <p className="text-sm font-medium text-foreground">{event.event_type.replaceAll("_", " ")}</p>
+                  <p className="text-xs text-muted-foreground">{event.user_agent || "Unknown device"}{event.ip_address ? ` • ${event.ip_address}` : ""}</p>
+                </div>
+                <time className="shrink-0 text-xs text-muted-foreground" dateTime={event.created_at}>{formatTimeAgo(event.created_at)}</time>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Active Sessions Section */}
@@ -219,6 +244,7 @@ export function SecurityTab() {
           )}
         </div>
 
+        {actionError && <p className="text-sm text-destructive" role="alert">{actionError}</p>}
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading sessions...</p>
         ) : activeSessions.length === 0 ? (

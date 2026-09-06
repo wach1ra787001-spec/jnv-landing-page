@@ -69,8 +69,10 @@ export default function TradeJournalPage() {
 
   const fetchTrades = async () => {
     setLoading(true)
+    setTrades([])
     try {
-      const res = await fetch('/api/trades?view=journal')
+      const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ''
+      const res = await fetch(`/api/trades?view=journal${accountQuery}`)
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
       // Sort newest first
@@ -92,6 +94,7 @@ export default function TradeJournalPage() {
         direction: String(tradeData.direction || 'buy').toLowerCase(),
         symbol: String(tradeData.symbol || '').toUpperCase().trim(),
         source: 'manual',
+        account_id: selectedAccountId,
       }
 
       const response = await fetch('/api/trades', {

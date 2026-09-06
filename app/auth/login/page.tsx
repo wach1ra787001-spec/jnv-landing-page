@@ -89,14 +89,14 @@ export default function LoginPage() {
         <div className="flex flex-col items-center justify-center mb-8 gap-4">
           <div className="w-20 h-20 relative">
             <Image
-              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv.png"}
+              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv-light.png"}
               alt="JnV Journal Logo"
               width={80}
               height={80}
               className="rounded object-cover"
             />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">JnV Journal</h1>
+          <h1 className="text-3xl font-bold text-foreground">Jnv Trading Journal</h1>
         </div>
 
         <Card className="border-border bg-card">

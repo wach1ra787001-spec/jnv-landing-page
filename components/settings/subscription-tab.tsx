@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Check } from "lucide-react"
@@ -122,6 +123,14 @@ export function SubscriptionTab() {
           </div>
         ))}
       </div>
+
+      <p className="text-sm text-muted-foreground">
+        Before purchasing or upgrading a plan, please check the{" "}
+        <Link href="/return-policy" className="font-medium text-primary underline underline-offset-4 hover:text-primary/80">
+          Refund Policy
+        </Link>
+        .
+      </p>
 
       <div className="pt-4 border-t border-border">
         <div className="flex items-center justify-between">

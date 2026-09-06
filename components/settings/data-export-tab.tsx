@@ -3,6 +3,14 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { FileJson, FileText, FileImage, Download, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -33,15 +41,46 @@ const exportFormats = [
 export function DataExportTab() {
   const [selectedFormat, setSelectedFormat] = useState<string | null>(null)
   const [isExporting, setIsExporting] = useState(false)
+  const [isDurationDialogOpen, setIsDurationDialogOpen] = useState(false)
+  const [duration, setDuration] = useState("30")
+  const [customStart, setCustomStart] = useState("")
+  const [customEnd, setCustomEnd] = useState("")
+  const [durationError, setDurationError] = useState<string | null>(null)
 
   const handleExport = async () => {
     if (!selectedFormat) return
-    
+
+    if (duration === "custom" && (!customStart || !customEnd || customStart > customEnd)) {
+      setDurationError("Choose a valid start and end date.")
+      return
+    }
+
+    setDurationError(null)
+    setIsDurationDialogOpen(false)
     setIsExporting(true)
-    // Simulate export delay
-    await new Promise((resolve) => setTimeout(resolve, 2000))
-    setIsExporting(false)
-    console.log("Exporting in format:", selectedFormat)
+
+    try {
+      const today = new Date()
+      const endDate = duration === "custom" ? customEnd : today.toISOString().slice(0, 10)
+      const startDate = duration === "custom"
+        ? customStart
+        : duration === "all"
+          ? "2000-01-01"
+          : new Date(today.getTime() - Number(duration) * 86400000).toISOString().slice(0, 10)
+      const response = await fetch(`/api/data-export?format=${encodeURIComponent(selectedFormat)}&start=${startDate}&end=${endDate}`)
+      if (!response.ok) throw new Error("Unable to generate report")
+      const blob = await response.blob()
+      const downloadUrl = URL.createObjectURL(blob)
+      const link = document.createElement("a")
+      link.href = downloadUrl
+      link.download = `jnv-report-${endDate}.${selectedFormat}`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      URL.revokeObjectURL(downloadUrl)
+    } finally {
+      setIsExporting(false)
+    }
   }
 
   return (
@@ -102,7 +141,7 @@ export function DataExportTab() {
             ? `Ready to export as ${exportFormats.find((f) => f.id === selectedFormat)?.name}`
             : "Select an export format above"}
         </p>
-        <Button onClick={handleExport} disabled={!selectedFormat || isExporting}>
+        <Button onClick={() => setIsDurationDialogOpen(true)} disabled={!selectedFormat || isExporting}>
           {isExporting ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -116,6 +155,52 @@ export function DataExportTab() {
           )}
         </Button>
       </div>
+
+      <Dialog open={isDurationDialogOpen} onOpenChange={setIsDurationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Choose report duration</DialogTitle>
+            <DialogDescription>Select the period to include in your report.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-4">
+            <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
+              Duration
+              <select
+                value={duration}
+                onChange={(event) => {
+                  setDuration(event.target.value)
+                  setDurationError(null)
+                }}
+                className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+              >
+                <option value="7">Last 7 days</option>
+                <option value="30">Last 30 days</option>
+                <option value="90">Last 90 days</option>
+                <option value="365">Last 12 months</option>
+                <option value="all">All available data</option>
+                <option value="custom">Custom date range</option>
+              </select>
+            </label>
+            {duration === "custom" && (
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
+                  Start date
+                  <input type="date" value={customStart} onChange={(event) => setCustomStart(event.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm" />
+                </label>
+                <label className="flex flex-col gap-2 text-sm font-medium text-foreground">
+                  End date
+                  <input type="date" value={customEnd} onChange={(event) => setCustomEnd(event.target.value)} className="h-10 rounded-md border border-input bg-background px-3 text-sm" />
+                </label>
+              </div>
+            )}
+            {durationError && <p className="text-sm text-destructive" role="alert">{durationError}</p>}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setIsDurationDialogOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={handleExport}>Generate Report</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <div className="bg-muted/50 rounded-lg p-4">
         <h4 className="text-sm font-medium text-foreground mb-2">Export History</h4>

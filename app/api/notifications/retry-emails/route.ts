@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { retryFailedEmailNotifications } from '@/lib/notifications/trade-import-handler'
+import { hasValidCronSecret } from '@/lib/security/request-guards'
 
 /**
  * Endpoint to retry failed email notifications
@@ -8,11 +9,7 @@ import { retryFailedEmailNotifications } from '@/lib/notifications/trade-import-
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify the request is from a trusted source (cron job)
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
-
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+    if (!hasValidCronSecret(request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

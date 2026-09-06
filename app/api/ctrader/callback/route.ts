@@ -22,11 +22,6 @@ export async function GET(req: NextRequest) {
   const state = searchParams.get('state')
   const error = searchParams.get('error')
 
-  // Debug logging
-  console.log('[cTrader Callback] URL:', req.url)
-  console.log('[cTrader Callback] Code:', code)
-  console.log('[cTrader Callback] State:', state)
-  console.log('[cTrader Callback] Error from cTrader:', error)
 
   // Handle user denying access
   if (error) {
@@ -47,28 +42,14 @@ export async function GET(req: NextRequest) {
   // Verify CSRF state
   const storedState = req.cookies.get('ctrader_oauth_state')?.value
   
-  console.log('[cTrader Callback] Received state:', state)
-  console.log('[cTrader Callback] Stored state:', storedState)
-
-  if (!state || state !== storedState) {
-    console.error('[cTrader Callback] State mismatch — cookie may have been dropped')
-    // Temporarily skip state check to confirm rest of flow works
-    // Re-enable this check after confirming connection works
-    // return NextResponse.redirect(
-    //   new URL('/journal/connections?error=invalid_state', req.url)
-    // )
+  if (!state || !storedState || state !== storedState) {
+    return NextResponse.redirect(
+      new URL('/journal/connections?error=invalid_state', req.url)
+    )
   }
 
   try {
     // Exchange code for tokens
-    console.log('[cTrader Callback] Exchanging code for tokens at:', process.env.CTRADER_TOKEN_URL)
-    console.log('[cTrader Callback] Request body:', {
-      grant_type:    'authorization_code',
-      code:          code.substring(0, 20) + '...',
-      redirect_uri:  process.env.CTRADER_REDIRECT_URI,
-      client_id:     process.env.CTRADER_CLIENT_ID,
-    })
-
     const tokenRes = await fetch(process.env.CTRADER_TOKEN_URL!, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

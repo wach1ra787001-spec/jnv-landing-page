@@ -23,14 +23,14 @@ export default async function ConsistencyAnalysisPage() {
 
   const accountId = await getSelectedAccountId(supabase, user.id)
 
-  const tradesQuery = supabase
+  let tradesQuery = supabase
     .from("trades")
     .select("id, entry_time, net_pnl, status, followed_rule_ids, account_id, risk_amount, playbook_id")
     .eq("user_id", user.id)
     .order("entry_time", { ascending: false })
 
   if (accountId) {
-    tradesQuery.eq("account_id", accountId)
+    tradesQuery = tradesQuery.eq("account_id", accountId)
   }
 
   const { data: allTrades } = await tradesQuery
