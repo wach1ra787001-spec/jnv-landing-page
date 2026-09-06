@@ -150,7 +150,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
           {/* Spacer so logo doesn't overlap the toggle button */}
           <Link href="/" className="flex items-center gap-2 ml-8">
             <Image
-              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv.png"}
+              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv-light.jpg"}
               alt="JnV Journal Logo"
               width={28}
               height={28}

@@ -89,7 +89,7 @@ export default function LoginPage() {
         <div className="flex flex-col items-center justify-center mb-8 gap-4">
           <div className="w-20 h-20 relative">
             <Image
-              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv.png"}
+              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv-light.jpg"}
               alt="JnV Journal Logo"
               width={80}
               height={80}
