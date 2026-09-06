@@ -45,9 +45,11 @@ export default function TradeHistoryPage() {
   }, [selectedAccountId])
 
   const fetchTrades = async () => {
+    setLoading(true)
+    setTrades([])
     try {
       const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ''
-      const response = await fetch(`/api/trades?view=history${accountQuery}`)
+      const response = await fetch(`/api/trades?view=all${accountQuery}`)
       if (response.ok) {
         const data = await response.json()
         // Transform database records to Trade interface
