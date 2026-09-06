@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { createTrade, getUserTrades, normalizeTradeSource } from '@/lib/services/trade-service'
+import { getSelectedAccountId } from '@/lib/get-selected-account'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function GET(request: NextRequest) {
@@ -21,6 +22,23 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
     console.log('[v0] API received trade data:', body)
+
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const requestedAccountId = typeof body.account_id === 'string' ? body.account_id : null
+    const selectedAccountId = requestedAccountId || await getSelectedAccountId(supabase, user.id)
+    if (!selectedAccountId) {
+      return NextResponse.json({ error: 'Select an account before saving a trade' }, { status: 400 })
+    }
+    const { data: ownedAccount } = await supabase
+      .from('trading_accounts')
+      .select('id')
+      .eq('id', selectedAccountId)
+      .eq('user_id', user.id)
+      .maybeSingle()
+    if (!ownedAccount) return NextResponse.json({ error: 'Invalid account' }, { status: 403 })
     
     const {
       symbol,
@@ -95,7 +113,7 @@ export async function POST(request: NextRequest) {
       status: 'closed',
       emotion_before: emotion_before || '',
       source: normalizedSource,
-      account_id: account_id || null,
+      account_id: selectedAccountId,
       playbook_name: typeof playbook_name === 'string' ? playbook_name.trim() || null : null,
       playbook_version: Number.isFinite(Number(playbook_version)) ? Number(playbook_version) : null,
       playbook_rules_snapshot: Array.isArray(playbook_rules_snapshot) ? playbook_rules_snapshot : null,
