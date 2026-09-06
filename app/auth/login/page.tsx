@@ -96,7 +96,7 @@ export default function LoginPage() {
               className="rounded object-cover"
             />
           </div>
-          <h1 className="text-3xl font-bold text-foreground">JnV Journal</h1>
+          <h1 className="text-3xl font-bold text-foreground">Jnv Trading Journal</h1>
         </div>
 
         <Card className="border-border bg-card">
