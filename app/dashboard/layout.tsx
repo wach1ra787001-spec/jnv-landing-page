@@ -8,6 +8,7 @@ import { CTraderAutoSync } from "@/components/dashboard/ctrader-autosync"
 import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { AccountProvider } from "@/components/dashboard/account-context"
 import { getUserAccounts, getSelectedAccountId } from "@/lib/get-selected-account"
+import { OnboardingPanel } from "@/components/dashboard/onboarding-panel"
 
 export default async function DashboardLayout({
   children,
@@ -48,6 +49,7 @@ export default async function DashboardLayout({
             <main className="flex-1 overflow-y-auto overflow-x-hidden w-full p-3 sm:p-4 md:p-6">
               {children}
             </main>
+            <OnboardingPanel />
           </DashboardShell>
         </div>
       </AccountProvider>
