@@ -63,39 +63,49 @@ export default function TradeDetailPage() {
           setTrade(data)
           setFollowedRuleIds(Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : [])
           try {
-            // The full rule set lives on the linked playbook (entry + exit +
-            // custom). There is no user_rules table — the playbook is the
-            // single source of truth, matching how the journal form builds and
-            // indexes rules as `custom-${index}`.
-            const playbookResponse = data.playbook_id ? await fetch(`/api/playbooks/${data.playbook_id}`) : null
-            const playbook = playbookResponse?.ok ? await playbookResponse.json() : null
-            const rulesColumn = playbook?.rules && typeof playbook.rules === 'object' ? playbook.rules : {}
-            const playbookRules = ['entry', 'exit', 'custom']
-              .flatMap((section) => Array.isArray(rulesColumn[section]) ? rulesColumn[section] : [])
-              .filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0)
-              .map((label: string, index: number) => ({ id: `custom-${index}`, title: label.trim(), rule: label.trim(), is_active: true, isCustom: true }))
-
-            // Legacy fallback: trades saved before playbook linking only have
-            // the followed_rules text labels, so surface those directly.
-            const directRuleLabels = typeof data.followed_rules === 'string'
-              ? data.followed_rules.split(/\r?\n|,/).map((label: string) => label.trim()).filter(Boolean)
+            const savedSnapshot = Array.isArray(data.playbook_rules_snapshot)
+              ? data.playbook_rules_snapshot
+                .filter((rule: any) => rule && typeof rule.label === 'string' && rule.label.trim().length > 0)
+                .map((rule: any, index: number) => ({
+                  id: typeof rule.id === 'string' ? rule.id : `snapshot-${index}`,
+                  title: rule.label.trim(),
+                  rule: rule.label.trim(),
+                  is_active: true,
+                  isCustom: true,
+                  followed: Boolean(rule.followed),
+                }))
               : []
-            const directRules = directRuleLabels
-              .filter((label: string) => !playbookRules.some((rule) => rule.title === label))
-              .map((title: string, index: number) => ({ id: `followed-${index}`, title, rule: title, is_active: true, isCustom: true }))
 
-            const availableRules = [...playbookRules, ...directRules]
-            const persistedSelections = Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : []
-            const selections = persistedSelections.length > 0 ? persistedSelections : directRuleLabels
-            const normalizedSelections = selections.map((value: unknown) => {
-              if (typeof value !== 'string') return null
-              const byId = availableRules.find((rule: UserRule) => rule.id === value)
-              if (byId) return byId.id
-              const byText = availableRules.find((rule: UserRule) => rule.title === value || rule.rule === value)
-              return byText?.id ?? value
-            }).filter((value: string | null): value is string => Boolean(value))
-            setFollowedRuleIds(normalizedSelections)
-            setUserRules(availableRules)
+            if (savedSnapshot.length > 0) {
+              setUserRules(savedSnapshot)
+              setFollowedRuleIds(savedSnapshot.filter((rule: any) => rule.followed).map((rule: UserRule) => rule.id))
+            } else {
+              // Fallback for older trades without a saved rule snapshot.
+              const playbookResponse = data.playbook_id ? await fetch(`/api/playbooks/${data.playbook_id}`) : null
+              const playbook = playbookResponse?.ok ? await playbookResponse.json() : null
+              const rulesColumn = playbook?.rules && typeof playbook.rules === 'object' ? playbook.rules : {}
+              const playbookRules = ['entry', 'exit', 'custom']
+                .flatMap((section) => Array.isArray(rulesColumn[section]) ? rulesColumn[section] : [])
+                .filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0)
+                .map((label: string, index: number) => ({ id: `custom-${index}`, title: label.trim(), rule: label.trim(), is_active: true, isCustom: true }))
+              const directRuleLabels = typeof data.followed_rules === 'string'
+                ? data.followed_rules.split(/\r?\n|,/).map((label: string) => label.trim()).filter(Boolean)
+                : []
+              const availableRules = [...playbookRules, ...directRuleLabels
+                .filter((label: string) => !playbookRules.some((rule) => rule.title === label))
+                .map((title: string, index: number) => ({ id: `followed-${index}`, title, rule: title, is_active: true, isCustom: true }))]
+              const persistedSelections = Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : []
+              const selections = persistedSelections.length > 0 ? persistedSelections : directRuleLabels
+              const normalizedSelections = selections.map((value: unknown) => {
+                if (typeof value !== 'string') return null
+                const byId = availableRules.find((rule: UserRule) => rule.id === value)
+                if (byId) return byId.id
+                const byText = availableRules.find((rule: UserRule) => rule.title === value || rule.rule === value)
+                return byText?.id ?? value
+              }).filter((value: string | null): value is string => Boolean(value))
+              setFollowedRuleIds(normalizedSelections)
+              setUserRules(availableRules)
+            }
           } finally {
             setRulesLoading(false)
           }
@@ -180,7 +190,15 @@ export default function TradeDetailPage() {
       const response = await fetch(`/api/trades/${tradeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ followed_rule_ids: next, followed_rules: followedLabels.join('\n') }),
+        body: JSON.stringify({
+          followed_rule_ids: next,
+          followed_rules: followedLabels.join('\n'),
+          playbook_rules_snapshot: userRules.map((rule) => ({
+            id: rule.id,
+            label: rule.title,
+            followed: next.includes(rule.id),
+          })),
+        }),
       })
       if (!response.ok) throw new Error('Failed to save rule status')
       setTrade((current) => current ? { ...current, followed_rule_ids: next, followed_rules: next.length > 0 } : current)
