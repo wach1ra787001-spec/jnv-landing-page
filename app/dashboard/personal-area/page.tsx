@@ -367,8 +367,8 @@ export default function PersonalAreaPage() {
 
       {/* Create Playbook Form Modal */}
       {showCreatePlaybookForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="my-8">
+        <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4 sm:p-6">
+          <div className="my-4 max-h-[calc(100vh-2rem)] w-full overflow-y-auto overscroll-contain sm:my-6 sm:max-h-[calc(100vh-3rem)]">
             <CreatePlaybookForm
               onSubmit={handleCreatePlaybook}
               onCancel={() => {

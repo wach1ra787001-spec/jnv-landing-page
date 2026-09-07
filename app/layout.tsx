@@ -19,9 +19,9 @@ export const metadata: Metadata = {
   description: 'Transform your trading with AI-powered journaling, performance analytics, and behavioral coaching. Built for serious traders who demand institutional-grade tools.',
   keywords: ['trading journal', 'performance analytics', 'AI trading coach', 'MT5 integration', 'trading psychology'],
   icons: {
-    icon: '/favicon.png',
-    shortcut: '/favicon.png',
-    apple: '/favicon.png',
+    icon: '/jnv-mark.svg',
+    shortcut: '/jnv-mark.svg',
+    apple: '/jnv-mark.svg',
   },
   openGraph: {
     title: 'JNV | PRO - Trading Performance Operating System',

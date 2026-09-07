@@ -15,6 +15,12 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    if (id.startsWith('missed-')) {
+      const { data: missed, error: missedError } = await supabase.from('missed_trades').select('*').eq('id', id.slice(7)).eq('user_id', user.id).single()
+      if (missedError) return NextResponse.json({ error: 'Trade not found' }, { status: 404 })
+      return NextResponse.json({ ...missed, id, missed: true, strategy: missed.strategy, notes: missed.premarket_notes })
+    }
+
     const { data, error } = await supabase
       .from('trades')
       .select('*')
@@ -68,7 +74,7 @@ export async function PATCH(
       'stop_loss', 'take_profit', 'quantity', 'entry_time', 
       'exit_time', 'pnl', 'pnl_percent', 'r_multiple', 
       'risk_amount', 'strategy', 'setup_type', 'followed_rules', 'followed_rule_ids',
-      'status', 'screenshot_urls'
+      'status', 'screenshot_urls', 'playbook_rules_snapshot'
     ]
     
     for (const field of allowedFields) {

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from "react"
 import Link from "next/link"
-import Image from "next/image"
+import { JnvMark } from "@/components/brand/jnv-mark"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
@@ -149,13 +149,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
         <div className="p-4 pt-[18px] border-b border-border/50 shrink-0">
           {/* Spacer so logo doesn't overlap the toggle button */}
           <Link href="/" className="flex items-center gap-2 ml-8">
-            <Image
-              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv-light.png"}
-              alt="JnV Journal Logo"
-              width={28}
-              height={28}
-              className="shrink-0 rounded-md"
-            />
+            <JnvMark className="h-7 w-7" title="JnV Journal Logo" />
             <span className="text-base font-bold text-sidebar-foreground whitespace-nowrap">
               JnV Journal
             </span>
@@ -231,7 +225,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
         </nav>
 
         {/* User Section */}
-        <Link href="/dashboard/settings">
+        <Link href="/dashboard/settings/profile" aria-label="Open profile settings">
           <div className="p-4 border-t border-border/50 shrink-0 cursor-pointer hover:bg-sidebar-foreground/5 transition-colors">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">

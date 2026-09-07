@@ -63,39 +63,49 @@ export default function TradeDetailPage() {
           setTrade(data)
           setFollowedRuleIds(Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : [])
           try {
-            // The full rule set lives on the linked playbook (entry + exit +
-            // custom). There is no user_rules table — the playbook is the
-            // single source of truth, matching how the journal form builds and
-            // indexes rules as `custom-${index}`.
-            const playbookResponse = data.playbook_id ? await fetch(`/api/playbooks/${data.playbook_id}`) : null
-            const playbook = playbookResponse?.ok ? await playbookResponse.json() : null
-            const rulesColumn = playbook?.rules && typeof playbook.rules === 'object' ? playbook.rules : {}
-            const playbookRules = ['entry', 'exit', 'custom']
-              .flatMap((section) => Array.isArray(rulesColumn[section]) ? rulesColumn[section] : [])
-              .filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0)
-              .map((label: string, index: number) => ({ id: `custom-${index}`, title: label.trim(), rule: label.trim(), is_active: true, isCustom: true }))
-
-            // Legacy fallback: trades saved before playbook linking only have
-            // the followed_rules text labels, so surface those directly.
-            const directRuleLabels = typeof data.followed_rules === 'string'
-              ? data.followed_rules.split(/\r?\n|,/).map((label: string) => label.trim()).filter(Boolean)
+            const savedSnapshot = Array.isArray(data.playbook_rules_snapshot)
+              ? data.playbook_rules_snapshot
+                .filter((rule: any) => rule && typeof rule.label === 'string' && rule.label.trim().length > 0)
+                .map((rule: any, index: number) => ({
+                  id: typeof rule.id === 'string' ? rule.id : `snapshot-${index}`,
+                  title: rule.label.trim(),
+                  rule: rule.label.trim(),
+                  is_active: true,
+                  isCustom: true,
+                  followed: Boolean(rule.followed),
+                }))
               : []
-            const directRules = directRuleLabels
-              .filter((label: string) => !playbookRules.some((rule) => rule.title === label))
-              .map((title: string, index: number) => ({ id: `followed-${index}`, title, rule: title, is_active: true, isCustom: true }))
 
-            const availableRules = [...playbookRules, ...directRules]
-            const persistedSelections = Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : []
-            const selections = persistedSelections.length > 0 ? persistedSelections : directRuleLabels
-            const normalizedSelections = selections.map((value: unknown) => {
-              if (typeof value !== 'string') return null
-              const byId = availableRules.find((rule: UserRule) => rule.id === value)
-              if (byId) return byId.id
-              const byText = availableRules.find((rule: UserRule) => rule.title === value || rule.rule === value)
-              return byText?.id ?? value
-            }).filter((value: string | null): value is string => Boolean(value))
-            setFollowedRuleIds(normalizedSelections)
-            setUserRules(availableRules)
+            if (savedSnapshot.length > 0) {
+              setUserRules(savedSnapshot)
+              setFollowedRuleIds(savedSnapshot.filter((rule: any) => rule.followed).map((rule: UserRule) => rule.id))
+            } else {
+              // Fallback for older trades without a saved rule snapshot.
+              const playbookResponse = data.playbook_id ? await fetch(`/api/playbooks/${data.playbook_id}`) : null
+              const playbook = playbookResponse?.ok ? await playbookResponse.json() : null
+              const rulesColumn = playbook?.rules && typeof playbook.rules === 'object' ? playbook.rules : {}
+              const playbookRules = ['entry', 'exit', 'custom']
+                .flatMap((section) => Array.isArray(rulesColumn[section]) ? rulesColumn[section] : [])
+                .filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0)
+                .map((label: string, index: number) => ({ id: `custom-${index}`, title: label.trim(), rule: label.trim(), is_active: true, isCustom: true }))
+              const directRuleLabels = typeof data.followed_rules === 'string'
+                ? data.followed_rules.split(/\r?\n|,/).map((label: string) => label.trim()).filter(Boolean)
+                : []
+              const availableRules = [...playbookRules, ...directRuleLabels
+                .filter((label: string) => !playbookRules.some((rule) => rule.title === label))
+                .map((title: string, index: number) => ({ id: `followed-${index}`, title, rule: title, is_active: true, isCustom: true }))]
+              const persistedSelections = Array.isArray(data.followed_rule_ids) ? data.followed_rule_ids : []
+              const selections = persistedSelections.length > 0 ? persistedSelections : directRuleLabels
+              const normalizedSelections = selections.map((value: unknown) => {
+                if (typeof value !== 'string') return null
+                const byId = availableRules.find((rule: UserRule) => rule.id === value)
+                if (byId) return byId.id
+                const byText = availableRules.find((rule: UserRule) => rule.title === value || rule.rule === value)
+                return byText?.id ?? value
+              }).filter((value: string | null): value is string => Boolean(value))
+              setFollowedRuleIds(normalizedSelections)
+              setUserRules(availableRules)
+            }
           } finally {
             setRulesLoading(false)
           }
@@ -180,7 +190,15 @@ export default function TradeDetailPage() {
       const response = await fetch(`/api/trades/${tradeId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ followed_rule_ids: next, followed_rules: followedLabels.join('\n') }),
+        body: JSON.stringify({
+          followed_rule_ids: next,
+          followed_rules: followedLabels.join('\n'),
+          playbook_rules_snapshot: userRules.map((rule) => ({
+            id: rule.id,
+            label: rule.title,
+            followed: next.includes(rule.id),
+          })),
+        }),
       })
       if (!response.ok) throw new Error('Failed to save rule status')
       setTrade((current) => current ? { ...current, followed_rule_ids: next, followed_rules: next.length > 0 } : current)
@@ -224,6 +242,20 @@ export default function TradeDetailPage() {
         </Button>
         <Card className="p-12 bg-card border border-border/50 text-center">
           <p className="text-muted-foreground">Loading trade...</p>
+        </Card>
+      </div>
+    )
+  }
+
+  if (trade?.missed) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Button variant="ghost" size="sm" onClick={() => router.back()} className="gap-2"><ArrowLeft className="w-4 h-4" />Back</Button>
+        <Card className="relative overflow-hidden border-red-500/30 bg-card p-6">
+          <div className="absolute left-0 top-0 rounded-br-md bg-red-600 px-3 py-1 text-xs font-bold tracking-wider text-white">MISSED</div>
+          <div className="pt-5"><div className="flex items-start justify-between gap-4"><div><h1 className="text-3xl font-bold text-foreground">{trade.symbol}</h1><p className="mt-1 text-muted-foreground">{trade.strategy}</p></div><div className="rounded-full bg-red-500/10 px-3 py-1 text-sm font-semibold text-red-500">Anticipated RR {Number(trade.anticipated_rr).toFixed(2)}</div></div>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Time of day</p><p className="mt-1 font-medium text-foreground">{trade.time_of_day}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Time frame</p><p className="mt-1 font-medium text-foreground">{trade.timeframe}</p></div><div className="sm:col-span-2"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">What I did premarket</p><p className="mt-1 whitespace-pre-wrap leading-relaxed text-foreground">{trade.premarket_notes}</p></div></div>
+          </div>
         </Card>
       </div>
     )
