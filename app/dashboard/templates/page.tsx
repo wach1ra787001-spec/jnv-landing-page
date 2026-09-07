@@ -136,6 +136,7 @@ export default function TemplatesPage() {
   const [loading, setLoading] = useState(true)
   const [importingId, setImportingId] = useState<string | null>(null)
   const router = useRouter()
+  const returnTo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('returnTo') : null
 
   async function useTemplate(playbook: Playbook) {
     if (!window.confirm(`Use “${playbook.name}” as your personal playbook?`)) return
@@ -145,7 +146,7 @@ export default function TemplatesPage() {
       const { data: { session } } = await createClient().auth.getSession()
       const response = await fetch('/api/playbooks/import', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }, body: JSON.stringify({ templateId: playbook.id }) })
       if (!response.ok) { const result = await response.json().catch(() => ({})); throw new Error(result.error || 'Failed to import template') }
-      router.push('/dashboard/personal-area/playbooks')
+      router.push(returnTo && returnTo.startsWith('/') ? returnTo : '/dashboard/personal-area/playbooks')
     } catch (error) {
       window.alert(error instanceof Error ? error.message : 'Failed to import template')
     } finally {
