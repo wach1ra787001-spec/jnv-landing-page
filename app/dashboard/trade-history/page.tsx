@@ -31,6 +31,7 @@ interface Trade {
   anticipatedRR?: number
   timeframe?: string
   premarketNotes?: string
+  missedId?: string
 }
 
 export default function TradeHistoryPage() {
@@ -42,6 +43,8 @@ export default function TradeHistoryPage() {
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; tradeId: string | null }>({ show: false, tradeId: null })
   const [deleting, setDeleting] = useState(false)
   const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
+  const [editingMissedTrade, setEditingMissedTrade] = useState<Trade | null>(null)
+  const [savingMissed, setSavingMissed] = useState(false)
 
   // Refetch whenever the selected account changes so switching accounts in
   // the header immediately reflects that account's trade history.
@@ -78,10 +81,10 @@ export default function TradeHistoryPage() {
           strategy: trade.strategy || '',
         }))
         const formattedMissed = missedData.map((trade: any) => ({
-          id: `missed-${trade.id}`, symbol: trade.symbol, direction: 'long', entryPrice: 0, exitPrice: 0, quantity: 0,
+          id: `missed-${trade.id}`, symbol: trade.symbol, direction: trade.direction === 'sell' ? 'short' : 'long', entryPrice: 0, exitPrice: 0, quantity: 0,
           entryTime: new Date(trade.created_at).toLocaleString(), exitTime: 'Missed trade', pnl: 0, pnlPercent: 0,
           status: 'missed', screenshot_urls: [], notes: trade.premarket_notes, strategy: trade.strategy, missed: true,
-          timeOfDay: trade.time_of_day, anticipatedRR: Number(trade.anticipated_rr), timeframe: trade.timeframe, premarketNotes: trade.premarket_notes,
+          timeOfDay: trade.time_of_day, anticipatedRR: Number(trade.anticipated_rr), timeframe: trade.timeframe, premarketNotes: trade.premarket_notes, missedId: trade.id,
         }))
         setTrades([...formattedTrades, ...formattedMissed].sort((a, b) => {
           const aTime = new Date(a.entryTime).getTime()
@@ -100,7 +103,8 @@ export default function TradeHistoryPage() {
     
     try {
       setDeleting(true)
-      const response = await fetch(`/api/trades/${deleteConfirm.tradeId}`, { method: 'DELETE' })
+      const isMissed = deleteConfirm.tradeId?.startsWith('missed-')
+      const response = await fetch(isMissed ? `/api/missed-trades?id=${deleteConfirm.tradeId.slice(7)}` : `/api/trades/${deleteConfirm.tradeId}`, { method: 'DELETE' })
       
       if (response.ok) {
         setTrades(trades.filter(t => t.id !== deleteConfirm.tradeId))
@@ -115,6 +119,19 @@ export default function TradeHistoryPage() {
     } finally {
       setDeleting(false)
     }
+  }
+
+  const saveMissedTrade = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!editingMissedTrade?.missedId) return
+    setSavingMissed(true)
+    const form = new FormData(event.currentTarget)
+    const response = await fetch('/api/missed-trades', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      id: editingMissedTrade.missedId, symbol: form.get('symbol'), direction: form.get('direction'), time_of_day: form.get('time_of_day'),
+      anticipated_rr: form.get('anticipated_rr'), timeframe: form.get('timeframe'), strategy: form.get('strategy'), premarket_notes: form.get('premarket_notes'),
+    }) })
+    setSavingMissed(false)
+    if (response.ok) { setEditingMissedTrade(null); await fetchTrades() } else appToast.tradeSaveFailed()
   }
 
   const filteredTrades = trades.filter(
@@ -252,7 +269,7 @@ export default function TradeHistoryPage() {
                           className="gap-1"
                           onClick={(e) => {
                             e.stopPropagation()
-                            setEditingTrade(trade)
+                            trade.missed ? setEditingMissedTrade(trade) : setEditingTrade(trade)
                           }}
                         >
                           <Edit2 className="w-4 h-4" />
@@ -287,6 +304,25 @@ export default function TradeHistoryPage() {
             </table>
           </div>
         </Card>
+      )}
+
+      {editingMissedTrade && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/50 p-4">
+          <Card className="my-6 w-full max-w-lg bg-card p-6">
+            <h2 className="mb-1 text-xl font-bold">Edit Missed Trade</h2>
+            <p className="mb-5 text-sm text-muted-foreground">Update your missed-trade journal entry.</p>
+            <form onSubmit={saveMissedTrade} className="grid gap-4 sm:grid-cols-2">
+              <Input name="symbol" defaultValue={editingMissedTrade.symbol} placeholder="Symbol" required />
+              <select name="direction" defaultValue={editingMissedTrade.direction === 'short' ? 'sell' : 'buy'} className="h-10 rounded-md border border-input bg-background px-3 text-sm" required><option value="buy">Buy</option><option value="sell">Sell</option></select>
+              <Input name="time_of_day" defaultValue={editingMissedTrade.timeOfDay} placeholder="Time of day" required />
+              <Input name="anticipated_rr" type="number" min="0" step="0.01" defaultValue={editingMissedTrade.anticipatedRR} placeholder="Anticipated RR" required />
+              <Input name="timeframe" defaultValue={editingMissedTrade.timeframe} placeholder="Time frame" required />
+              <Input name="strategy" defaultValue={editingMissedTrade.strategy} placeholder="Strategy" required />
+              <textarea name="premarket_notes" defaultValue={editingMissedTrade.premarketNotes} placeholder="What did you do premarket?" className="min-h-28 rounded-md border border-input bg-background px-3 py-2 text-sm sm:col-span-2" required />
+              <div className="flex justify-end gap-3 sm:col-span-2"><Button type="button" variant="outline" onClick={() => setEditingMissedTrade(null)}>Cancel</Button><Button type="submit" disabled={savingMissed}>{savingMissed ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save changes'}</Button></div>
+            </form>
+          </Card>
+        </div>
       )}
 
       {/* Edit Trade Modal */}
