@@ -5,15 +5,17 @@ import { cn } from "@/lib/utils"
 interface JnvMarkProps {
   className?: string
   title?: string
+  monochrome?: boolean
 }
 
-export function JnvMark({ className, title = "JnV Journal" }: JnvMarkProps) {
+export function JnvMark({ className, title = "JnV Journal", monochrome = false }: JnvMarkProps) {
   const titleId = title ? "jnv-mark-title" : undefined
+  const fill = monochrome ? "currentColor" : "url(#jnv-mark-gradient)"
 
   return (
     <svg
       className={cn("h-8 w-8 shrink-0", className)}
-      viewBox="0 0 100 100"
+      viewBox="0 0 512 512"
       fill="none"
       role={title ? "img" : "presentation"}
       aria-labelledby={titleId}
@@ -21,27 +23,31 @@ export function JnvMark({ className, title = "JnV Journal" }: JnvMarkProps) {
       xmlns="http://www.w3.org/2000/svg"
     >
       {title ? <title id={titleId}>{title}</title> : null}
-      <defs>
-        <linearGradient id="jnv-mark-gradient" x1="29" y1="82" x2="80" y2="15" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#0A1F44" />
-          <stop offset="0.46" stopColor="#155BC4" />
-          <stop offset="1" stopColor="#3B8DFF" />
-        </linearGradient>
-      </defs>
+      {!monochrome ? (
+        <defs>
+          <linearGradient id="jnv-mark-gradient" x1="127" y1="419" x2="410" y2="87" gradientUnits="userSpaceOnUse">
+            <stop stopColor="#0A1F44" />
+            <stop offset="0.46" stopColor="#1457D9" />
+            <stop offset="1" stopColor="#087CFF" />
+          </linearGradient>
+        </defs>
+      ) : null}
       <path
-        d="M25 81C39 83 46 70 50 52C54 33 63 18 78 15C80 15 81 15 82 15"
-        stroke="url(#jnv-mark-gradient)"
-        strokeWidth="6.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        fill={fill}
+        d="M124 412C145 424 169 421 190 405C224 379 236 336 249 282C264 219 282 143 345 101C365 88 388 84 409 88C420 90 425 99 421 107C418 114 409 117 399 118C371 121 347 139 327 167C300 204 292 247 281 294C269 347 250 398 213 425C185 446 149 451 122 433C113 427 113 417 124 412Z"
       />
       <path
-        d="M24 17C41 17 62 17 82 15M43 56C53 50 65 45 78 42"
-        stroke="url(#jnv-mark-gradient)"
-        strokeWidth="6.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
+        fill={fill}
+        d="M119 105C178 104 246 101 329 94C354 92 382 88 407 87C419 86 426 93 425 102C424 111 416 116 405 117C338 122 272 128 207 133C174 136 145 139 118 140C106 141 99 134 99 124C99 114 106 106 119 105Z"
+      />
+      <path
+        fill={fill}
+        d="M174 294C171 284 178 274 189 267C218 247 250 232 285 219C319 207 356 198 390 190C401 187 410 193 412 202C414 211 408 219 397 222C359 231 325 241 294 253C257 267 226 283 199 302C190 308 178 305 174 294Z"
       />
     </svg>
   )
+}
+
+export function JnvMarkMonochrome({ className, title = "JnV Journal" }: Omit<JnvMarkProps, "monochrome">) {
+  return <JnvMark className={className} title={title} monochrome />
 }
