@@ -225,7 +225,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
         </nav>
 
         {/* User Section */}
-        <Link href="/dashboard/settings">
+        <Link href="/dashboard/settings/profile" aria-label="Open profile settings">
           <div className="p-4 border-t border-border/50 shrink-0 cursor-pointer hover:bg-sidebar-foreground/5 transition-colors">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
