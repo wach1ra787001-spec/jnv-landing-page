@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Plus, ArrowRight } from 'lucide-react'
+import { Plus, ArrowRight, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 
 export default function JournalPage() {
@@ -15,16 +15,24 @@ export default function JournalPage() {
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Trade Journal</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Log your trades here</p>
           </div>
-          <Link href="/dashboard/journal/new">
-            <Button 
-              className="w-full sm:w-auto gap-2 bg-[#0A1F44] hover:bg-[#071530] text-white"
-              size="sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">Add New Trade</span>
-              <span className="sm:hidden">Add</span>
-            </Button>
-          </Link>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Link href="/dashboard/journal/missed" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full gap-2 sm:w-auto" size="sm">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Journal a Missed Trade</span>
+              </Button>
+            </Link>
+            <Link href="/dashboard/journal/new" className="w-full sm:w-auto">
+              <Button
+                className="w-full gap-2 bg-[#0A1F44] hover:bg-[#071530] text-white sm:w-auto"
+                size="sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Add New Trade</span>
+                <span className="sm:hidden">Add</span>
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
 
