@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Plus, Trash2 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 interface Rule {
   id: string
@@ -25,7 +26,7 @@ interface PlaybookData {
 
 const colors = ['#FF6B35', '#004E89', '#F7931E', '#06A77D', '#D62828', '#F77F00']
 
-export function CreatePlaybookForm({ onSubmit, onCancel }: { onSubmit: (data: PlaybookData) => void | Promise<void>; onCancel: () => void }) {
+export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit: (data: PlaybookData) => void | Promise<void>; onCancel: () => void; className?: string }) {
   const [data, setData] = useState<PlaybookData>({
     name: '',
     color: colors[0],
@@ -83,7 +84,7 @@ export function CreatePlaybookForm({ onSubmit, onCancel }: { onSubmit: (data: Pl
   }
 
   return (
-    <Card className="p-6 md:p-8 bg-card border border-border/50 max-w-2xl w-full">
+    <Card className={cn("p-6 md:p-8 bg-card border border-border/50 max-w-2xl w-full", className)}>
       <h2 className="text-2xl font-bold text-foreground mb-6">Create Playbook</h2>
 
       {/* General Information */}
