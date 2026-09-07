@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS missed_trades (
 );
 
 ALTER TABLE missed_trades ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "users manage own missed trades" ON missed_trades;
 CREATE POLICY "users manage own missed trades" ON missed_trades
   FOR ALL USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
 CREATE INDEX IF NOT EXISTS idx_missed_trades_user_account ON missed_trades(user_id, account_id, created_at DESC);
