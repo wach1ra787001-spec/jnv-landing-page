@@ -15,8 +15,9 @@ async function getUserAndAccount(requestedAccountId: string | null) {
 export async function GET(request: NextRequest) {
   const { supabase, user, accountId } = await getUserAndAccount(request.nextUrl.searchParams.get('accountId'))
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!accountId) return NextResponse.json([])
-  const { data, error } = await supabase.from('missed_trades').select('*').eq('user_id', user.id).eq('account_id', accountId).order('created_at', { ascending: false })
+  let query = supabase.from('missed_trades').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
+  if (accountId) query = query.eq('account_id', accountId)
+  const { data, error } = await query
   if (error) return NextResponse.json({ error: 'Failed to load missed trades' }, { status: 500 })
   return NextResponse.json(data ?? [])
 }
