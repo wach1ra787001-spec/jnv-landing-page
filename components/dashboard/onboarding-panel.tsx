@@ -5,6 +5,16 @@ import { Check, ChevronRight, Loader2, ShieldCheck, UserRound } from "lucide-rea
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { CreatePlaybookForm } from "@/components/dashboard/create-playbook-form"
+
+interface PlaybookFormData {
+  name: string
+  color: string
+  label: string
+  entryCriteria: Array<{ id: string; title: string; description: string }>
+  exitCriteria: Array<{ id: string; title: string; description: string }>
+  linkedRuleIds: string[]
+}
 
 interface OnboardingData {
   complete: boolean
@@ -27,6 +37,7 @@ export function OnboardingPanel() {
   const [preferredName, setPreferredName] = useState("")
   const [accountName, setAccountName] = useState("My Trading Account")
   const [playbookTitle, setPlaybookTitle] = useState("")
+  const [showPlaybookForm, setShowPlaybookForm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
 
@@ -60,9 +71,25 @@ export function OnboardingPanel() {
     await load(); setStep(2)
   }
 
-  const createPlaybook = async () => {
+  const createPlaybook = async (formData?: PlaybookFormData) => {
     setBusy(true); setError("")
-    const response = await fetch("/api/playbooks", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: playbookTitle, description: "My trading strategy", rules: { entry: [], exit: [], linkedRuleIds: [] } }) })
+    const response = await fetch("/api/playbooks", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(formData ? {
+        title: formData.name,
+        description: formData.label,
+        rules: {
+          entry: formData.entryCriteria,
+          exit: formData.exitCriteria,
+          linkedRuleIds: formData.linkedRuleIds,
+        },
+      } : {
+        title: playbookTitle,
+        description: "My trading strategy",
+        rules: { entry: [], exit: [], linkedRuleIds: [] },
+      }),
+    })
     setBusy(false)
     if (!response.ok) { setError((await response.json()).error || "Could not create strategy"); return }
     await finish()
@@ -89,7 +116,7 @@ export function OnboardingPanel() {
           <div className="min-h-[250px]">
             {step === 0 && <div className="space-y-5"><div><h3 className="text-2xl font-semibold">Tell us what to call you</h3><p className="mt-1 text-sm text-muted-foreground">This helps personalize your journal.</p></div><div className="space-y-2"><Label htmlFor="first-name">First name</Label><Input id="first-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Your first name" /></div><div className="space-y-2"><Label htmlFor="preferred-name">Preferred name <span className="text-muted-foreground">(optional)</span></Label><Input id="preferred-name" value={preferredName} onChange={(event) => setPreferredName(event.target.value)} placeholder="What should we call you?" /></div><Button onClick={saveIdentity} disabled={busy || !firstName.trim()} className="w-full">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Continue <ChevronRight className="ml-2 h-4 w-4" /></>}</Button></div>}
             {step === 1 && <div className="space-y-5"><div><h3 className="text-2xl font-semibold">Choose your account path</h3><p className="mt-1 text-sm text-muted-foreground">Create an account for manual journaling or connect one of your broker methods.</p></div><div className="rounded-2xl border border-border/60 p-4"><Label htmlFor="account-name">Manual account name</Label><Input id="account-name" className="mt-2" value={accountName} onChange={(event) => setAccountName(event.target.value)} /><Button onClick={createAccount} disabled={busy || !accountName.trim()} className="mt-3 w-full">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create manual account"}</Button></div><div className="grid gap-2 sm:grid-cols-3">{brokerMethods.map((method) => <a key={method.label} href={method.href} className="rounded-xl border border-border/60 px-3 py-3 text-center text-sm transition hover:border-primary hover:bg-primary/5">Connect {method.label}</a>)}</div><p className="text-xs text-muted-foreground">After connecting a broker, return here to continue.</p></div>}
-            {step === 2 && <div className="space-y-5"><div><h3 className="text-2xl font-semibold">Create your first playbook</h3><p className="mt-1 text-sm text-muted-foreground">A playbook is the strategy you will use to review every trade.</p></div>{data.playbooks.length > 0 && <div className="grid gap-2">{data.playbooks.map((playbook) => <button key={playbook.id} onClick={finish} className="flex items-center justify-between rounded-xl border border-border/60 p-3 text-left hover:border-primary hover:bg-primary/5"><span>{playbook.title}</span><ChevronRight className="h-4 w-4" /></button>)}</div>}<div className="space-y-2"><Label htmlFor="playbook-title">New playbook name</Label><Input id="playbook-title" value={playbookTitle} onChange={(event) => setPlaybookTitle(event.target.value)} placeholder="e.g. London Breakout" /></div><Button onClick={createPlaybook} disabled={busy || !playbookTitle.trim()} className="w-full">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create playbook and enter dashboard"}</Button><a href="/dashboard/templates" className="block text-center text-sm text-primary underline-offset-4 hover:underline">Browse templates and playbooks</a></div>}
+            {step === 2 && <div className="space-y-5"><div><h3 className="text-2xl font-semibold">Choose your first playbook</h3><p className="mt-1 text-sm text-muted-foreground">Select an existing strategy or create one using the same playbook builder used in Personal Area.</p></div>{data.playbooks.length > 0 ? <div className="space-y-2"><p className="text-sm font-medium text-foreground">Your existing playbooks</p>{data.playbooks.map((playbook) => <button key={playbook.id} onClick={finish} disabled={busy} className="flex w-full items-center justify-between rounded-xl border border-border/60 p-3 text-left hover:border-primary hover:bg-primary/5"><span>{playbook.title}</span><ChevronRight className="h-4 w-4" /></button>)}</div> : <p className="rounded-xl border border-dashed border-border/60 p-3 text-sm text-muted-foreground">You do not have any playbooks yet.</p>} {!showPlaybookForm ? <><Button onClick={() => setShowPlaybookForm(true)} className="w-full">Create a new playbook</Button><a href="/dashboard/templates" className="block text-center text-sm text-primary underline-offset-4 hover:underline">Browse templates and playbooks</a></> : <div className="max-h-[55vh] overflow-y-auto rounded-2xl border border-border/60 bg-background/50 p-2"><CreatePlaybookForm onSubmit={createPlaybook} onCancel={() => setShowPlaybookForm(false)} /></div>}</div>}
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
           </div>
         </div>
