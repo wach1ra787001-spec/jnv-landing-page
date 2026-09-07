@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
   const { supabase, user, accountId } = await getUserAndAccount(typeof body?.account_id === 'string' ? body.account_id : null)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!accountId) return NextResponse.json({ error: 'Select an account before journaling a missed trade' }, { status: 400 })
-  const required = ['symbol', 'time_of_day', 'anticipated_rr', 'timeframe', 'strategy', 'premarket_notes']
+  const required = ['symbol', 'direction', 'time_of_day', 'anticipated_rr', 'timeframe', 'strategy', 'premarket_notes']
   if (required.some((field) => body?.[field] === undefined || String(body[field]).trim() === '')) {
     return NextResponse.json({ error: 'Complete all missed trade fields' }, { status: 400 })
   }
@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
   if (!Number.isFinite(anticipatedRR) || anticipatedRR < 0) return NextResponse.json({ error: 'Anticipated RR must be a valid non-negative number' }, { status: 400 })
   const { data, error } = await supabase.from('missed_trades').insert({
     user_id: user.id, account_id: accountId, symbol: String(body.symbol).trim().toUpperCase(),
-    time_of_day: String(body.time_of_day).trim(), anticipated_rr: anticipatedRR,
+    direction: String(body.direction).trim().toLowerCase(), time_of_day: String(body.time_of_day).trim(), anticipated_rr: anticipatedRR,
     timeframe: String(body.timeframe).trim(), strategy: String(body.strategy).trim(),
     premarket_notes: String(body.premarket_notes).trim(),
   }).select().single()

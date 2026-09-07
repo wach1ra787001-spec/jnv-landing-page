@@ -13,7 +13,7 @@ import { appToast } from '@/lib/toast-utils'
 export default function MissedTradePage() {
   const router = useRouter()
   const { selectedAccountId } = useAccount()
-  const [form, setForm] = useState({ symbol: '', time_of_day: '', anticipated_rr: '', timeframe: '', strategy: '', premarket_notes: '' })
+  const [form, setForm] = useState({ symbol: '', direction: '', time_of_day: '', anticipated_rr: '', timeframe: '', strategy: '', premarket_notes: '' })
   const [saving, setSaving] = useState(false)
   const [playbooks, setPlaybooks] = useState<Array<{ id: string; title: string }>>([])
   const [loadingPlaybooks, setLoadingPlaybooks] = useState(true)
@@ -44,6 +44,7 @@ export default function MissedTradePage() {
         <form onSubmit={submit} className="flex flex-col gap-5">
           <div className="grid gap-5 sm:grid-cols-2">
             <label className="flex flex-col gap-2 text-sm font-medium">Symbol<Input required value={form.symbol} onChange={(e) => update('symbol', e.target.value)} placeholder="EURUSD" /></label>
+            <label className="flex flex-col gap-2 text-sm font-medium">Direction<Input required value={form.direction} onChange={(e) => update('direction', e.target.value)} placeholder="Buy or Sell" /></label>
             <label className="flex flex-col gap-2 text-sm font-medium">Time of day<Input required value={form.time_of_day} onChange={(e) => update('time_of_day', e.target.value)} placeholder="London open" /></label>
             <label className="flex flex-col gap-2 text-sm font-medium">Anticipated RR<Input required type="number" min="0" step="0.01" value={form.anticipated_rr} onChange={(e) => update('anticipated_rr', e.target.value)} placeholder="2.5" /></label>
             <label className="flex flex-col gap-2 text-sm font-medium">Time frame<Input required value={form.timeframe} onChange={(e) => update('timeframe', e.target.value)} placeholder="15m" /></label>
