@@ -23,6 +23,7 @@ interface OnboardingData {
   preferredName: string
   accounts: Array<{ id: string; account_name: string; account_type: string }>
   playbooks: Array<{ id: string; title: string }>
+  missingSteps: string[]
 }
 
 const brokerMethods = [
@@ -48,6 +49,10 @@ export function OnboardingPanel() {
     if (!response.ok) return
     const next = await response.json()
     setData(next)
+    if (next.missingSteps?.length) {
+      const firstMissing = next.missingSteps[0]
+      setStep(firstMissing === "profile" ? 0 : firstMissing === "account" ? 1 : 2)
+    }
     setFirstName(next.firstName || "")
     setPreferredName(next.preferredName || "")
     if (next.accounts?.length) setStep(2)
@@ -106,7 +111,12 @@ export function OnboardingPanel() {
     const response = await fetch("/api/onboarding", { method: "PUT" })
     if (!response.ok) {
       setBusy(false)
-      setError((await response.json()).error || "Finish the required steps")
+      const result = await response.json()
+      if (Array.isArray(result.missingSteps) && result.missingSteps.length > 0) {
+        const firstMissing = result.missingSteps[0]
+        setStep(firstMissing === "profile" ? 0 : firstMissing === "account" ? 1 : 2)
+      }
+      setError(result.missingSteps?.map((item: string) => item === "profile" ? "Add your first name" : item === "account" ? "Create or connect a trading account" : "Choose or create a playbook").join(" · ") || result.error || "Finish the required steps")
       return
     }
     router.replace("/dashboard")
@@ -123,7 +133,7 @@ export function OnboardingPanel() {
         </div>
         <div className="grid gap-6 p-6 md:grid-cols-[180px_1fr]">
           <div className="flex gap-2 md:flex-col">
-            {stepLabels.map((label, index) => <div key={label} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm ${step === index ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground"}`}><span className="flex h-6 w-6 items-center justify-center rounded-full border border-current text-xs">{step > index ? <Check className="h-4 w-4" /> : index + 1}</span><span className="hidden md:inline">{label}</span></div>)}
+            {stepLabels.map((label, index) => { const key = index === 0 ? "profile" : index === 1 ? "account" : "playbook"; const missing = data.missingSteps?.includes(key); return <div key={label} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm ${missing ? "border border-destructive/40 bg-destructive/10 text-destructive" : step === index ? "bg-primary/10 font-medium text-primary" : "text-muted-foreground"}`}><span className="flex h-6 w-6 items-center justify-center rounded-full border border-current text-xs">{missing ? "!" : step > index ? <Check className="h-4 w-4" /> : index + 1}</span><span className="hidden md:inline">{label}{missing ? " — required" : ""}</span></div> })}
           </div>
           <div className="min-h-[250px]">
             {step === 0 && <div className="space-y-5"><div><h3 className="text-2xl font-semibold">Tell us what to call you</h3><p className="mt-1 text-sm text-muted-foreground">This helps personalize your journal.</p></div><div className="space-y-2"><Label htmlFor="first-name">First name</Label><Input id="first-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Your first name" /></div><div className="space-y-2"><Label htmlFor="preferred-name">Preferred name <span className="text-muted-foreground">(optional)</span></Label><Input id="preferred-name" value={preferredName} onChange={(event) => setPreferredName(event.target.value)} placeholder="What should we call you?" /></div><Button onClick={saveIdentity} disabled={busy || !firstName.trim()} className="w-full">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Continue <ChevronRight className="ml-2 h-4 w-4" /></>}</Button></div>}

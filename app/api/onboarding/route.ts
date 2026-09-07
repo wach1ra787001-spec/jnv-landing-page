@@ -1,10 +1,18 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
-function isComplete(profile: any, accounts: any[], playbooks: any[]) {
+function getMissingSteps(profile: any, accounts: any[], playbooks: any[]) {
   const preferences = profile?.preferences && typeof profile.preferences === 'object' ? profile.preferences : {}
   const firstName = typeof preferences.first_name === 'string' ? preferences.first_name.trim() : ''
-  return Boolean(firstName && accounts.length > 0 && playbooks.length > 0)
+  return [
+    !firstName ? 'profile' : null,
+    accounts.length === 0 ? 'account' : null,
+    playbooks.length === 0 ? 'playbook' : null,
+  ].filter(Boolean) as string[]
+}
+
+function isComplete(profile: any, accounts: any[], playbooks: any[]) {
+  return getMissingSteps(profile, accounts, playbooks).length === 0
 }
 
 export async function GET() {
@@ -20,6 +28,7 @@ export async function GET() {
   const preferences = profile?.preferences && typeof profile.preferences === 'object' ? profile.preferences : {}
   return NextResponse.json({
     complete: isComplete(profile, accounts ?? [], playbooks ?? []),
+    missingSteps: getMissingSteps(profile, accounts ?? [], playbooks ?? []),
     firstName: preferences.first_name ?? '',
     preferredName: preferences.preferred_name ?? '',
     accounts: accounts ?? [],
@@ -64,8 +73,9 @@ export async function PUT() {
   const { data: accounts } = accountsResult
   const { data: playbooks } = playbooksResult
   const preferences = profile?.preferences && typeof profile.preferences === 'object' ? profile.preferences : {}
-  if (!isComplete({ preferences }, accounts ?? [], playbooks ?? [])) {
-    return NextResponse.json({ error: 'Complete all onboarding steps first' }, { status: 400 })
+  const missingSteps = getMissingSteps({ preferences }, accounts ?? [], playbooks ?? [])
+  if (missingSteps.length > 0) {
+    return NextResponse.json({ error: 'Complete all onboarding steps first', missingSteps }, { status: 400 })
   }
   const { error } = await supabase.from('profiles').update({ preferences: { ...preferences, onboarding_complete: true } }).eq('id', user.id)
   if (error) return NextResponse.json({ error: 'Could not finish onboarding' }, { status: 500 })
