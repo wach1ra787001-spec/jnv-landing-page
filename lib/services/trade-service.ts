@@ -157,6 +157,11 @@ export async function createTrade(tradeData: CreateTradeInput) {
     ownedAccountId = ownedAccount.id
   }
 
+  const normalizedPnlPercent = Number(tradeData.pnl_percent)
+  const normalizedStatus = Number.isFinite(normalizedPnlPercent) && Math.abs(normalizedPnlPercent) <= 0.1
+    ? 'breakeven'
+    : (tradeData.status || 'closed')
+
   const insertData: any = {
     user_id: user.id,
     symbol: tradeData.symbol.trim().toUpperCase(),
@@ -174,7 +179,7 @@ export async function createTrade(tradeData: CreateTradeInput) {
     risk_amount: tradeData.risk_amount || null,
     setup_type: (tradeData.setup_type || '').trim(),
     strategy: (tradeData.strategy || '').trim(),
-    status: tradeData.status || 'closed',
+    status: normalizedStatus,
     source: normalizedSource,
     screenshot_urls: tradeData.screenshot_urls || [],
     session: sessionName,
