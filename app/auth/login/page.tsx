@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
+import { JnvMark } from "@/components/brand/jnv-mark"
 import { createClient } from "@/lib/supabase/client"
 import { getAppOrigin, isProductionDomainHost } from "@/lib/domain-routing"
 import { Button } from "@/components/ui/button"
@@ -19,12 +19,10 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [honeypot, setHoneypot] = useState("")
-  const [isDark, setIsDark] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
     setStartedAt(Date.now())
-    setIsDark(document.documentElement.classList.contains('dark'))
   }, [])
 
   const handleOAuth = async (provider: "google" | "apple") => {
@@ -87,15 +85,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center justify-center mb-8 gap-4">
-          <div className="w-20 h-20 relative">
-            <Image
-              src={isDark ? "/logo-jnv-dark.png" : "/logo-jnv-light.png"}
-              alt="JnV Journal Logo"
-              width={80}
-              height={80}
-              className="rounded object-cover"
-            />
-          </div>
+          <JnvMark className="h-20 w-20" title="JnV Journal Logo" />
           <h1 className="text-3xl font-bold text-foreground">Jnv Trading Journal</h1>
         </div>
 

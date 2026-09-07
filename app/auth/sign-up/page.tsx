@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import Image from "next/image"
+import { JnvMark } from "@/components/brand/jnv-mark"
 import { createClient } from "@/lib/supabase/client"
 import { getAppOrigin } from "@/lib/domain-routing"
 import { detectUserTimezone } from "@/lib/timezone-utils"
@@ -82,15 +82,7 @@ export default function SignUpPage() {
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center justify-center mb-8 gap-4">
-          <div className="w-20 h-20 relative">
-            <Image
-              src="/logo-jnv.png"
-              alt="JnV Journal Logo"
-              width={80}
-              height={80}
-              className="rounded object-cover"
-            />
-          </div>
+          <JnvMark className="h-20 w-20" title="JnV Journal Logo" />
           <h1 className="text-3xl font-bold text-foreground">JnV Journal</h1>
         </div>
 
