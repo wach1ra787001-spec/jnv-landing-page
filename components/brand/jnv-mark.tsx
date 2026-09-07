@@ -22,23 +22,23 @@ export function JnvMark({ className, title = "JnV Journal" }: JnvMarkProps) {
     >
       {title ? <title id={titleId}>{title}</title> : null}
       <defs>
-        <linearGradient id="jnv-mark-gradient" x1="27" y1="84" x2="76" y2="14" gradientUnits="userSpaceOnUse">
+        <linearGradient id="jnv-mark-gradient" x1="29" y1="82" x2="80" y2="15" gradientUnits="userSpaceOnUse">
           <stop stopColor="#0A1F44" />
-          <stop offset="0.52" stopColor="#155BC4" />
-          <stop offset="1" stopColor="#2F80ED" />
+          <stop offset="0.46" stopColor="#155BC4" />
+          <stop offset="1" stopColor="#3B8DFF" />
         </linearGradient>
       </defs>
       <path
-        d="M25 81C43 82 46 64 50 48C54 31 64 18 77 15C79 15 81 15 82 15"
+        d="M25 81C39 83 46 70 50 52C54 33 63 18 78 15C80 15 81 15 82 15"
         stroke="url(#jnv-mark-gradient)"
-        strokeWidth="7"
+        strokeWidth="6.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
       <path
-        d="M24 17C43 17 61 16 82 15M43 56C54 49 65 45 78 42"
+        d="M24 17C41 17 62 17 82 15M43 56C53 50 65 45 78 42"
         stroke="url(#jnv-mark-gradient)"
-        strokeWidth="7"
+        strokeWidth="6.5"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
