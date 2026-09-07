@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import { Check, ChevronRight, Loader2, ShieldCheck, UserRound } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,6 +32,7 @@ const brokerMethods = [
 ]
 
 export function OnboardingPanel() {
+  const router = useRouter()
   const [data, setData] = useState<OnboardingData | null>(null)
   const [step, setStep] = useState(0)
   const [firstName, setFirstName] = useState("")
@@ -101,8 +103,13 @@ export function OnboardingPanel() {
     setBusy(true)
     setError("")
     const response = await fetch("/api/onboarding", { method: "PUT" })
-    if (!response.ok) { setError((await response.json()).error || "Finish the required steps"); return }
-    window.location.reload()
+    if (!response.ok) {
+      setBusy(false)
+      setError((await response.json()).error || "Finish the required steps")
+      return
+    }
+    router.replace("/dashboard")
+    router.refresh()
   }
 
   const stepLabels = ["Your profile", "Trading account", "Your strategy"]
