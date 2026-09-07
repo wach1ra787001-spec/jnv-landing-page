@@ -51,11 +51,18 @@ export async function PUT() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const [{ data: profile }, { data: accounts }, { data: playbooks }] = await Promise.all([
+  const [profileResult, accountsResult, playbooksResult] = await Promise.all([
     supabase.from('profiles').select('preferences').eq('id', user.id).maybeSingle(),
     supabase.from('accounts').select('id').eq('user_id', user.id),
     supabase.from('playbooks').select('id').eq('user_id', user.id),
   ])
+  if (profileResult.error || accountsResult.error || playbooksResult.error) {
+    console.error('[v0] Onboarding completion query failed:', profileResult.error, accountsResult.error, playbooksResult.error)
+    return NextResponse.json({ error: 'Could not verify your onboarding steps. Please try again.' }, { status: 500 })
+  }
+  const { data: profile } = profileResult
+  const { data: accounts } = accountsResult
+  const { data: playbooks } = playbooksResult
   const preferences = profile?.preferences && typeof profile.preferences === 'object' ? profile.preferences : {}
   if (!isComplete({ preferences }, accounts ?? [], playbooks ?? [])) {
     return NextResponse.json({ error: 'Complete all onboarding steps first' }, { status: 400 })
