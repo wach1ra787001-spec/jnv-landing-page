@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -34,6 +35,16 @@ export function DashboardHeader({ user, profile }: DashboardHeaderProps) {
   const router = useRouter()
   const supabase = createClient()
   const { toggleMobileOpen } = useSidebar()
+  const [today, setToday] = useState<string | null>(null)
+
+  useEffect(() => {
+    setToday(new Intl.DateTimeFormat("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }).format(new Date()))
+  }, [])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -57,12 +68,7 @@ export function DashboardHeader({ user, profile }: DashboardHeaderProps) {
       <div className="hidden md:flex flex-1 flex-col ml-4">
         <h1 className="text-lg font-semibold text-foreground">Dashboard</h1>
         <p className="text-xs text-muted-foreground">
-          {new Date().toLocaleDateString("en-US", {
-            weekday: "long",
-            year: "numeric",
-            month: "long",
-            day: "numeric",
-          })}
+          {today || "Loading date…"}
         </p>
       </div>
 
