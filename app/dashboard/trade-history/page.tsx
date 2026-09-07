@@ -53,14 +53,15 @@ export default function TradeHistoryPage() {
     setLoading(true)
     setTrades([])
     try {
-      const accountQuery = selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ''
-      const response = await fetch(`/api/trades?view=all${accountQuery}`)
-      if (response.ok) {
-        const data = await response.json()
-        const missedResponse = await fetch(`/api/missed-trades${accountQuery}`)
-        const missedData = missedResponse.ok ? await missedResponse.json() : []
-        // Transform database records to Trade interface
-        const formattedTrades = data.map((trade: any) => ({
+      const accountQuery = selectedAccountId ? `?accountId=${encodeURIComponent(selectedAccountId)}` : ''
+      const [response, missedResponse] = await Promise.all([
+        fetch(`/api/trades?view=all${selectedAccountId ? `&accountId=${encodeURIComponent(selectedAccountId)}` : ''}`),
+        fetch(`/api/missed-trades${accountQuery}`),
+      ])
+      const data = response.ok ? await response.json() : []
+      const missedData = missedResponse.ok ? await missedResponse.json() : []
+      // Transform database records to Trade interface
+      const formattedTrades = data.map((trade: any) => ({
           id: trade.id,
           symbol: trade.symbol,
           direction: trade.direction,
@@ -82,8 +83,11 @@ export default function TradeHistoryPage() {
           status: 'missed', screenshot_urls: [], notes: trade.premarket_notes, strategy: trade.strategy, missed: true,
           timeOfDay: trade.time_of_day, anticipatedRR: Number(trade.anticipated_rr), timeframe: trade.timeframe, premarketNotes: trade.premarket_notes,
         }))
-        setTrades([...formattedTrades, ...formattedMissed])
-      }
+        setTrades([...formattedTrades, ...formattedMissed].sort((a, b) => {
+          const aTime = new Date(a.entryTime).getTime()
+          const bTime = new Date(b.entryTime).getTime()
+          return bTime - aTime
+        }))
     } catch (error) {
       console.error('[v0] Error fetching trades:', error)
     } finally {
