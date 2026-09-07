@@ -6,6 +6,7 @@ import { Check, ChevronRight, Loader2, ShieldCheck, UserRound } from "lucide-rea
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { CreatePlaybookForm } from "@/components/dashboard/create-playbook-form"
 
 interface PlaybookFormData {
@@ -39,6 +40,11 @@ export function OnboardingPanel() {
   const [firstName, setFirstName] = useState("")
   const [preferredName, setPreferredName] = useState("")
   const [accountName, setAccountName] = useState("My Trading Account")
+  const [accountType, setAccountType] = useState("Manual")
+  const [currency, setCurrency] = useState("USD")
+  const [initialBalance, setInitialBalance] = useState("")
+  const [riskPercent, setRiskPercent] = useState("1")
+  const [riskAmount, setRiskAmount] = useState("")
   const [playbookTitle, setPlaybookTitle] = useState("")
   const [showPlaybookForm, setShowPlaybookForm] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -71,8 +77,14 @@ export function OnboardingPanel() {
   }
 
   const createAccount = async () => {
+    const parsedRiskPercent = Number(riskPercent)
+    const parsedRiskAmount = Number(riskAmount)
+    if (!accountName.trim() || !Number.isFinite(parsedRiskPercent) || parsedRiskPercent <= 0 || parsedRiskPercent > 100 || !Number.isFinite(parsedRiskAmount) || parsedRiskAmount <= 0) {
+      setError("Enter an account name, risk percentage, and positive risk amount")
+      return
+    }
     setBusy(true); setError("")
-    const response = await fetch("/api/accounts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account_name: accountName, account_type: "manual", currency: "USD", risk_percent: 1, risk_amount: 1 }) })
+    const response = await fetch("/api/accounts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ account_name: accountName.trim(), account_type: accountType, currency, initial_balance: initialBalance ? Number(initialBalance) : null, risk_percent: parsedRiskPercent, risk_amount: parsedRiskAmount }) })
     setBusy(false)
     if (!response.ok) { setError((await response.json()).error || "Could not create account"); return }
     await load(); setStep(2)
@@ -137,7 +149,7 @@ export function OnboardingPanel() {
           </div>
           <div className="min-h-[250px]">
             {step === 0 && <div className="space-y-5"><div><h3 className="text-2xl font-semibold">Tell us what to call you</h3><p className="mt-1 text-sm text-muted-foreground">This helps personalize your journal.</p></div><div className="space-y-2"><Label htmlFor="first-name">First name</Label><Input id="first-name" value={firstName} onChange={(event) => setFirstName(event.target.value)} placeholder="Your first name" /></div><div className="space-y-2"><Label htmlFor="preferred-name">Preferred name <span className="text-muted-foreground">(optional)</span></Label><Input id="preferred-name" value={preferredName} onChange={(event) => setPreferredName(event.target.value)} placeholder="What should we call you?" /></div><Button onClick={saveIdentity} disabled={busy || !firstName.trim()} className="w-full">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Continue <ChevronRight className="ml-2 h-4 w-4" /></>}</Button></div>}
-            {step === 1 && <div className="space-y-5"><div><h3 className="text-2xl font-semibold">Choose your account path</h3><p className="mt-1 text-sm text-muted-foreground">Create an account for manual journaling or connect one of your broker methods.</p></div><div className="rounded-2xl border border-border/60 p-4"><Label htmlFor="account-name">Manual account name</Label><Input id="account-name" className="mt-2" value={accountName} onChange={(event) => setAccountName(event.target.value)} /><Button onClick={createAccount} disabled={busy || !accountName.trim()} className="mt-3 w-full">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create manual account"}</Button></div><div className="grid gap-2 sm:grid-cols-3">{brokerMethods.map((method) => <a key={method.label} href={method.href} className="rounded-xl border border-border/60 px-3 py-3 text-center text-sm transition hover:border-primary hover:bg-primary/5">Connect {method.label}</a>)}</div><p className="text-xs text-muted-foreground">After connecting a broker, return here to continue.</p></div>}
+            {step === 1 && <div className="space-y-5"><div><h3 className="text-2xl font-semibold">Choose your account path</h3><p className="mt-1 text-sm text-muted-foreground">Create an account for manual journaling or connect one of your broker methods.</p></div><div className="space-y-4 rounded-2xl border border-border/60 p-4"><div className="space-y-2"><Label htmlFor="account-name">Account name</Label><Input id="account-name" value={accountName} onChange={(event) => setAccountName(event.target.value)} placeholder="e.g. Main Account" /></div><div className="space-y-2"><Label>Account type</Label><Select value={accountType} onValueChange={setAccountType}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Manual">Manual</SelectItem><SelectItem value="MT4">MT4</SelectItem><SelectItem value="cTrader">cTrader</SelectItem></SelectContent></Select></div><div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Label>Currency</Label><Select value={currency} onValueChange={setCurrency}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="USD">USD</SelectItem><SelectItem value="EUR">EUR</SelectItem><SelectItem value="GBP">GBP</SelectItem></SelectContent></Select></div><div className="space-y-2"><Label htmlFor="initial-balance">Initial balance</Label><Input id="initial-balance" type="number" min="0" step="0.01" value={initialBalance} onChange={(event) => setInitialBalance(event.target.value)} placeholder="0.00" /></div></div><div className="grid grid-cols-2 gap-3"><div className="space-y-2"><Label htmlFor="risk-percent">Risk % per trade</Label><Input id="risk-percent" required type="number" min="0.001" max="100" step="0.001" value={riskPercent} onChange={(event) => setRiskPercent(event.target.value)} /></div><div className="space-y-2"><Label htmlFor="risk-amount">Risk amount</Label><Input id="risk-amount" required type="number" min="0.01" step="0.01" value={riskAmount} onChange={(event) => setRiskAmount(event.target.value)} placeholder="0.00" /></div></div><Button onClick={createAccount} disabled={busy || !accountName.trim() || !riskAmount} className="w-full">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create manual account"}</Button></div><div className="grid gap-2 sm:grid-cols-3">{brokerMethods.map((method) => <a key={method.label} href={method.href} className="rounded-xl border border-border/60 px-3 py-3 text-center text-sm transition hover:border-primary hover:bg-primary/5">Connect {method.label}</a>)}</div><p className="text-xs text-muted-foreground">After connecting a broker, return here to continue.</p></div>}
             {step === 2 && <div className="space-y-5"><div><h3 className="text-2xl font-semibold">Choose your first playbook</h3><p className="mt-1 text-sm text-muted-foreground">Select an existing strategy or create one using the same playbook builder used in Personal Area.</p></div>{data.playbooks.length > 0 ? <div className="space-y-2"><p className="text-sm font-medium text-foreground">Your existing playbooks</p>{data.playbooks.map((playbook) => <button key={playbook.id} onClick={async () => { await load(); await finish() }} disabled={busy} className="flex w-full items-center justify-between rounded-xl border border-border/60 p-3 text-left transition hover:border-primary hover:bg-primary/5 disabled:cursor-wait disabled:opacity-60"><span><span className="block font-medium">{playbook.title}</span><span className="text-xs text-muted-foreground">Continue with this playbook</span></span>{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ChevronRight className="h-4 w-4" />}</button>)}</div> : <p className="rounded-xl border border-dashed border-border/60 p-3 text-sm text-muted-foreground">You do not have any playbooks yet.</p>} {!showPlaybookForm ? <><Button onClick={() => setShowPlaybookForm(true)} className="w-full">Create a new playbook</Button><a href="/dashboard/templates?returnTo=%2Fdashboard" className="block text-center text-sm text-primary underline-offset-4 hover:underline">Browse templates and playbooks</a></> : <CreatePlaybookForm className="max-w-none border-0 bg-transparent p-0 shadow-none" onSubmit={createPlaybook} onCancel={() => setShowPlaybookForm(false)} />}</div>}
             {error && <p className="mt-4 text-sm text-destructive">{error}</p>}
           </div>
