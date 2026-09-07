@@ -247,6 +247,20 @@ export default function TradeDetailPage() {
     )
   }
 
+  if (trade?.missed) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6">
+        <Button variant="ghost" size="sm" onClick={() => router.back()} className="gap-2"><ArrowLeft className="w-4 h-4" />Back</Button>
+        <Card className="relative overflow-hidden border-red-500/30 bg-card p-6">
+          <div className="absolute left-0 top-0 rounded-br-md bg-red-600 px-3 py-1 text-xs font-bold tracking-wider text-white">MISSED</div>
+          <div className="pt-5"><div className="flex items-start justify-between gap-4"><div><h1 className="text-3xl font-bold text-foreground">{trade.symbol}</h1><p className="mt-1 text-muted-foreground">{trade.strategy}</p></div><div className="rounded-full bg-red-500/10 px-3 py-1 text-sm font-semibold text-red-500">Anticipated RR {Number(trade.anticipated_rr).toFixed(2)}</div></div>
+            <div className="mt-6 grid gap-4 sm:grid-cols-2"><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Time of day</p><p className="mt-1 font-medium text-foreground">{trade.time_of_day}</p></div><div><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Time frame</p><p className="mt-1 font-medium text-foreground">{trade.timeframe}</p></div><div className="sm:col-span-2"><p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">What I did premarket</p><p className="mt-1 whitespace-pre-wrap leading-relaxed text-foreground">{trade.premarket_notes}</p></div></div>
+          </div>
+        </Card>
+      </div>
+    )
+  }
+
   if (!trade) {
     return (
       <div className="space-y-6">

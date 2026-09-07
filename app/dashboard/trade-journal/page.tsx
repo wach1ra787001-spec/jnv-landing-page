@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, BookOpen, SlidersHorizontal, Search, X, Bell } from 'lucide-react'
+import { Plus, BookOpen, SlidersHorizontal, Search, X, Bell, AlertTriangle } from 'lucide-react'
 import { appToast } from '@/lib/toast-utils'
 import { TradeModal } from '@/components/dashboard/trade-modal'
 import { TradeJournalEntryCard } from '@/components/journal/trade-journal-entry-card'
@@ -148,15 +148,18 @@ export default function TradeJournalPage() {
             <h1 className="text-xl sm:text-2xl font-bold text-foreground">Trade Journal</h1>
             <p className="text-xs sm:text-sm text-muted-foreground">Log trades, add notes and screenshots</p>
           </div>
-          <Button
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+            <Button variant="outline" onClick={() => router.push('/dashboard/journal/missed')} className="w-full gap-2 sm:w-auto" size="sm"><AlertTriangle className="w-4 h-4" />Journal a Missed Trade</Button>
+            <Button
             onClick={() => setShowModal(true)}
-            className="w-full sm:w-auto gap-2 bg-[#0A1F44] hover:bg-[#071530] text-white"
+            className="w-full gap-2 bg-[#0A1F44] hover:bg-[#071530] text-white sm:w-auto"
             size="sm"
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">New Trade</span>
             <span className="sm:hidden">Add</span>
-          </Button>
+            </Button>
+          </div>
         </div>
       </div>
 

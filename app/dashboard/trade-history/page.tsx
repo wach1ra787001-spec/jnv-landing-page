@@ -26,6 +26,11 @@ interface Trade {
   screenshot_urls?: string[]
   notes?: string
   strategy?: string
+  missed?: boolean
+  timeOfDay?: string
+  anticipatedRR?: number
+  timeframe?: string
+  premarketNotes?: string
 }
 
 export default function TradeHistoryPage() {
@@ -52,6 +57,8 @@ export default function TradeHistoryPage() {
       const response = await fetch(`/api/trades?view=all${accountQuery}`)
       if (response.ok) {
         const data = await response.json()
+        const missedResponse = await fetch(`/api/missed-trades${accountQuery}`)
+        const missedData = missedResponse.ok ? await missedResponse.json() : []
         // Transform database records to Trade interface
         const formattedTrades = data.map((trade: any) => ({
           id: trade.id,
@@ -69,7 +76,13 @@ export default function TradeHistoryPage() {
           notes: trade.notes || '',
           strategy: trade.strategy || '',
         }))
-        setTrades(formattedTrades)
+        const formattedMissed = missedData.map((trade: any) => ({
+          id: `missed-${trade.id}`, symbol: trade.symbol, direction: 'long', entryPrice: 0, exitPrice: 0, quantity: 0,
+          entryTime: new Date(trade.created_at).toLocaleString(), exitTime: 'Missed trade', pnl: 0, pnlPercent: 0,
+          status: 'missed', screenshot_urls: [], notes: trade.premarket_notes, strategy: trade.strategy, missed: true,
+          timeOfDay: trade.time_of_day, anticipatedRR: Number(trade.anticipated_rr), timeframe: trade.timeframe, premarketNotes: trade.premarket_notes,
+        }))
+        setTrades([...formattedTrades, ...formattedMissed])
       }
     } catch (error) {
       console.error('[v0] Error fetching trades:', error)
@@ -187,7 +200,8 @@ export default function TradeHistoryPage() {
                     className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer"
                     onClick={() => router.push(`/dashboard/trade-detail/${trade.id}`)}
                   >
-                    <td className="px-6 py-4">
+                    <td className="relative px-6 py-4">
+                      {trade.missed && <span className="absolute left-0 top-0 rounded-br bg-red-600 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white">MISSED</span>}
                       <div className="flex items-center gap-2">
                         <div className="font-semibold text-foreground">{trade.symbol}</div>
                       </div>
