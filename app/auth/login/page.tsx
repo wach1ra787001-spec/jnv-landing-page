@@ -177,15 +177,20 @@ export default function LoginPage() {
                 />
                 Continue with Google
               </Button>
-              <Button type="button" variant="outline" className="h-11 w-full justify-center gap-2 px-6" disabled={isLoading} onClick={() => handleOAuth("apple")}>
-                <img
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-7IZzYpCJq3WKbN5Tv22PiYTJ2sTQ3h.png"
-                  alt=""
-                  aria-hidden="true"
-                  className="h-5 w-5 object-contain"
-                />
-                Continue with Apple
-              </Button>
+              <div className="relative">
+                <Button type="button" variant="outline" className="h-11 w-full justify-center gap-2 px-6" disabled>
+                  <img
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/image-7IZzYpCJq3WKbN5Tv22PiYTJ2sTQ3h.png"
+                    alt=""
+                    aria-hidden="true"
+                    className="h-5 w-5 object-contain"
+                  />
+                  Continue with Apple
+                </Button>
+                <span className="absolute -right-2 -top-3 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm">
+                  Currently unavailable
+                </span>
+              </div>
             </div>
 
             <div className="mt-6 text-center text-sm text-muted-foreground">
