@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS public.notification_logs (
   title TEXT,
   message TEXT,
   href TEXT,
+  error_message TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
