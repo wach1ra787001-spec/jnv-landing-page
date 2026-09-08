@@ -187,7 +187,7 @@ export default function LoginPage() {
                   />
                   Continue with Apple
                 </Button>
-                <span className="absolute -right-2 -top-3 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm">
+                <span className="absolute bottom-1 right-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm">
                   Currently unavailable
                 </span>
               </div>
