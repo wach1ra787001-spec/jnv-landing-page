@@ -20,7 +20,7 @@ function ConnectionsContent() {
 
   const errorMessages: Record<string, string> = {
     access_denied: 'Authorization was denied. Please try again.',
-    invalid_state: 'Security check failed. Please try again.',
+    invalid_state: 'Security check failed. Make sure the callback URL uses the same production domain as the page, then start the connection again.',
     token_failed: 'Failed to exchange authorization code for tokens. Check Vercel logs for details.',
     accounts_failed: 'Failed to fetch your cTrader accounts. Check Vercel logs for details.',
     no_accounts: 'No trading accounts found on your cTrader profile.',
