@@ -116,6 +116,40 @@ export async function fetchDeals(
   return data.deals || []
 }
 
+export type NormalizedCandle = { time: number; open: number; high: number; low: number; close: number }
+
+export type CTraderTrendbar = {
+  utcTimestampInMinutes?: number
+  low?: number
+  deltaOpen?: number
+  deltaClose?: number
+  deltaHigh?: number
+  deltaLow?: number
+}
+
+export function normalizeCTraderTrendbars(bars: CTraderTrendbar[], digits: number): NormalizedCandle[] {
+  const scale = 10 ** digits
+  const candles = bars.flatMap((bar) => {
+    const values = [bar.utcTimestampInMinutes, bar.low, bar.deltaOpen, bar.deltaClose, bar.deltaHigh, bar.deltaLow]
+    if (!values.every((value) => Number.isFinite(value))) return []
+    const low = Number(bar.low) / scale
+    const open = (Number(bar.low) + Number(bar.deltaOpen)) / scale
+    const close = (Number(bar.low) + Number(bar.deltaClose)) / scale
+    const high = (Number(bar.low) + Number(bar.deltaHigh)) / scale
+    if (low > Math.min(open, close) || high < Math.max(open, close) || ![open, high, low, close].every(Number.isFinite)) return []
+    return [{ time: Math.floor(Number(bar.utcTimestampInMinutes) * 60), open, high, low, close }]
+  })
+  return [...new Map(candles.map((candle) => [candle.time, candle])).values()].sort((a, b) => a.time - b.time)
+}
+
+export async function fetchTrendbars(accessToken: string, accountId: string, params: { symbolId: number; period: string; from: number; to: number }) {
+  const query = new URLSearchParams({ symbolId: String(params.symbolId), period: params.period, from: String(params.from), to: String(params.to) })
+  const response = await fetch(`${CTRADER_API_BASE}/accounts/${accountId}/trendbars?${query}`, { headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' } })
+  if (!response.ok) throw new Error('Failed to fetch cTrader historical trendbars')
+  const data = await response.json()
+  return data.trendbars || data.data || []
+}
+
 export function isTokenExpired(expiresAt: string): boolean {
   if (!expiresAt) return true
   return new Date(expiresAt) < new Date()

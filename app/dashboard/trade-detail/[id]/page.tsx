@@ -366,11 +366,13 @@ export default function TradeDetailPage() {
         {/* TradingView Chart Card */}
         <Card className="min-w-0 p-4 bg-card border border-border/50 lg:min-h-[620px]">
         <h3 className="text-lg font-semibold text-foreground mb-4">Chart Analysis</h3>
-        <TradingViewChart
-          symbol={trade.symbol}
-          interval="1D"
-          height={500}
-          singleBar={(() => {
+  <TradingViewChart
+  symbol={trade.symbol}
+  interval="15"
+  height={500}
+  tradeHistoryId={trade.source === 'ctrader' ? trade.id : undefined}
+  chartSource={trade.source === 'ctrader' ? 'ctrader' : 'tradelocker'}
+  singleBar={trade.source === 'ctrader' ? undefined : (() => {
             const entryPrice = Number(trade.entry_price)
             const exitPrice = Number(trade.exit_price)
             const open = Number.isFinite(entryPrice) ? entryPrice : 0
@@ -414,16 +416,16 @@ export default function TradeDetailPage() {
             return <p className="mt-3 rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-500">All {userRules.length} rules followed on this trade.</p>
           }
           return (
-            <div className="mt-3 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2">
-              <p className="text-sm font-medium text-amber-500">{missed.length} of {userRules.length} rule{missed.length === 1 ? '' : 's'} not followed:</p>
-              <ul className="mt-1 list-disc pl-5 text-sm text-amber-500/90">
+            <div className="mt-3 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2">
+              <p className="text-sm font-medium text-red-500">{missed.length} violated rule{missed.length === 1 ? '' : 's'}:</p>
+              <ul className="mt-1 list-disc pl-5 text-sm text-red-500/90">
                 {missed.map((rule) => <li key={rule.id}>{rule.title}</li>)}
               </ul>
             </div>
           )
         })()}
         <div className="mt-4 flex flex-col divide-y divide-border/50 rounded-md border border-border/50">
-          {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={followedRuleIds.includes(rule.id)} onChange={(event) => handleRuleChange(rule.id, event.target.checked)} disabled={savingRuleId === rule.id} className="mt-0.5 size-4 shrink-0 accent-primary" /><span className="min-w-0"><span className="block text-sm font-medium text-foreground">{rule.title}</span>{rule.rule && <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.rule}</span>}</span><span className={cn('ml-auto shrink-0 text-xs font-medium', followedRuleIds.includes(rule.id) ? 'text-emerald-500' : 'text-muted-foreground')}>{followedRuleIds.includes(rule.id) ? 'Followed' : 'Not followed'}</span></label>)}
+          {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={followedRuleIds.includes(rule.id)} onChange={(event) => handleRuleChange(rule.id, event.target.checked)} disabled={savingRuleId === rule.id} className="mt-0.5 size-4 shrink-0 accent-primary" /><span className="min-w-0"><span className="block text-sm font-medium text-foreground">{rule.title}</span>{rule.rule && <span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.rule}</span>}</span><span className={cn('ml-auto shrink-0 text-xs font-medium', followedRuleIds.includes(rule.id) ? 'text-emerald-500' : 'text-red-500')}>{followedRuleIds.includes(rule.id) ? 'Followed rule' : 'Violated'}</span></label>)}
         </div>
       </Card>
 

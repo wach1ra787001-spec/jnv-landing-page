@@ -32,12 +32,16 @@ export async function POST(request: NextRequest) {
     if (!selectedAccountId) {
       return NextResponse.json({ error: 'Select an account before saving a trade' }, { status: 400 })
     }
-    const { data: ownedAccount } = await supabase
-      .from('trading_accounts')
+    const { data: ownedAccount, error: accountLookupError } = await supabase
+      .from('accounts')
       .select('id')
       .eq('id', selectedAccountId)
       .eq('user_id', user.id)
       .maybeSingle()
+    if (accountLookupError) {
+      console.error('[v0] Account ownership lookup failed:', accountLookupError)
+      return NextResponse.json({ error: 'Unable to verify trading account' }, { status: 500 })
+    }
     if (!ownedAccount) return NextResponse.json({ error: 'Invalid account' }, { status: 403 })
     
     const {
