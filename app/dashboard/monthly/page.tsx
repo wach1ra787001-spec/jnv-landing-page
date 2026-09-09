@@ -20,6 +20,7 @@ interface Trade {
   status: string
   volume?: number
   entry_time?: string
+  isMissed?: boolean
 }
 
 interface DayData {
@@ -44,6 +45,7 @@ export default function MonthlyPage() {
   // State
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
+  const [viewMode, setViewMode] = useState<'caught' | 'missed'>('caught')
   const [trades, setTrades] = useState<Trade[]>([])
   const [dayMap, setDayMap] = useState<Map<number, DayData>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
@@ -86,7 +88,7 @@ export default function MonthlyPage() {
   // page immediately instead of showing stale data.
   useEffect(() => {
     fetchMonthTrades()
-  }, [currentYear, currentMonth, selectedAccountId])
+  }, [currentYear, currentMonth, selectedAccountId, viewMode])
 
   const fetchMonthTrades = async () => {
     try {
@@ -103,7 +105,7 @@ export default function MonthlyPage() {
 
       // Check cache first — keyed by account too, so switching accounts
       // never shows a previously cached account's trades for this month.
-      const cacheKey = `${accountId ?? 'none'}-${currentYear}-${currentMonth}`
+      const cacheKey = `${viewMode}-${accountId ?? 'none'}-${currentYear}-${currentMonth}`
       if (monthCacheRef.current[cacheKey]) {
         setTrades(monthCacheRef.current[cacheKey])
         setIsLoading(false)
@@ -117,6 +119,38 @@ export default function MonthlyPage() {
       const startIso = startOfMonth.toISOString()
       const endIso = endOfMonth.toISOString()
 
+      if (viewMode === 'missed') {
+        let missedQuery = supabase
+          .from('missed_trades')
+          .select('id, symbol, created_at, time_of_day, anticipated_rr, timeframe, strategy')
+          .eq('user_id', user.id)
+          .gte('created_at', startIso)
+          .lte('created_at', endIso)
+          .order('created_at', { ascending: true })
+        if (accountId) missedQuery = missedQuery.eq('account_id', accountId)
+        const { data: missedData, error: missedError } = await missedQuery
+        if (missedError) {
+          console.error('[v0] Supabase missed trade query error:', missedError)
+          setError('Could not load missed setups. Please refresh.')
+          return
+        }
+        const data = (missedData || []).map((missed) => ({
+          id: missed.id,
+          symbol: missed.symbol,
+          pnl: 0,
+          commission: 0,
+          swap: 0,
+          net_pnl: 0,
+          exit_time: missed.created_at,
+          entry_time: missed.created_at,
+          status: 'missed',
+          isMissed: true,
+        }))
+        monthCacheRef.current[cacheKey] = data
+        setTrades(data)
+        return
+      }
+
       let query = supabase
         .from('trades')
         .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, entry_time, status')
@@ -126,10 +160,7 @@ export default function MonthlyPage() {
         .lte('exit_time', endIso)
         .order('exit_time', { ascending: true })
 
-      if (accountId) {
-        query = query.eq('account_id', accountId)
-      }
-
+      if (accountId) query = query.eq('account_id', accountId)
       const { data, error: queryError } = await query
 
       if (queryError) {
@@ -335,7 +366,7 @@ export default function MonthlyPage() {
       {/* Header */}
       <div>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4">
-          <div className="flex items-center gap-2 sm:gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
             <h1 className="text-2xl sm:text-3xl font-bold text-foreground">📅 Monthly Performance</h1>
             <div className="flex items-center gap-1">
               <Button variant="outline" size="icon" onClick={previousMonth} className="min-w-[40px] min-h-[40px]">
@@ -354,6 +385,19 @@ export default function MonthlyPage() {
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
+            <div className="flex rounded-lg border border-border bg-muted/40 p-1" role="group" aria-label="Setup type">
+              {(['caught', 'missed'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setViewMode(mode)}
+                  className={cn('rounded-md px-3 py-1.5 text-xs font-semibold capitalize transition-colors', viewMode === mode ? mode === 'missed' ? 'bg-red-500/15 text-red-600 dark:text-red-300' : 'bg-primary/15 text-primary' : 'text-muted-foreground hover:text-foreground')}
+                  aria-pressed={viewMode === mode}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
           </div>
           {isLoading ? (
             <div className="text-right">
@@ -362,7 +406,7 @@ export default function MonthlyPage() {
             </div>
           ) : trades.length === 0 ? (
             <div className="text-right text-muted-foreground/90 text-sm">
-              No trades this month
+              No {viewMode} setups this month
             </div>
           ) : (
             <div className="text-right">
@@ -416,7 +460,9 @@ export default function MonthlyPage() {
                         isPaddingDay
                           ? 'bg-muted border-muted opacity-30'
                           : dayData
-                          ? dayData.totalPnL > 0
+                          ? viewMode === 'missed'
+                            ? 'bg-red-500/15 dark:bg-red-500/15 border-red-500/40 dark:border-red-400/40'
+                            : dayData.totalPnL > 0
                             ? 'bg-green-200 dark:bg-green-800/70 border-green-500 dark:border-green-600'
                             : dayData.totalPnL < 0
                             ? 'bg-red-200 dark:bg-red-800/70 border-red-500 dark:border-red-600'
