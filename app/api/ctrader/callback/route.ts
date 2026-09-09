@@ -43,6 +43,12 @@ export async function GET(req: NextRequest) {
   const storedState = req.cookies.get('ctrader_oauth_state')?.value
   
   if (!state || !storedState || state !== storedState) {
+    console.error('[cTrader Callback] OAuth state validation failed', {
+      hasState: Boolean(state),
+      hasStoredState: Boolean(storedState),
+      requestHost: new URL(req.url).host,
+      configuredRedirectHost: process.env.CTRADER_REDIRECT_URI ? new URL(process.env.CTRADER_REDIRECT_URI).host : 'missing',
+    })
     return NextResponse.redirect(
       new URL('/journal/connections?error=invalid_state', req.url)
     )

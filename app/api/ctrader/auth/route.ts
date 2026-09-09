@@ -40,10 +40,10 @@ export async function GET() {
 
   response.cookies.set('ctrader_oauth_state', state, {
     httpOnly: true,
-    secure:   true,
-    sameSite: 'lax',
-    maxAge:   600,
-    path:     '/',
+    secure: true,
+    sameSite: 'none',
+    maxAge: 600,
+    path: '/',
   })
 
   return response

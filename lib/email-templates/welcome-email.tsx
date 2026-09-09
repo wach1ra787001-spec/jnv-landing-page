@@ -20,7 +20,7 @@ export const WelcomeEmailTemplate: React.FC<WelcomeEmailProps> = ({
         {/* Header */}
         <div style={{ backgroundColor: '#0a0a0a', padding: '32px 48px' }}>
           <p style={{ color: '#ffffff', fontSize: '18px', fontWeight: '700', letterSpacing: '0.08em', margin: '0', textTransform: 'uppercase', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-            JNV Pro
+            WELCOME TO JNV TRADING JOURNAL
           </p>
         </div>
 

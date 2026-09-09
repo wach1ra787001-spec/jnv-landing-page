@@ -22,6 +22,17 @@ export async function GET(request: Request) {
   }
   if (!user) return NextResponse.json({ notifications: [] }, { status: 401 })
 
+  const { data: importedNotifications, error: importedNotificationsError } = await supabase
+    .from("notification_logs")
+    .select("id, title, message, href, created_at, status, channel, notification_type")
+    .eq("user_id", user.id)
+    .eq("channel", "in_app")
+    .eq("notification_type", "trade_imported")
+    .order("created_at", { ascending: false })
+    .limit(25)
+  if (importedNotificationsError) console.error("[v0] Imported notification query failed:", importedNotificationsError)
+  const storedNotifications = (importedNotifications || []).map((item) => ({ id: item.id, type: "trade_imported" as const, title: item.title || "New trade ready to journal", message: item.message || "A trade was pulled from your trading account. Click to journal it.", href: item.href || "/dashboard/journal", timestamp: item.created_at, read: item.status === "read" }))
+
   const { data: trades, error } = await supabase
     .from("trades")
     .select("id, entry_time, exit_time, pnl, status, strategy, risk_percent")
@@ -45,7 +56,7 @@ export async function GET(request: Request) {
   }))
   const hasLossStreak = current?.type === "loss" && current.length >= 2
   const shouldNotify = hasLossStreak && consistency < 50
-  if (!shouldNotify) return NextResponse.json({ notifications: [] })
+  if (!shouldNotify) return NextResponse.json({ notifications: storedNotifications })
 
   const chronological = (trades || []).filter((trade) => trade.exit_time || trade.entry_time).slice(-current!.length)
   const lastTrade = chronological[chronological.length - 1]
@@ -65,17 +76,17 @@ export async function GET(request: Request) {
         const email = await sendLossStreakWarningEmail({ userEmail: profile.email, userName: profile.full_name, streakLength: streakLength || 2 })
         const { error: logError } = await supabase.from("ai_email_logs").insert({ user_id: user.id, email_type: "loss_streak_warning", subject: notification.title, body: notification.message, resend_email_id: email.messageId, status: "sent", sent_at: new Date().toISOString() })
         if (logError) console.error("[v0] Loss streak email log insert failed:", logError)
-        return NextResponse.json({ notifications: [notification], emailSent: true, emailId: email.messageId })
+        return NextResponse.json({ notifications: [notification, ...storedNotifications], emailSent: true, emailId: email.messageId })
       } catch (error) {
         const message = error instanceof Error ? error.message : "Unknown email delivery error"
         console.error("[v0] Loss streak email failed:", { message, userId: user.id, recipient: profile.email })
         return NextResponse.json({ notifications: [notification], emailSent: false, emailError: message })
       }
     } else {
-      return NextResponse.json({ notifications: [notification], emailSent: false, emailError: "This losing-streak alert was already sent." })
+      return NextResponse.json({ notifications: [notification, ...storedNotifications], emailSent: false, emailError: "This losing-streak alert was already sent." })
     }
   }
-  return NextResponse.json({ notifications: [notification], emailSent: false })
+  return NextResponse.json({ notifications: [notification, ...storedNotifications], emailSent: false })
 }
 
 export async function POST(request: Request) {

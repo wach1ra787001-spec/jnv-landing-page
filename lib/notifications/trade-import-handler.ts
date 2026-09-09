@@ -59,33 +59,35 @@ export async function handleTradeImported(data: TradeImportedEventData) {
       day: 'numeric',
     })
 
-    // Create notification log entry for tracking (mark in-app as sent immediately)
+    const tradeDateKey = new Date(data.entryTime).toISOString().slice(0, 10)
+    const { data: userTrades } = await supabase.from('trades').select('entry_time').eq('user_id', data.userId).order('entry_time', { ascending: true })
+    const firstTradingDay = userTrades?.[0]?.entry_time ? new Date(userTrades[0].entry_time).toISOString().slice(0, 10) === tradeDateKey : true
+    const notificationTitle = 'New trade ready to journal'
+    const notificationMessage = `${data.symbol} was pulled from your trading account. Click to journal this trade.`
+
     const { error: logError } = await supabase.from('notification_logs').insert({
-      user_id: data.userId,
-      trade_id: data.tradeId,
-      notification_type: 'trade_imported',
-      channel: 'in_app',
-      status: 'sent',
+      user_id: data.userId, trade_id: data.tradeId, notification_type: 'trade_imported', channel: 'in_app', status: 'sent',
+      title: notificationTitle, message: notificationMessage, href: '/dashboard/journal',
     })
 
     if (logError) {
       console.error(`[Notification] Failed to create in-app notification log:`, logError)
     }
 
-    // Send email asynchronously if user preference is enabled
-    if (notify_mt5_imports !== false) {
+    // Send one email on the user's first trading day; in-app notifications are always created.
+    const { count: firstDayEmailCount } = await supabase.from('notification_logs').select('id', { count: 'exact', head: true }).eq('user_id', data.userId).eq('notification_type', 'first_trading_day_trade_imported').eq('channel', 'email')
+    if (notify_mt5_imports !== false && firstTradingDay && (firstDayEmailCount || 0) === 0) {
       try {
         // Create email notification log entry
         await supabase.from('notification_logs').insert({
           user_id: data.userId,
           trade_id: data.tradeId,
-          notification_type: 'trade_imported',
+          notification_type: 'first_trading_day_trade_imported',
           channel: 'email',
           status: 'pending',
         })
 
-        // Send email in the background (don't await, just fire and forget)
-        sendTradeImportedEmail({
+        await sendTradeImportedEmail({
           userEmail: email,
           userName: full_name || 'Trader',
           symbol: data.symbol,
@@ -94,34 +96,17 @@ export async function handleTradeImported(data: TradeImportedEventData) {
           tradeDate,
           tradeId: data.tradeId,
         })
-          .then(() => {
-            // Update notification log status
-            supabase
-              .from('notification_logs')
-              .update({ status: 'sent' })
-              .eq('trade_id', data.tradeId)
-              .eq('channel', 'email')
-              .then(() => {
-                console.log(`[Notification] Email sent successfully for trade ${data.tradeId}`)
-              })
-              .catch((err) => console.error('[Notification] Failed to update email log:', err))
-          })
-          .catch((error) => {
-            console.error(`[Notification] Failed to send email for trade ${data.tradeId}:`, error)
-
-            // Update notification log with error
-            supabase
-              .from('notification_logs')
-              .update({
-                status: 'failed',
-                error_message: error instanceof Error ? error.message : 'Unknown error',
-              })
-              .eq('trade_id', data.tradeId)
-              .eq('channel', 'email')
-              .catch((err) => console.error('[Notification] Failed to update error log:', err))
-          })
+        await supabase
+          .from('notification_logs')
+          .update({ status: 'sent' })
+          .eq('trade_id', data.tradeId)
+          .eq('notification_type', 'first_trading_day_trade_imported')
+          .eq('channel', 'email')
+        console.log(`[Notification] Email sent successfully for trade ${data.tradeId}`)
       } catch (emailError) {
-        console.error(`[Notification] Error initiating email for trade ${data.tradeId}:`, emailError)
+        const errorMessage = emailError instanceof Error ? emailError.message : 'Unknown error'
+        console.error(`[Notification] Email failed for trade ${data.tradeId}:`, errorMessage)
+        await supabase.from('notification_logs').update({ status: 'failed', error_message: errorMessage }).eq('trade_id', data.tradeId).eq('notification_type', 'first_trading_day_trade_imported').eq('channel', 'email')
       }
     }
 
