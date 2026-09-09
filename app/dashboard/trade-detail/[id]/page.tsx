@@ -366,11 +366,13 @@ export default function TradeDetailPage() {
         {/* TradingView Chart Card */}
         <Card className="min-w-0 p-4 bg-card border border-border/50 lg:min-h-[620px]">
         <h3 className="text-lg font-semibold text-foreground mb-4">Chart Analysis</h3>
-        <TradingViewChart
-          symbol={trade.symbol}
-          interval="1D"
-          height={500}
-          singleBar={(() => {
+  <TradingViewChart
+  symbol={trade.symbol}
+  interval="15"
+  height={500}
+  tradeHistoryId={trade.source === 'ctrader' ? trade.id : undefined}
+  chartSource={trade.source === 'ctrader' ? 'ctrader' : 'tradelocker'}
+  singleBar={trade.source === 'ctrader' ? undefined : (() => {
             const entryPrice = Number(trade.entry_price)
             const exitPrice = Number(trade.exit_price)
             const open = Number.isFinite(entryPrice) ? entryPrice : 0
