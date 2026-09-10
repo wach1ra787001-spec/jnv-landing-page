@@ -157,7 +157,7 @@ export default function TradeJournalPage() {
           >
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">New Trade</span>
-            <span className="sm:hidden">Add</span>
+            <span className="sm:hidden">Add a Trade</span>
             </Button>
           </div>
         </div>
