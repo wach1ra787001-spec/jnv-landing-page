@@ -5,7 +5,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronRight, CheckCircle2 } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 
 interface HeroCardProps {
   userName: string
@@ -68,17 +68,7 @@ export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCa
             <span className="sm:hidden">Performance</span>
             <ChevronRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
-          
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => router.push("/dashboard/advanced-stats/streaks")}
-            className="bg-[#ECFDF5] text-[#059669] border-0 hover:bg-[#D1FAE5] px-2 sm:px-3 py-1 sm:py-1.5 font-medium text-xs sm:text-sm whitespace-nowrap w-fit h-auto"
-          >
-            <CheckCircle2 className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Streak: {streakDays} disciplined days</span>
-            <span className="sm:hidden">{streakDays} day streak</span>
-          </Button>
+
           </div>
         </div>
       </div>
