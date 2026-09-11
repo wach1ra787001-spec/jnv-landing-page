@@ -49,6 +49,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   const { data: allTrades } = await tradesQuery
+  const actualTradeMetrics = calculateMetricsFromTrades(allTrades || [])
 
   // Fetch trade metrics from database or calculate from trades
   let { data: metrics } = await supabase
@@ -205,7 +206,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <div className="pt-2">
         <HeroCard 
           userName={userName} 
-          streakDays={metrics?.current_streak || 0} 
+          streakDays={actualTradeMetrics.current_streak}
+          recentTrades={[...(recentTrades || [])].reverse().map((trade) => ({
+            id: trade.id,
+            result: Number(trade.net_pnl ?? 0) > 0 ? "win" : "loss",
+          }))}
         />
       </div>
 

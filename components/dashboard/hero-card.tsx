@@ -10,9 +10,10 @@ import { ChevronRight, CheckCircle2 } from "lucide-react"
 interface HeroCardProps {
   userName: string
   streakDays?: number
+  recentTrades?: Array<{ id: string; result: "win" | "loss" }>
 }
 
-export function HeroCard({ userName, streakDays = 3 }: HeroCardProps) {
+export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCardProps) {
   const router = useRouter()
   const [greeting, setGreeting] = useState("Good Morning")
   const [mounted, setMounted] = useState(false)
@@ -39,7 +40,24 @@ export function HeroCard({ userName, streakDays = 3 }: HeroCardProps) {
         </div>
 
         {/* Bottom Section - Flex column on mobile, row on desktop */}
-        <div className="flex flex-col gap-2 sm:gap-3">
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <div className="flex items-center gap-2" aria-label="Last five trades">
+            {recentTrades.map((trade, index) => {
+              const isLast = index === recentTrades.length - 1
+              const isWin = trade.result === "win"
+              return (
+                <div
+                  key={trade.id}
+                  className={`flex min-w-12 flex-1 items-center justify-center rounded-md px-2 py-2 text-xs font-semibold ${isWin ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+                  aria-label={isWin ? "Win" : "Loss"}
+                >
+                  {isLast ? (isWin ? "Win" : "Loss") : (isWin ? "W" : "L")}
+                </div>
+              )
+            })}
+            {recentTrades.length === 0 && <p className="text-xs text-muted-foreground">No completed trades yet</p>}
+          </div>
+          <div className="flex flex-col gap-2 sm:gap-3">
           <Button 
             variant="outline"
             size="sm"
@@ -61,6 +79,7 @@ export function HeroCard({ userName, streakDays = 3 }: HeroCardProps) {
             <span className="hidden sm:inline">Streak: {streakDays} disciplined days</span>
             <span className="sm:hidden">{streakDays} day streak</span>
           </Button>
+          </div>
         </div>
       </div>
     </Card>
