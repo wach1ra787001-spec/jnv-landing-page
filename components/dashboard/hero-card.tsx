@@ -5,14 +5,15 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { ChevronRight, CheckCircle2 } from "lucide-react"
+import { ChevronRight } from "lucide-react"
 
 interface HeroCardProps {
   userName: string
   streakDays?: number
+  recentTrades?: Array<{ id: string; result: "win" | "loss" }>
 }
 
-export function HeroCard({ userName, streakDays = 3 }: HeroCardProps) {
+export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCardProps) {
   const router = useRouter()
   const [greeting, setGreeting] = useState("Good Morning")
   const [mounted, setMounted] = useState(false)
@@ -39,8 +40,8 @@ export function HeroCard({ userName, streakDays = 3 }: HeroCardProps) {
         </div>
 
         {/* Bottom Section - Flex column on mobile, row on desktop */}
-        <div className="flex flex-col gap-2 sm:gap-3">
-          <Button 
+        <div className="flex flex-col gap-3 sm:gap-4">
+          <Button
             variant="outline"
             size="sm"
             className="border-[#E2E8F0] text-[#1E293B] dark:text-foreground hover:bg-[#F8FAFC] dark:hover:bg-accent-blue-subtle dark:hover:text-accent-blue text-xs sm:text-sm w-full sm:w-auto"
@@ -50,17 +51,22 @@ export function HeroCard({ userName, streakDays = 3 }: HeroCardProps) {
             <span className="sm:hidden">Performance</span>
             <ChevronRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
           </Button>
-          
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => router.push("/dashboard/advanced-stats/streaks")}
-            className="bg-[#ECFDF5] text-[#059669] border-0 hover:bg-[#D1FAE5] px-2 sm:px-3 py-1 sm:py-1.5 font-medium text-xs sm:text-sm whitespace-nowrap w-fit h-auto"
-          >
-            <CheckCircle2 className="mr-1 sm:mr-1.5 h-3 w-3 sm:h-4 sm:w-4" />
-            <span className="hidden sm:inline">Streak: {streakDays} disciplined days</span>
-            <span className="sm:hidden">{streakDays} day streak</span>
-          </Button>
+          <div className="flex items-center gap-2" aria-label="Last five trades">
+            {recentTrades.map((trade, index) => {
+              const isLast = index === recentTrades.length - 1
+              const isWin = trade.result === "win"
+              return (
+                <div
+                  key={trade.id}
+                  className={`flex w-fit min-w-10 flex-none items-center justify-center rounded-md px-1.5 py-1 text-[10px] font-semibold sm:min-w-12 sm:px-2 sm:py-2 sm:text-xs ${isWin ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+                  aria-label={isWin ? "Win" : "Loss"}
+                >
+                  {isLast ? (isWin ? "Win" : "Loss") : (isWin ? "W" : "L")}
+                </div>
+              )
+            })}
+            {recentTrades.length === 0 && <p className="text-xs text-muted-foreground">No completed trades yet</p>}
+          </div>
         </div>
       </div>
     </Card>
