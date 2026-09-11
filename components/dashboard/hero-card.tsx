@@ -58,7 +58,7 @@ export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCa
               return (
                 <div
                   key={trade.id}
-                  className={`flex min-w-10 flex-1 items-center justify-center rounded-md px-1.5 py-1.5 text-[11px] font-semibold sm:min-w-12 sm:px-2 sm:py-2 sm:text-xs ${isWin ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+                  className={`flex min-w-8 flex-1 items-center justify-center rounded-md px-1 py-1 text-[10px] font-semibold sm:min-w-12 sm:px-2 sm:py-2 sm:text-xs ${isWin ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
                   aria-label={isWin ? "Win" : "Loss"}
                 >
                   {isLast ? (isWin ? "Win" : "Loss") : (isWin ? "W" : "L")}
