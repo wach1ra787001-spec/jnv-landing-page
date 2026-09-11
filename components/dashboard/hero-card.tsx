@@ -41,6 +41,16 @@ export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCa
 
         {/* Bottom Section - Flex column on mobile, row on desktop */}
         <div className="flex flex-col gap-3 sm:gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-[#E2E8F0] text-[#1E293B] dark:text-foreground hover:bg-[#F8FAFC] dark:hover:bg-accent-blue-subtle dark:hover:text-accent-blue text-xs sm:text-sm w-full sm:w-auto"
+            onClick={() => router.push("/dashboard/monthly?month=march")}
+          >
+            <span className="hidden sm:inline">Monthly Performance Overview</span>
+            <span className="sm:hidden">Performance</span>
+            <ChevronRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
+          </Button>
           <div className="flex items-center gap-2" aria-label="Last five trades">
             {recentTrades.map((trade, index) => {
               const isLast = index === recentTrades.length - 1
@@ -56,19 +66,6 @@ export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCa
               )
             })}
             {recentTrades.length === 0 && <p className="text-xs text-muted-foreground">No completed trades yet</p>}
-          </div>
-          <div className="flex flex-col gap-2 sm:gap-3">
-          <Button 
-            variant="outline"
-            size="sm"
-            className="border-[#E2E8F0] text-[#1E293B] dark:text-foreground hover:bg-[#F8FAFC] dark:hover:bg-accent-blue-subtle dark:hover:text-accent-blue text-xs sm:text-sm w-full sm:w-auto"
-            onClick={() => router.push("/dashboard/monthly?month=march")}
-          >
-            <span className="hidden sm:inline">Monthly Performance Overview</span>
-            <span className="sm:hidden">Performance</span>
-            <ChevronRight className="ml-2 h-3 w-3 sm:h-4 sm:w-4" />
-          </Button>
-
           </div>
         </div>
       </div>
