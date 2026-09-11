@@ -12,18 +12,11 @@
  * Example: 3/4 rules followed (22.5) + risk model followed (20) + trade model
  * followed (20) + journaled (30) = 92.5
  *
- * Data availability note: the schema does not yet track which *individual*
- * rules were followed per trade, nor separate "followed risk model" /
- * "followed my model" booleans. Until dedicated fields exist, this uses the
- * best-fit proxies available today:
- *   - `discipline_rating` (1-10 self-rating captured in trade_journal) is
- *     used as the fraction of rules followed for the Rules component.
- *   - Risk compliance is calculated from the trade and account risk limits.
- *   - Trade Model is awarded when all rules are followed, risk is compliant,
- *     and the trade has meaningful journal notes. The legacy `followed_plan`
- *     checkbox is intentionally not required for this score.
- * When per-category tracking is added, swap the inputs below for the real
- * values without changing the weighting logic.
+ * Trades with a saved playbook rule snapshot use the exact followed selections
+ * captured on Trade Detail. Older trades fall back to their stored rule IDs and
+ * playbook rule count, then to the legacy discipline rating when no checklist
+ * exists. The legacy `followed_plan` checkbox is retained for compatibility but
+ * is not required for Trade Model scoring.
  */
 
 export const CONSISTENCY_WEIGHTS = {

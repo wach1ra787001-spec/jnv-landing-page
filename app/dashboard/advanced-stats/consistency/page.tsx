@@ -25,7 +25,7 @@ export default async function ConsistencyAnalysisPage() {
 
   let tradesQuery = supabase
     .from("trades")
-    .select("id, entry_time, net_pnl, status, followed_rule_ids, account_id, risk_amount, playbook_id")
+    .select("id, entry_time, net_pnl, status, followed_rule_ids, playbook_rules_snapshot, account_id, risk_amount, playbook_id")
     .eq("user_id", user.id)
     .order("entry_time", { ascending: false })
 
@@ -98,12 +98,21 @@ export default async function ConsistencyAnalysisPage() {
   const consistencyInputs: ConsistencyScoreInputs[] = (allTrades || []).map((trade) => {
     const journal = journalByTradeId.get(trade.id)
     const extraNotes = notesByTradeId.get(trade.id) || []
-    const tradeRuleCount = trade.playbook_id ? ruleCountByPlaybookId.get(trade.playbook_id) || 0 : 0
+    const snapshot = Array.isArray(trade.playbook_rules_snapshot)
+      ? trade.playbook_rules_snapshot.filter((rule): rule is { id: string; label: string; followed: boolean } => Boolean(rule && typeof rule.id === "string" && typeof rule.label === "string"))
+      : []
+    const hasSnapshot = snapshot.length > 0
+    const tradeRuleCount = hasSnapshot
+      ? snapshot.length
+      : trade.playbook_id ? ruleCountByPlaybookId.get(trade.playbook_id) || 0 : 0
+    const followedRuleIds = hasSnapshot
+      ? snapshot.filter((rule) => rule.followed).map((rule) => rule.id)
+      : trade.followed_rule_ids
 
     return {
       hasActiveRules: tradeRuleCount > 0,
       activeRulesCount: tradeRuleCount,
-      followedRuleIds: trade.followed_rule_ids,
+      followedRuleIds,
       disciplineRating: journal?.discipline_rating,
       followedPlan: journal?.followed_plan,
       tradeRiskAmount: trade.risk_amount,
