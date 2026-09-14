@@ -1,13 +1,54 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuthenticatedUser } from "@/lib/security/auth-guards"
 
+export async function POST(request: NextRequest) {
+  const { supabase, user, response } = await requireAuthenticatedUser()
+  if (response || !user) return response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const body = await request.json().catch(() => ({}))
+  const sessionId = typeof body.sessionId === "string" && body.sessionId.length <= 128 ? body.sessionId : null
+  if (!sessionId) return NextResponse.json({ error: "Session identifier is required" }, { status: 400 })
+
+  const details = {
+    device_name: typeof body.deviceName === "string" ? body.deviceName.slice(0, 100) : "Unknown device",
+    browser: typeof body.browser === "string" ? body.browser.slice(0, 100) : null,
+    os: typeof body.os === "string" ? body.os.slice(0, 100) : null,
+    user_agent: request.headers.get("user-agent")?.slice(0, 500) ?? null,
+    is_current: true,
+    last_seen_at: new Date().toISOString(),
+    logged_out_at: null,
+  }
+
+  await supabase
+    .from("user_sessions")
+    .update({ is_current: false })
+    .eq("user_id", user.id)
+    .neq("session_id", sessionId)
+    .is("logged_out_at", null)
+
+  const { data: existing } = await supabase
+    .from("user_sessions")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("session_id", sessionId)
+    .maybeSingle()
+
+  const query = existing
+    ? supabase.from("user_sessions").update(details).eq("id", existing.id).eq("user_id", user.id)
+    : supabase.from("user_sessions").insert({ user_id: user.id, session_id: sessionId, ...details })
+  const { error } = await query
+
+  if (error) return NextResponse.json({ error: "Unable to register session" }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
 export async function GET() {
   const { supabase, user, response } = await requireAuthenticatedUser()
   if (response || !user) return response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const { data, error } = await supabase
     .from("user_sessions")
-    .select("id, device_name, browser, os, city, country, last_seen_at, logged_in_at, logged_out_at, is_current, session_id")
+    .select("id, device_name, browser, os, city, country, last_seen_at, logged_in_at, logged_out_at, is_current, session_id, user_agent")
     .eq("user_id", user.id)
     .order("last_seen_at", { ascending: false })
     .limit(20)

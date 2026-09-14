@@ -9,6 +9,7 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell"
 import { AccountProvider } from "@/components/dashboard/account-context"
 import { getUserAccounts, getSelectedAccountId } from "@/lib/get-selected-account"
 import { OnboardingPanel } from "@/components/dashboard/onboarding-panel"
+import { SessionTracker } from "@/components/dashboard/session-tracker"
 
 export default async function DashboardLayout({
   children,
@@ -37,6 +38,7 @@ export default async function DashboardLayout({
     <SidebarProvider>
       <AccountProvider initialAccounts={accounts} initialSelectedAccountId={selectedAccountId}>
         <div className="flex h-screen overflow-hidden bg-background">
+          <SessionTracker />
           <CTraderAutoSync />
 
           {/* Sidebar — overlay, does not take up layout space */}
