@@ -228,16 +228,16 @@ export function SecurityTab() {
 
       {/* Active Sessions Section */}
       <div className="space-y-4">
-        <div className="flex items-center gap-4">
-          <h4 className="text-sm font-semibold text-foreground whitespace-nowrap">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+          <h4 className="text-sm font-semibold text-foreground">
             Active Sessions
           </h4>
-          <div className="flex-1 h-px bg-border" />
+          <div className="hidden h-px flex-1 bg-border sm:block" />
           {activeSessions.length > 1 && (
             <Button
               variant="ghost"
               size="sm"
-              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              className="w-fit px-0 text-destructive hover:bg-destructive/10 hover:text-destructive sm:px-3"
               onClick={handleLogoutOtherDevices}
             >
               Log Out Other Devices
@@ -255,18 +255,18 @@ export function SecurityTab() {
             {activeSessions.map((session) => {
               const DeviceIcon = getDeviceIcon(session.device_name, session.os)
               return (
-                <div key={session.id} className="border border-border rounded-lg p-4 bg-background">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex items-start gap-3 flex-1">
-                      <DeviceIcon className="w-5 h-5 text-muted-foreground mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <p className="text-sm font-medium text-foreground truncate">
+                <div key={session.id} className="min-w-0 overflow-hidden rounded-lg border border-border bg-background p-4">
+                  <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <DeviceIcon className="mt-0.5 size-5 shrink-0 text-muted-foreground" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex min-w-0 flex-col items-start gap-2 sm:flex-row sm:items-center">
+                          <p className="min-w-0 max-w-full break-words text-sm font-medium text-foreground">
                             {session.device_name}
                             {session.browser && ` • ${session.browser}`}
                           </p>
                           {session.is_current && (
-                            <span className="text-xs bg-chart-1/20 text-chart-1 px-2 py-1 rounded">
+                            <span className="shrink-0 rounded bg-chart-1/20 px-2 py-1 text-xs text-chart-1">
                               Current Device
                             </span>
                           )}
@@ -279,7 +279,7 @@ export function SecurityTab() {
                           Last active: {formatTimeAgo(session.last_seen_at)}
                         </p>
                         {session.user_agent && (
-                          <p className="mt-1 truncate text-xs text-muted-foreground" title={session.user_agent}>
+                          <p className="mt-1 max-w-full break-words text-xs text-muted-foreground" title={session.user_agent}>
                             {session.user_agent}
                           </p>
                         )}
