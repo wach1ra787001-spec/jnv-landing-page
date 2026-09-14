@@ -12,6 +12,14 @@ interface SecurityEvent {
   ip_address: string | null
   user_agent: string | null
   created_at: string
+  session: {
+    device_name: string | null
+    browser: string | null
+    os: string | null
+    city: string | null
+    country: string | null
+    user_agent: string | null
+  } | null
 }
 
 interface Session {
@@ -213,15 +221,23 @@ export function SecurityTab() {
           <p className="text-sm text-muted-foreground">No recent security activity.</p>
         ) : (
           <div className="space-y-2">
-            {events.map((event) => (
-              <div key={event.id} className="flex items-center justify-between gap-4 rounded-lg border border-border bg-background p-3">
-                <div>
-                  <p className="text-sm font-medium text-foreground">{event.event_type.replaceAll("_", " ")}</p>
-                  <p className="text-xs text-muted-foreground">{event.user_agent || "Unknown device"}{event.ip_address ? ` • ${event.ip_address}` : ""}</p>
+            {events.map((event) => {
+              const session = event.session
+              const deviceLabel = [session?.device_name, session?.browser].filter(Boolean).join(" • ") || "Unknown device"
+              const location = [session?.city, session?.country].filter(Boolean).join(", ")
+              return (
+                <div key={event.id} className="flex min-w-0 flex-col gap-2 rounded-lg border border-border bg-background p-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                  <div className="min-w-0">
+                    <p className="break-words text-sm font-medium capitalize text-foreground">{event.event_type.replaceAll("_", " ")}</p>
+                    <p className="break-words text-xs text-muted-foreground">
+                      {deviceLabel}{session?.os ? ` • ${session.os}` : ""}{location ? ` • ${location}` : ""}{event.ip_address ? ` • ${event.ip_address}` : ""}
+                    </p>
+                    {event.user_agent && <p className="mt-1 max-w-full break-words text-xs text-muted-foreground">{event.user_agent}</p>}
+                  </div>
+                  <time className="shrink-0 text-xs text-muted-foreground" dateTime={event.created_at}>{formatTimeAgo(event.created_at)}</time>
                 </div>
-                <time className="shrink-0 text-xs text-muted-foreground" dateTime={event.created_at}>{formatTimeAgo(event.created_at)}</time>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
