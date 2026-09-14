@@ -13,7 +13,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { LogOut, Settings, User as UserIcon, Menu } from "lucide-react"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { NotificationMenu } from "@/components/dashboard/notification-menu"
 import { AccountSelector } from "@/components/dashboard/account-selector"
 import { useSidebar } from "./sidebar-context"
@@ -76,9 +75,6 @@ export function DashboardHeader({ user, profile }: DashboardHeaderProps) {
       <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0 ml-auto">
         {/* Account Selector - Compact on mobile, normal on desktop */}
         <AccountSelector />
-        
-        {/* Theme Toggle */}
-        <ThemeToggle />
         
         {/* Notifications */}
         <NotificationMenu />
