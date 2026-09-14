@@ -26,6 +26,7 @@ interface Session {
   logged_out_at: string | null
   is_current: boolean
   session_id: string
+  user_agent: string | null
 }
 
 const getDeviceIcon = (deviceName: string, os: string) => {
@@ -277,6 +278,11 @@ export function SecurityTab() {
                         <p className="text-xs text-muted-foreground mt-1">
                           Last active: {formatTimeAgo(session.last_seen_at)}
                         </p>
+                        {session.user_agent && (
+                          <p className="mt-1 truncate text-xs text-muted-foreground" title={session.user_agent}>
+                            {session.user_agent}
+                          </p>
+                        )}
                       </div>
                     </div>
                     {!session.is_current && (
