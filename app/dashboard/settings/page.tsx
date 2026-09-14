@@ -14,7 +14,10 @@ export default async function SettingsPage() {
       .eq('id', user.id)
       .single()
 
-    isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin'
+    const profileRole = profile?.role
+    const metadataRole = user.app_metadata?.role ?? user.user_metadata?.role
+    const role = profileRole ?? metadataRole
+    isAdmin = role === 'admin' || role === 'super_admin'
   }
 
   return <SettingsClient isAdmin={isAdmin} />
