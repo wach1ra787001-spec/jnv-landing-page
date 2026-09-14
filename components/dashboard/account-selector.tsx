@@ -18,11 +18,15 @@ export function AccountSelector() {
 
   if (accounts.length === 0) {
     return (
-      <Link href="/dashboard/accounts">
-        <Button variant="outline" size="icon" className="h-9 w-9 sm:w-auto sm:px-3 pl-0 flex-shrink-0">
-          <Wallet className="w-4 h-4" />
-          <span className="hidden sm:inline ml-2 text-sm">Add Account</span>
-        </Button>
+      <Link
+        href="/dashboard/settings/broker"
+        className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-primary transition-colors hover:bg-primary/10 sm:text-sm"
+        aria-label="Connect using MT5, cTrader, or four more account methods"
+      >
+        <img src="/images/mt5-logo.png" alt="" className="size-4 rounded-sm object-cover" />
+        <img src="/images/ctrader-logo.png" alt="" className="size-4 rounded-sm object-cover" />
+        <Plus className="size-3.5 shrink-0" aria-hidden="true" />
+        <span className="truncate">Connect using MT5, cTrader +4 more methods</span>
       </Link>
     )
   }
@@ -63,12 +67,21 @@ export function AccountSelector() {
           </DropdownMenuItem>
         ))}
         <DropdownMenuSeparator />
-        <Link href="/dashboard/accounts">
+        <Link href="/dashboard/settings/broker">
           <DropdownMenuItem className="cursor-pointer">
             <Plus className="w-4 h-4 mr-2" />
             <span>Manage Accounts</span>
           </DropdownMenuItem>
         </Link>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild className="cursor-pointer">
+          <Link href="/dashboard/settings/broker" className="flex items-center gap-1.5">
+            <img src="/images/mt5-logo.png" alt="" className="size-4 rounded-sm object-cover" />
+            <img src="/images/ctrader-logo.png" alt="" className="size-4 rounded-sm object-cover" />
+            <Plus className="size-3.5 shrink-0" aria-hidden="true" />
+            <span>Connect using MT5, cTrader +4 more methods</span>
+          </Link>
+        </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   )

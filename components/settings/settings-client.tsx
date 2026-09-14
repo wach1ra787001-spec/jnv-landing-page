@@ -11,6 +11,7 @@ import {
   Database,
   ChevronRight,
   ShieldCheck,
+  LifeBuoy,
 } from "lucide-react"
 
 const settingsMenus = [
@@ -55,6 +56,13 @@ const settingsMenus = [
     description: "Export your trading data in various formats",
     icon: Download,
     href: "/dashboard/settings/data-export",
+  },
+  {
+    id: "support",
+    label: "Support",
+    description: "Get help, report a bug, or contact the JnV Trading Journal team",
+    icon: LifeBuoy,
+    href: "/dashboard/settings/support",
   },
 ]
 
