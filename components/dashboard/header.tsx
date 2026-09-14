@@ -83,10 +83,18 @@ export function DashboardHeader({ user, profile }: DashboardHeaderProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="flex-shrink-0 h-9 w-9 md:w-auto md:px-2">
-              <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0">
-                <span className="text-xs md:text-sm font-medium text-accent-foreground">
-                  {profile?.full_name?.[0] || user.email?.[0]?.toUpperCase() || "U"}
-                </span>
+              <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {profile?.avatar_url ? (
+                  <img
+                    src={profile.avatar_url}
+                    alt={`${profile.full_name || "User"}'s profile picture`}
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <span className="text-xs md:text-sm font-medium text-accent-foreground">
+                    {profile?.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase() || "U"}
+                  </span>
+                )}
               </div>
               <span className="hidden md:inline text-sm font-medium text-foreground ml-2">
                 {profile?.full_name || "Trader"}
