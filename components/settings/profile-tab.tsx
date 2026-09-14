@@ -20,6 +20,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Camera, Upload, Image as ImageIcon } from "lucide-react"
+import { detectUserTimezone } from "@/lib/timezone-utils"
 
 interface Profile {
   id: string
@@ -118,14 +119,29 @@ export function ProfileTab() {
         const firstName = nameParts[0] || ""
         const lastName = nameParts.slice(1).join(" ") || ""
 
+        const browserTimezone = detectUserTimezone()
+        const storedTimezone = data?.timezone || "UTC"
+        const timezone = browserTimezone || storedTimezone
+
         setFormData({
           firstName,
           lastName,
           email: data?.email || "",
           phoneNumber: data?.phone_number || "",
-          timezone: data?.timezone || "UTC",
+          timezone,
           currency: data?.currency || "USD",
         })
+
+        if (browserTimezone && browserTimezone !== storedTimezone) {
+          const { error: timezoneError } = await supabase
+            .from("profiles")
+            .update({ timezone: browserTimezone })
+            .eq("id", user.id)
+
+          if (timezoneError) {
+            console.error("Error syncing browser timezone:", timezoneError)
+          }
+        }
       } catch (error) {
         console.error("Error fetching profile:", error)
       } finally {
