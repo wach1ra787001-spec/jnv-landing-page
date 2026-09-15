@@ -325,10 +325,28 @@ export default function PlaybooksPage() {
                         </div>
                       )}
 
+                      {p.rules?.custom && p.rules.custom.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Playbook Rules</h4>
+                          <ul className="space-y-1">
+                            {p.rules.custom.map((rule, i) => <li key={i} className="flex items-start gap-2 text-sm text-foreground"><span className="text-primary mt-0.5">•</span><span>{rule}</span></li>)}
+                          </ul>
+                        </div>
+                      )}
+
                       {p.rules?.linkedRuleIds && p.rules.linkedRuleIds.length > 0 && (
                         <div>
                           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Linked Rules</h4>
                           <ul className="space-y-1">{p.rules.linkedRuleIds.map(id => <li key={id} className="text-sm text-foreground">{id}</li>)}</ul>
+                        </div>
+                      )}
+
+                      {p.youtube_links && p.youtube_links.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Author Resources</h4>
+                          <div className="flex flex-col gap-1">
+                            {p.youtube_links.map(link => <a key={link} href={link} target="_blank" rel="noreferrer" className="break-all text-sm text-primary underline underline-offset-4">Watch on YouTube</a>)}
+                          </div>
                         </div>
                       )}
 

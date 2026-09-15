@@ -28,6 +28,8 @@ interface Playbook {
   publicDisplayName?: string | null
   publicAvatarUrl?: string | null
   youtubeLinks?: string[]
+  rules?: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[]; custom?: string[] }
+  tags?: string[]
 }
 
 const mockPlaybooks: Playbook[] = [
@@ -135,6 +137,7 @@ export default function TemplatesPage() {
   const [sortBy, setSortBy] = useState<"popular" | "newest" | "best-wr">("popular")
   const [loading, setLoading] = useState(true)
   const [importingId, setImportingId] = useState<string | null>(null)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const router = useRouter()
   const returnTo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('returnTo') : null
 
@@ -158,7 +161,7 @@ export default function TemplatesPage() {
     fetch('/api/playbooks?public=true')
       .then(res => res.ok ? res.json() : [])
       .then(rows => setPlaybooks(rows.map((p: any) => ({
-        id: p.id, name: p.title, description: typeof p.description === 'string' ? p.description : '', author: p.public_display_name || 'Community trader', avatar: p.public_avatar_url || 'CT', publicDisplayName: p.public_display_name, publicAvatarUrl: p.public_avatar_url, youtubeLinks: p.youtube_links || [],
+        id: p.id, name: p.title, description: typeof p.description === 'string' ? p.description : '', author: p.public_display_name || 'Community trader', avatar: p.public_avatar_url || 'CT', publicDisplayName: p.public_display_name, publicAvatarUrl: p.public_avatar_url, youtubeLinks: p.youtube_links || [], rules: p.rules || {}, tags: Array.isArray(p.tags) ? p.tags.map((tag: any) => typeof tag === 'string' ? tag : tag.title || tag.description || tag.id).filter(Boolean) : [],
         winRate: Number(p.win_rate ?? 0), trades: Number(p.trades_taken ?? 0), pnl: Number(p.pnl ?? 0), likes: Number(p.likes_count ?? 0), liked: false,
         month: new Date(p.created_at).toLocaleString('en-US', { month: 'long' }), timeframe: p.strategy_type || 'Flexible', strategy: p.strategy_type || 'General', comments: Number(p.comments_count ?? 0), publicSlug: p.public_slug,
       }))))
@@ -265,8 +268,10 @@ export default function TemplatesPage() {
 
       {/* Playbooks Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredPlaybooks.map((playbook) => (
-          <Card key={playbook.id} className="p-6 bg-card border-border hover:border-primary transition-colors flex flex-col">
+        {filteredPlaybooks.map((playbook) => {
+          const isExpanded = expandedId === playbook.id
+          return (
+          <Card key={playbook.id} className="p-6 bg-card border-border hover:border-primary transition-colors flex flex-col cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : playbook.id)}>
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -311,8 +316,29 @@ export default function TemplatesPage() {
               </span>
             </div>
 
+            {isExpanded && (
+              <div className="mb-4 space-y-4 border-t border-border pt-4" onClick={(event) => event.stopPropagation()}>
+                <div>
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</p>
+                  <p className="whitespace-pre-wrap text-sm text-foreground">{playbook.description || 'No description provided.'}</p>
+                </div>
+                {(['entry', 'exit', 'custom'] as const).map((type) => playbook.rules?.[type]?.length ? (
+                  <div key={type}>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{type} rules</p>
+                    <ul className="space-y-1 text-sm text-foreground">{playbook.rules[type]!.map((rule, index) => <li key={index} className="flex gap-2"><span className="text-primary">•</span><span>{rule}</span></li>)}</ul>
+                  </div>
+                ) : null)}
+                {playbook.youtubeLinks && playbook.youtubeLinks.length > 0 && (
+                  <div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Author resources</p>
+                    <div className="flex flex-col gap-1">{playbook.youtubeLinks.map((link) => <a key={link} href={link} target="_blank" rel="noreferrer" className="break-all text-sm text-primary underline underline-offset-4">Watch author video on YouTube</a>)}</div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Actions */}
-            <div className="flex gap-2 pt-4 border-t border-border mt-auto">
+            <div className="flex gap-2 pt-4 border-t border-border mt-auto" onClick={(event) => event.stopPropagation()}>
               <Button size="sm" className="flex-1" onClick={() => useTemplate(playbook)} disabled={importingId === playbook.id}>{importingId === playbook.id ? 'Importing…' : 'Use this template'}</Button>
               <Button
                 variant="ghost"
@@ -341,7 +367,8 @@ export default function TemplatesPage() {
               </Button>
             </div>
           </Card>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/select'
 import { TradingViewChart } from '@/components/tradingview-chart'
 import { formatSymbolForTradingView, type TradingViewInterval } from '@/lib/tradingview/utils'
+import { ComingSoonOverlay } from '@/components/ui/coming-soon-overlay'
 
 export default function TradingViewChartPage() {
   const params = useParams<{ id: string }>()
@@ -107,7 +108,7 @@ export default function TradingViewChartPage() {
       {/* Chart Container */}
       <Card className="p-0 overflow-hidden flex-1">
         <Suspense fallback={<div className="h-[calc(100vh-200px)] bg-muted animate-pulse" />}>
-          <div className="h-[calc(100vh-200px)] w-full">
+          <div className="relative h-[calc(100vh-200px)] w-full">
             <TradingViewChart
               symbol={symbol}
               interval={interval}
@@ -115,6 +116,7 @@ export default function TradingViewChartPage() {
               theme="auto"
               tradeHistoryId={params.id}
             />
+            <ComingSoonOverlay />
           </div>
         </Suspense>
       </Card>

@@ -15,8 +15,12 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: 'JNV | PRO - Institutional-Grade Trading Performance OS',
-  description: 'Transform your trading with AI-powered journaling, performance analytics, and behavioral coaching. Built for serious traders who demand institutional-grade tools.',
+  metadataBase: new URL('https://jnvtradingjournal.com'),
+  title: 'JnV Trading Journal',
+  description: 'A focused trading journal for understanding performance, behavior, and consistency.',
+  alternates: {
+    canonical: 'https://jnvtradingjournal.com',
+  },
   keywords: ['trading journal', 'performance analytics', 'AI trading coach', 'MT5 integration', 'trading psychology'],
   icons: {
     icon: '/jnv-mark.svg',
@@ -24,9 +28,25 @@ export const metadata: Metadata = {
     apple: '/jnv-mark.svg',
   },
   openGraph: {
-    title: 'JNV | PRO - Trading Performance Operating System',
-    description: 'AI-powered trading journal and performance analytics for professional traders.',
+    title: 'JnV Trading Journal',
+    description: 'A focused trading journal for understanding performance, behavior, and consistency.',
+    url: 'https://jnvtradingjournal.com',
+    siteName: 'JnV Trading Journal',
     type: 'website',
+    images: [
+      {
+        url: '/og-image.svg',
+        width: 1200,
+        height: 630,
+        alt: 'JnV Trading Journal',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'JnV Trading Journal',
+    description: 'A focused trading journal for understanding performance, behavior, and consistency.',
+    images: ['/og-image.svg'],
   },
 }
 

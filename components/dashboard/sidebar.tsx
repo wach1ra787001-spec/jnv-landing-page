@@ -5,6 +5,7 @@ import Link from "next/link"
 import { JnvMark } from "@/components/brand/jnv-mark"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { ComingSoonOverlay } from "@/components/ui/coming-soon-overlay"
 import {
   LayoutDashboard,
   BookOpen,
@@ -21,6 +22,7 @@ import {
   Wallet,
   User,
   Zap,
+  LockKeyhole,
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSidebar } from "./sidebar-context"
@@ -206,7 +208,23 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
 
           {navItems.slice(4).map((item) => {
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
-            return (
+            const isComingSoon = item.href === "/dashboard/backtest" || item.href === "/dashboard/coach"
+            return isComingSoon ? (
+              <div
+                key={item.href}
+                className={cn(
+                  "relative flex cursor-not-allowed items-center gap-3 px-3 py-2.5 text-sm font-medium opacity-70",
+                  isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60",
+                )}
+                aria-disabled="true"
+                aria-label={`${item.label}, coming soon`}
+              >
+                <item.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+                <span>{item.label}</span>
+                <LockKeyhole className="ml-auto size-3.5" aria-hidden="true" />
+                <ComingSoonOverlay className="rounded-none bg-sidebar/85 p-0" />
+              </div>
+            ) : (
               <Link
                 key={item.href}
                 href={item.href}

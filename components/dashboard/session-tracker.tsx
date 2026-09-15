@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect } from "react"
+import { createClient } from "@/lib/supabase/client"
 
 const SESSION_KEY = "jnv:browser-session-id"
 
@@ -29,12 +30,16 @@ function getBrowserDetails() {
 
 export function SessionTracker() {
   useEffect(() => {
+    const browserDetails = getBrowserDetails()
+    const supabase = createClient()
+    let stopped = false
+
     const register = async () => {
       try {
         await fetch("/api/security/sessions", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(getBrowserDetails()),
+          body: JSON.stringify(browserDetails),
           keepalive: true,
         })
       } catch {
@@ -42,7 +47,27 @@ export function SessionTracker() {
       }
     }
 
+    const checkSession = async () => {
+      try {
+        const response = await fetch(`/api/security/sessions?sessionId=${encodeURIComponent(browserDetails.sessionId)}`, { cache: "no-store" })
+        if (!response.ok || stopped) return
+        const result = await response.json()
+        if (result.ended) {
+          stopped = true
+          await supabase.auth.signOut()
+          window.location.assign("/auth/login?reason=session-ended")
+        }
+      } catch {
+        // A temporary network failure should not sign the user out.
+      }
+    }
+
     void register()
+    const interval = window.setInterval(() => void checkSession(), 15000)
+    return () => {
+      stopped = true
+      window.clearInterval(interval)
+    }
   }, [])
 
   return null
