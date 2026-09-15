@@ -42,9 +42,22 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const { supabase, user, response } = await requireAuthenticatedUser()
   if (response || !user) return response ?? NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const currentSessionId = request.nextUrl.searchParams.get("sessionId")
+  if (currentSessionId) {
+    const { data: currentSession, error } = await supabase
+      .from("user_sessions")
+      .select("logged_out_at")
+      .eq("user_id", user.id)
+      .eq("session_id", currentSessionId)
+      .maybeSingle()
+
+    if (error) return NextResponse.json({ error: "Unable to check session" }, { status: 500 })
+    return NextResponse.json({ ended: Boolean(currentSession?.logged_out_at) })
+  }
 
   const { data, error } = await supabase
     .from("user_sessions")
