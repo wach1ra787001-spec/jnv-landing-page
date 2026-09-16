@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useAccount } from '@/components/dashboard/account-context'
+import { TradeSaveSuccess } from '@/components/journal/trade-save-success'
 
 interface Account {
   id: string
@@ -62,6 +63,7 @@ export default function AddNewTradePage() {
   const [loadingAccounts, setLoadingAccounts] = useState(true)
   const [playbooks, setPlaybooks] = useState<any[]>([])
   const [loadingPlaybooks, setLoadingPlaybooks] = useState(true)
+  const [showTradeSaveSuccess, setShowTradeSaveSuccess] = useState(false)
 
   useEffect(() => {
     fetchAccounts()
@@ -215,7 +217,7 @@ export default function AddNewTradePage() {
       if (response.ok) {
         const result = await response.json()
         appToast.tradeSaved(result.symbol, result.pnl?.toFixed(2), '', result.pnl >= 0)
-        router.push('/dashboard/trade-history')
+        setShowTradeSaveSuccess(true)
       } else {
         const errorData = await response.json()
         console.error('[v0] API error:', errorData.error || errorData.message)
@@ -287,7 +289,9 @@ export default function AddNewTradePage() {
   }
 
   return (
-    <div className="flex flex-col gap-8 pb-8">
+    <>
+      <TradeSaveSuccess open={showTradeSaveSuccess} onComplete={() => router.push('/dashboard/trade-history')} />
+      <div className="flex flex-col gap-8 pb-8">
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
@@ -654,6 +658,7 @@ export default function AddNewTradePage() {
           </Button>
         </div>
       </form>
-    </div>
+      </div>
+    </>
   )
 }
