@@ -29,7 +29,7 @@ export default function JournalPage() {
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Add New Trade</span>
-                <span className="sm:hidden">Add</span>
+                <span className="sm:hidden">Add a New Trade</span>
               </Button>
             </Link>
           </div>

@@ -37,6 +37,8 @@ export function ProfileTab() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
+  const [avatarError, setAvatarError] = useState("")
   const [isAvatarDialogOpen, setIsAvatarDialogOpen] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [phoneError, setPhoneError] = useState("")
@@ -170,41 +172,47 @@ export function ProfileTab() {
 
   // Handle file upload for avatar
   const handleFileUpload = async (file: File) => {
+    setAvatarError("")
+    setIsUploadingAvatar(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) throw new Error("No user found")
+      const formData = new FormData()
+      formData.append("file", file)
 
-      // Create a file path with timestamp to make it unique
-      const timestamp = Date.now()
-      const filePath = `avatars/${user.id}/${timestamp}-${file.name}`
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      })
+      const result = await response.json()
 
-      // Upload to Supabase Storage (assumes 'avatars' bucket exists)
-      const { error: uploadError } = await supabase.storage
-        .from("avatars")
-        .upload(filePath, file)
+      if (!response.ok || !result.url) {
+        throw new Error(result.error || "Unable to upload profile picture")
+      }
 
-      if (uploadError) throw uploadError
-
-      // Get the public URL
-      const { data: publicData } = supabase.storage
-        .from("avatars")
-        .getPublicUrl(filePath)
-
-      setTempAvatarUrl(publicData.publicUrl)
+      setTempAvatarUrl(result.url)
     } catch (error) {
       console.error("Error uploading avatar:", error)
+      setAvatarError(error instanceof Error ? error.message : "Unable to upload profile picture")
+    } finally {
+      setIsUploadingAvatar(false)
     }
   }
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file) {
-      handleFileUpload(file)
-    }
+    if (file) void handleFileUpload(file)
+    e.target.value = ""
   }
 
   const handleAvatarUrlSubmit = () => {
-    setAvatarUrl(tempAvatarUrl)
+    const trimmedUrl = tempAvatarUrl.trim()
+    if (trimmedUrl && !/^https?:\/\//i.test(trimmedUrl)) {
+      setAvatarError("Enter a valid image URL starting with http:// or https://")
+      return
+    }
+
+    setAvatarError("")
+    setAvatarUrl(trimmedUrl)
+    setTempAvatarUrl(trimmedUrl)
     setIsAvatarDialogOpen(false)
   }
 
@@ -236,9 +244,12 @@ export function ProfileTab() {
 
       if (error) throw error
 
-      console.log("Profile updated successfully")
+      setProfile((current) => current ? { ...current, full_name: fullName, email: formData.email, phone_number: formData.phoneNumber || null, avatar_url: avatarUrl || null, timezone: formData.timezone, currency: formData.currency } : current)
+      setTempAvatarUrl(avatarUrl)
+      setAvatarError("")
     } catch (error) {
       console.error("Error saving profile:", error)
+      setAvatarError(error instanceof Error ? error.message : "Unable to save profile")
     } finally {
       setIsSaving(false)
     }
@@ -334,11 +345,14 @@ export function ProfileTab() {
               />
             </div>
 
+            {isUploadingAvatar && <p className="text-sm text-muted-foreground">Uploading image...</p>}
+            {avatarError && <p className="text-sm text-destructive" role="alert">{avatarError}</p>}
+
             {/* Preview */}
             {tempAvatarUrl && (
-              <div className="p-3 bg-secondary rounded-lg flex flex-col items-center gap-2">
-                <ImageIcon className="w-5 h-5 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">Preview will show after saving</p>
+              <div className="flex flex-col items-center gap-2 rounded-lg bg-secondary p-3">
+                <img src={tempAvatarUrl} alt="Profile picture preview" className="size-20 rounded-full object-cover" onError={() => setAvatarError("This image URL could not be loaded.")} />
+                <p className="text-xs text-muted-foreground">Save your profile to apply this picture.</p>
               </div>
             )}
 
@@ -353,7 +367,7 @@ export function ProfileTab() {
               </Button>
               <Button 
                 onClick={handleAvatarUrlSubmit}
-                disabled={!tempAvatarUrl}
+                disabled={isUploadingAvatar || !tempAvatarUrl}
                 className="flex-1"
               >
                 Set Avatar

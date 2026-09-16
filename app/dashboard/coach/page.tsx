@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
+import { ComingSoonOverlay } from '@/components/ui/coming-soon-overlay'
 import {
   PlusIcon,
   SendIcon,
@@ -360,7 +361,8 @@ export default function AICoachPage() {
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background">
+    <div className="relative flex h-[calc(100vh-4rem)] overflow-hidden bg-background">
+      <ComingSoonOverlay />
 
       {/* ── Sidebar ─────────────────────────────────────────────────────── */}
       <div
@@ -402,7 +404,7 @@ export default function AICoachPage() {
         </ScrollArea>
       </div>
 
-      {/* ── Chat area ───────────────────────────────────────────────────── */}
+      {/* ── Chat area ─���─────────────────────────────────────────────────── */}
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 
         {/* Header */}

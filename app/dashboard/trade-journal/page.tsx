@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -9,6 +9,7 @@ import { Plus, BookOpen, SlidersHorizontal, Search, X, Bell, AlertTriangle } fro
 import { appToast } from '@/lib/toast-utils'
 import { TradeModal } from '@/components/dashboard/trade-modal'
 import { TradeJournalEntryCard } from '@/components/journal/trade-journal-entry-card'
+import { TradeSaveSuccess } from '@/components/journal/trade-save-success'
 import { useAccount } from '@/components/dashboard/account-context'
 
 interface Trade {
@@ -46,6 +47,8 @@ export default function TradeJournalPage() {
   const [search, setSearch] = useState('')
   const [showImportBanner, setShowImportBanner] = useState(false)
   const [newImportCount, setNewImportCount] = useState(0)
+  const [showTradeSaveSuccess, setShowTradeSaveSuccess] = useState(false)
+  const saveAnimationHandledRef = useRef(false)
 
   // ── Fetch trades ────────────────────────────────────────────────────────────
   // Refetches whenever the selected account changes so switching accounts in
@@ -87,6 +90,10 @@ export default function TradeJournalPage() {
     }
   }
 
+  const completeTradeSave = useCallback(() => {
+    router.push('/dashboard/trade-history')
+  }, [router])
+
   const handleAddTrade = async (tradeData: any) => {
     try {
       const sanitizedData = {
@@ -108,6 +115,10 @@ export default function TradeJournalPage() {
         appToast.tradeSaved(result.symbol, result.pnl?.toFixed(2), '', result.pnl >= 0)
         setShowModal(false)
         fetchTrades()
+        if (!saveAnimationHandledRef.current) {
+          saveAnimationHandledRef.current = true
+          setShowTradeSaveSuccess(true)
+        }
       } else {
         const errorBody = await response.json().catch(() => null)
         console.error('[v0] Trade save failed:', response.status, errorBody)
@@ -151,12 +162,15 @@ export default function TradeJournalPage() {
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Button variant="outline" onClick={() => router.push('/dashboard/journal/missed')} className="w-full gap-2 sm:w-auto" size="sm"><AlertTriangle className="w-4 h-4" />Journal a Missed Trade</Button>
             <Button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+            saveAnimationHandledRef.current = false
+            setShowModal(true)
+          }}
             className="w-full gap-2 bg-[#0A1F44] hover:bg-[#071530] text-white sm:w-auto"
             size="sm"
           >
             <Plus className="w-4 h-4" />
-            <span>Add a Trade</span>
+            <span>Add a New Trade</span>
             </Button>
           </div>
         </div>
@@ -268,6 +282,8 @@ export default function TradeJournalPage() {
           ))}
         </div>
       )}
+
+      <TradeSaveSuccess open={showTradeSaveSuccess} onComplete={completeTradeSave} />
 
       {/* Trade Modal */}
       {showModal && (
