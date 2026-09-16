@@ -42,6 +42,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { formatSymbolForTradingView, type TradingViewInterval } from "@/lib/tradingview/utils"
+import { ComingSoonOverlay } from "@/components/ui/coming-soon-overlay"
 
 interface BacktestSession {
   id: string
@@ -335,7 +336,8 @@ export default function BacktestPage() {
   const isEmpty = !loading && !loadError && sessions.length === 0
 
   return (
-    <div className="space-y-6">
+    <div className="relative space-y-6">
+      <ComingSoonOverlay />
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
