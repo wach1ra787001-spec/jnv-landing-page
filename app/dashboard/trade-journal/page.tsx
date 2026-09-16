@@ -170,7 +170,7 @@ export default function TradeJournalPage() {
             size="sm"
           >
             <Plus className="w-4 h-4" />
-            <span>Add a Trade</span>
+            <span>Add a New Trade</span>
             </Button>
           </div>
         </div>
