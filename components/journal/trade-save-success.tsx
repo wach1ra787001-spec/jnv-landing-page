@@ -18,7 +18,7 @@ export function TradeSaveSuccess({ open, onComplete }: TradeSaveSuccessProps) {
       return
     }
 
-    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 420 : 1500
+    const duration = window.matchMedia("(prefers-reduced-motion: reduce)").matches ? 420 : 1750
     const timer = window.setTimeout(() => {
       if (completedRef.current) return
       completedRef.current = true
@@ -46,23 +46,25 @@ export function TradeSaveSuccess({ open, onComplete }: TradeSaveSuccessProps) {
         <p className="trade-save-label text-xs font-medium tracking-wide text-foreground sm:text-sm md:text-base">Trade recorded</p>
       </div>
       <style jsx>{`
-        .trade-save-logo { animation: trade-save-scale 520ms cubic-bezier(.22,1,.36,1) both; }
-        .trade-save-logo svg { clip-path: inset(0 0 100% 0); animation: trade-save-draw 650ms 260ms cubic-bezier(.22,1,.36,1) forwards; }
-        .trade-save-label { animation: trade-save-fade 360ms 700ms ease-out both; }
+        .trade-save-logo { animation: trade-save-arrive 360ms 80ms cubic-bezier(.22,1,.36,1) both, trade-save-zoom 520ms 980ms cubic-bezier(.16,1,.3,1) both; }
+        .trade-save-logo svg { overflow: visible; }
+        .trade-save-logo svg path { clip-path: inset(100% 0 0 0); animation: trade-save-draw 500ms cubic-bezier(.22,1,.36,1) forwards; }
+        .trade-save-logo svg path:nth-of-type(2) { animation-delay: 130ms; }
+        .trade-save-logo svg path:nth-of-type(3) { animation-delay: 260ms; }
+        .trade-save-label { animation: trade-save-fade 360ms 1120ms ease-out both; }
         .trade-save-ripple { animation: trade-save-ripple 1050ms 320ms ease-out both; }
         .trade-save-glow { animation: trade-save-glow 1050ms 250ms ease-out both; }
         @media (min-width: 768px) {
-          .trade-save-logo { animation-duration: 600ms; }
           .trade-save-ripple { animation-duration: 1250ms; }
           .trade-save-glow { animation-duration: 1250ms; }
         }
         @media (min-width: 1280px) {
-          .trade-save-logo { animation-duration: 680ms; }
           .trade-save-ripple { animation-duration: 1400ms; }
           .trade-save-glow { animation-duration: 1400ms; }
         }
-        @keyframes trade-save-scale { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
-        @keyframes trade-save-draw { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0); } }
+        @keyframes trade-save-arrive { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: scale(1); } }
+        @keyframes trade-save-draw { from { clip-path: inset(100% 0 0 0); } to { clip-path: inset(0); } }
+        @keyframes trade-save-zoom { from { transform: scale(1); } 70% { transform: scale(1.18); } to { transform: scale(1.08); } }
         @keyframes trade-save-fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes trade-save-ripple { from { opacity: .45; transform: translate(-50%, -50%) scale(.55); } to { opacity: 0; transform: translate(-50%, -50%) scale(1.7); } }
         @keyframes trade-save-glow { from { opacity: 0; transform: translate(-50%, -50%) scale(.7); } 35% { opacity: .8; } to { opacity: 0; transform: translate(-50%, -50%) scale(1.25); } }
