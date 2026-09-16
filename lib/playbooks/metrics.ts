@@ -20,12 +20,12 @@ export async function getPlaybookMetrics(playbookId: string, ownerId: string, pr
     ? createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } })
     : sessionClient
 
-  const { data: playbook } = await supabase.from('playbooks').select('strategy_type').eq('id', playbookId).eq('user_id', ownerId).single()
+  const { data: playbook } = await supabase.from('playbooks').select('strategy_type, title').eq('id', playbookId).eq('user_id', ownerId).single()
   if (!playbook) return emptyMetrics
 
   const { data: trades, error } = await supabase
     .from('trades')
-    .select('strategy, setup_type, pnl, net_pnl, status')
+    .select('playbook_id, playbook_name, strategy, setup_type, pnl, net_pnl, status')
     .eq('user_id', ownerId)
   if (error) {
     console.error('[v0] Failed to aggregate playbook metrics:', error)
@@ -33,9 +33,11 @@ export async function getPlaybookMetrics(playbookId: string, ownerId: string, pr
   }
 
   const strategy = normalize(playbook.strategy_type)
+  const title = normalize(playbook.title)
   const matchingTrades = (trades ?? []).filter((trade) => {
-    const labels = [trade.strategy, trade.setup_type].map(normalize).filter(Boolean)
-    return strategy && labels.includes(strategy)
+    if (trade.playbook_id === playbookId) return true
+    const labels = [trade.playbook_name, trade.strategy, trade.setup_type].map(normalize).filter(Boolean)
+    return Boolean((title && labels.includes(title)) || (strategy && labels.includes(strategy)))
   })
   const closedTrades = matchingTrades.filter((trade) => !trade.status || ['closed', 'completed'].includes(normalize(trade.status)))
   const winningTrades = closedTrades.filter((trade) => Number(trade.net_pnl ?? trade.pnl ?? 0) > 0)
