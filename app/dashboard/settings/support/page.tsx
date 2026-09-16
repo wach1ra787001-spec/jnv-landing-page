@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 const faqs = [
   {
     question: "How do I add a trade?",
-    answer: "Open Trade Journal, select Add a Trade, complete the form, and save your entry.",
+    answer: "Open Trade Journal, select Add a New Trade, complete the form, and save your entry.",
   },
   {
     question: "How do I connect a broker?",

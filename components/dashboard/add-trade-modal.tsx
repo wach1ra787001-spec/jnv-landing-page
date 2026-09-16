@@ -192,7 +192,7 @@ export function AddTradeModal({ isOpen, onClose, onSubmit }: AddTradeModalProps)
       <Card className="w-full max-w-2xl bg-card border border-border/50 shadow-xl flex flex-col max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-border/50 shrink-0">
-          <h2 className="text-xl font-semibold text-foreground">Add Trade</h2>
+          <h2 className="text-xl font-semibold text-foreground">Add a New Trade</h2>
           <button
             onClick={onClose}
             className="text-muted-foreground hover:text-foreground transition-colors"
@@ -505,7 +505,7 @@ export function AddTradeModal({ isOpen, onClose, onSubmit }: AddTradeModalProps)
           </Button>
           <Button onClick={handleSubmit} className="flex-1 gap-2 bg-primary hover:bg-primary/90" disabled={isLoading}>
             {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
-            {isLoading ? 'Adding...' : 'Add Trade'}
+            {isLoading ? 'Adding...' : 'Add a New Trade'}
           </Button>
         </div>
       </Card>
