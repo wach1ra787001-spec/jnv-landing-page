@@ -113,9 +113,8 @@ export default function TradeJournalPage() {
       if (response.ok) {
         const result = await response.json()
         appToast.tradeSaved(result.symbol, result.pnl?.toFixed(2), '', result.pnl >= 0)
-    setShowModal(false)
-    fetchTrades()
-    saveAnimationHandledRef.current = false
+        setShowModal(false)
+        fetchTrades()
         if (!saveAnimationHandledRef.current) {
           saveAnimationHandledRef.current = true
           setShowTradeSaveSuccess(true)
@@ -163,7 +162,10 @@ export default function TradeJournalPage() {
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
             <Button variant="outline" onClick={() => router.push('/dashboard/journal/missed')} className="w-full gap-2 sm:w-auto" size="sm"><AlertTriangle className="w-4 h-4" />Journal a Missed Trade</Button>
             <Button
-            onClick={() => setShowModal(true)}
+            onClick={() => {
+            saveAnimationHandledRef.current = false
+            setShowModal(true)
+          }}
             className="w-full gap-2 bg-[#0A1F44] hover:bg-[#071530] text-white sm:w-auto"
             size="sm"
           >
