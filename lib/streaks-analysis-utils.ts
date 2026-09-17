@@ -25,7 +25,15 @@ function getPnl(trade: StreakTrade): number {
 
 function getClosedTradesChronological(trades: StreakTrade[]): StreakTrade[] {
   return trades
-    .filter(t => (t.exit_time || t.entry_time) && (t.status ? t.status.toLowerCase() === 'closed' : true) && (t.net_pnl != null || t.pnl != null))
+    .filter((trade) => {
+      const status = trade.status?.trim().toLowerCase()
+      const hasRealizedPnl = trade.net_pnl != null || trade.pnl != null
+      const hasExit = Boolean(trade.exit_time)
+
+      // Imported/manual trades may omit status or use provider-specific values.
+      // An exit timestamp plus realized P&L is the reliable closed-trade signal.
+      return hasRealizedPnl && (hasExit || !status || !['open', 'pending', 'active'].includes(status))
+    })
     .sort((a, b) => new Date((a.exit_time || a.entry_time) as string).getTime() - new Date((b.exit_time || b.entry_time) as string).getTime())
 }
 
