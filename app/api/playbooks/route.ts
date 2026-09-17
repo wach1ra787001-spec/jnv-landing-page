@@ -2,6 +2,16 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { attachPlaybookMetrics, getPlaybookMetrics } from '@/lib/playbooks/metrics'
 
+async function attachEngagement(supabase: Awaited<ReturnType<typeof createClient>>, playbooks: Array<Record<string, unknown>>) {
+  return Promise.all(playbooks.map(async (playbook) => {
+    const [{ count: activeUsers }, { count: comments }] = await Promise.all([
+      supabase.from('playbook_usage').select('*', { count: 'exact', head: true }).eq('playbook_id', playbook.id),
+      supabase.from('playbook_comments').select('*', { count: 'exact', head: true }).eq('playbook_id', playbook.id),
+    ])
+    return { ...playbook, active_users: activeUsers ?? 0, comments_count: comments ?? 0 }
+  }))
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient()
@@ -14,7 +24,8 @@ export async function GET(request: NextRequest) {
         .eq('is_public', true)
         .order('created_at', { ascending: false })
       if (error) throw error
-      return NextResponse.json(await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>, true))
+      const withMetrics = await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>, true)
+      return NextResponse.json(await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>))
     }
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -31,7 +42,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    return NextResponse.json(await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>))
+    const withMetrics = await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>)
+    return NextResponse.json(await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>))
   } catch (error) {
     console.error('Fetch playbooks error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
