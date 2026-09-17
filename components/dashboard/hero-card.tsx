@@ -40,7 +40,19 @@ export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCa
         </div>
 
         {/* Bottom Section - Flex column on mobile, row on desktop */}
-        <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <button
+            type="button"
+            className="flex w-full items-center justify-between rounded-lg border border-border/60 bg-muted/30 px-3 py-2 text-left transition-colors hover:bg-muted/60 sm:w-auto sm:min-w-40"
+            onClick={() => router.push("/dashboard/advanced-stats/streaks")}
+            aria-label="Open streaks and discipline advanced stats"
+          >
+            <span>
+              <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Current streak</span>
+              <span className="block text-lg font-bold text-foreground">{streakDays} trades</span>
+            </span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
           <Button
             variant="outline"
             size="sm"
