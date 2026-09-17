@@ -1,3 +1,5 @@
+import { calculateTradeConsistencyScore, hasMeaningfulJournalNotes } from '@/lib/consistency-score'
+
 export interface StreakTrade {
   id: string
   entry_time: string | null
@@ -11,6 +13,18 @@ export interface StreakTrade {
   followed_plan?: boolean | null
   discipline_rating?: number | null
   mistakes?: string | null
+  followed_rule_ids?: string[] | null
+  active_rules_count?: number | null
+  trade_risk_amount?: number | null
+  account_risk_amount?: number | null
+  trade_risk_percent?: number | null
+  account_risk_percent?: number | null
+  content?: string | null
+  session_notes?: string | null
+  pre_trade_notes?: string | null
+  post_trade_notes?: string | null
+  lessons_learned?: string | null
+  what_went_well?: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -280,15 +294,28 @@ function toDateKey(iso: string): string {
   return new Date(iso).toISOString().slice(0, 10)
 }
 
-/** Per-trade discipline score 0-100, or null if no journal signal exists. */
+/** Uses the same weighted consistency pipeline as the consistency module. */
 function tradeDisciplineScore(t: StreakTrade): number | null {
-  if (typeof t.discipline_rating === 'number') {
-    return Math.max(0, Math.min(100, (t.discipline_rating / 10) * 100))
-  }
-  if (typeof t.followed_plan === 'boolean') {
-    return t.followed_plan ? 100 : 0
-  }
-  return null
+  const hasJournalSignal = hasMeaningfulJournalNotes(t)
+    || typeof t.discipline_rating === 'number'
+    || typeof t.followed_plan === 'boolean'
+    || Array.isArray(t.followed_rule_ids)
+    || typeof t.trade_risk_amount === 'number'
+
+  if (!hasJournalSignal) return null
+
+  return calculateTradeConsistencyScore({
+    hasActiveRules: (t.active_rules_count ?? 0) > 0,
+    activeRulesCount: t.active_rules_count ?? 0,
+    followedRuleIds: t.followed_rule_ids,
+    disciplineRating: t.discipline_rating,
+    followedPlan: t.followed_plan,
+    tradeRiskAmount: t.trade_risk_amount,
+    accountRiskAmount: t.account_risk_amount,
+    tradeRiskPercent: t.trade_risk_percent,
+    accountRiskPercent: t.account_risk_percent,
+    hasMeaningfulNotes: hasMeaningfulJournalNotes(t),
+  }).total
 }
 
 export function computeDisciplineTracker(rawTrades: StreakTrade[], rollingWindow = 7): DisciplineTrackerResult {
