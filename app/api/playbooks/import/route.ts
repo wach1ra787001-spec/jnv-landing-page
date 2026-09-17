@@ -35,6 +35,14 @@ export async function POST(request: NextRequest) {
       .select()
       .single()
     if (error) throw error
+
+    const { error: usageError } = await supabase.from('playbook_usage').upsert({
+      playbook_id: templateId,
+      user_id: user.id,
+      last_used_at: new Date().toISOString(),
+    }, { onConflict: 'playbook_id,user_id' })
+    if (usageError) throw usageError
+
     return NextResponse.json(imported, { status: 201 })
   } catch (error) {
     console.error('[v0] Import playbook error:', error)

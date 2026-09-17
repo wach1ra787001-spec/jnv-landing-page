@@ -24,6 +24,7 @@ interface Playbook {
   timeframe: string
   strategy: string
   comments: number
+  activeUsers?: number
   publicSlug?: string | null
   publicDisplayName?: string | null
   publicAvatarUrl?: string | null
@@ -138,6 +139,9 @@ export default function TemplatesPage() {
   const [loading, setLoading] = useState(true)
   const [importingId, setImportingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [commentsByPlaybook, setCommentsByPlaybook] = useState<Record<string, Array<{ id: string; body: string; created_at: string }>>>({})
+  const [commentDraft, setCommentDraft] = useState("")
+  const [commentingId, setCommentingId] = useState<string | null>(null)
   const router = useRouter()
   const returnTo = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('returnTo') : null
 
@@ -163,7 +167,7 @@ export default function TemplatesPage() {
       .then(rows => setPlaybooks(rows.map((p: any) => ({
         id: p.id, name: p.title, description: typeof p.description === 'string' ? p.description : '', author: p.public_display_name || 'Community trader', avatar: p.public_avatar_url || 'CT', publicDisplayName: p.public_display_name, publicAvatarUrl: p.public_avatar_url, youtubeLinks: p.youtube_links || [], rules: p.rules || {}, tags: Array.isArray(p.tags) ? p.tags.map((tag: any) => typeof tag === 'string' ? tag : tag.title || tag.description || tag.id).filter(Boolean) : [],
         winRate: Number(p.win_rate ?? 0), trades: Number(p.trades_taken ?? 0), pnl: Number(p.pnl ?? 0), likes: Number(p.likes_count ?? 0), liked: false,
-        month: new Date(p.created_at).toLocaleString('en-US', { month: 'long' }), timeframe: p.strategy_type || 'Flexible', strategy: p.strategy_type || 'General', comments: Number(p.comments_count ?? 0), publicSlug: p.public_slug,
+        month: new Date(p.created_at).toLocaleString('en-US', { month: 'long' }), timeframe: p.strategy_type || 'Flexible', strategy: p.strategy_type || 'General', comments: Number(p.comments_count ?? 0), activeUsers: Number(p.active_users ?? 0), publicSlug: p.public_slug,
       }))))
       .finally(() => setLoading(false))
   }, [])
@@ -187,6 +191,31 @@ export default function TemplatesPage() {
     if (!res.ok) return
     const { liked } = await res.json()
     setPlaybooks(playbooks.map(p => p.id === id ? { ...p, liked, likes: p.likes + (liked ? 1 : -1) } : p))
+  }
+
+  const loadComments = async (playbookId: string) => {
+    const response = await fetch(`/api/playbooks/${playbookId}/engagement`)
+    if (!response.ok) return
+    const result = await response.json()
+    setCommentsByPlaybook((current) => ({ ...current, [playbookId]: result.comments || [] }))
+  }
+
+  const addComment = async (playbookId: string) => {
+    const content = commentDraft.trim()
+    if (!content) return
+    setCommentingId(playbookId)
+    try {
+      const response = await fetch(`/api/playbooks/${playbookId}/engagement`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action: 'comment', content }) })
+      if (!response.ok) throw new Error((await response.json()).error || 'Unable to add comment')
+      const comment = await response.json()
+      setCommentsByPlaybook((current) => ({ ...current, [playbookId]: [comment, ...(current[playbookId] || [])] }))
+      setPlaybooks((current) => current.map((item) => item.id === playbookId ? { ...item, comments: item.comments + 1 } : item))
+      setCommentDraft("")
+    } catch (error) {
+      window.alert(error instanceof Error ? error.message : 'Unable to add comment')
+    } finally {
+      setCommentingId(null)
+    }
   }
 
   const sharePlaybook = async (playbook: Playbook) => {
@@ -271,7 +300,7 @@ export default function TemplatesPage() {
         {filteredPlaybooks.map((playbook) => {
           const isExpanded = expandedId === playbook.id
           return (
-          <Card key={playbook.id} className="p-6 bg-card border-border hover:border-primary transition-colors flex flex-col cursor-pointer" onClick={() => setExpandedId(isExpanded ? null : playbook.id)}>
+          <Card key={playbook.id} className="p-6 bg-card border-border hover:border-primary transition-colors flex flex-col cursor-pointer" onClick={() => { setExpandedId(isExpanded ? null : playbook.id); if (!isExpanded) void loadComments(playbook.id) }}>
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -287,7 +316,7 @@ export default function TemplatesPage() {
             <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{playbook.description}</p>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-4 gap-2 mb-4 py-4 border-y border-border">
+            <div className="grid grid-cols-5 gap-2 mb-4 py-4 border-y border-border">
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Win Rate</p>
                 <p className="font-bold text-sm text-green-600 dark:text-green-400">{playbook.winRate}%</p>
@@ -299,6 +328,10 @@ export default function TemplatesPage() {
               <div>
                 <p className="text-xs text-muted-foreground mb-1">P&L</p>
                 <p className="font-bold text-sm text-green-600 dark:text-green-400">${(playbook.pnl / 1000).toFixed(1)}k</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Users</p>
+                <p className="font-bold text-sm text-foreground">{playbook.activeUsers ?? 0}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Month</p>
@@ -328,6 +361,17 @@ export default function TemplatesPage() {
                     <ul className="space-y-1 text-sm text-foreground">{playbook.rules[type]!.map((rule, index) => <li key={index} className="flex gap-2"><span className="text-primary">•</span><span>{rule}</span></li>)}</ul>
                   </div>
                 ) : null)}
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Community comments</p>
+                  <div className="space-y-2">
+                    {(commentsByPlaybook[playbook.id] || []).map((comment) => <p key={comment.id} className="rounded-lg bg-muted px-3 py-2 text-sm text-foreground">{comment.body}</p>)}
+                    {!commentsByPlaybook[playbook.id]?.length && <p className="text-sm text-muted-foreground">No comments yet.</p>}
+                  </div>
+                  <div className="mt-3 flex gap-2">
+                    <Input value={commentDraft} onChange={(event) => setCommentDraft(event.target.value)} placeholder="Add a comment" maxLength={1000} onClick={(event) => event.stopPropagation()} />
+                    <Button size="sm" onClick={(event) => { event.stopPropagation(); void addComment(playbook.id) }} disabled={commentingId === playbook.id || !commentDraft.trim()}>Post</Button>
+                  </div>
+                </div>
                 {playbook.youtubeLinks && playbook.youtubeLinks.length > 0 && (
                   <div>
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Author resources</p>

@@ -18,22 +18,25 @@ export default async function StreaksAnalysisPage() {
 
   const accountId = await getSelectedAccountId(supabase, user.id)
 
-  // Fetch all trades for the user, joined with journal data (followed_plan,
-  // discipline_rating, mistakes) for the Discipline Tracker module, scoped
-  // to the active account.
+  // Read the base trades table directly. The journal view can be absent or
+  // stale for imported/manual accounts, which previously made every card empty.
   let tradesQuery = supabase
-    .from('trades_with_journal')
+    .from('trades')
     .select('*')
     .eq('user_id', user.id)
     .order('entry_time', { ascending: false })
 
-  if (accountId) {
-    tradesQuery = tradesQuery.eq('account_id', accountId)
-  }
+  if (accountId) tradesQuery = tradesQuery.eq('account_id', accountId)
 
-  const { data: trades } = await tradesQuery
+  const { data: trades, error: tradesError } = await tradesQuery
+  if (tradesError) console.error('[v0] Advanced stats trade query failed:', tradesError)
 
-  return (
-    <StreaksAnalysisClient trades={trades || []} />
-  )
+  const tradeIds = (trades || []).map((trade) => trade.id)
+  const { data: journals } = tradeIds.length
+    ? await supabase.from('trade_journal').select('*').eq('user_id', user.id).in('trade_id', tradeIds)
+    : { data: [] }
+  const journalByTrade = new Map((journals || []).map((journal) => [journal.trade_id, journal]))
+  const enrichedTrades = (trades || []).map((trade) => ({ ...trade, ...(journalByTrade.get(trade.id) || {}) }))
+
+  return <StreaksAnalysisClient trades={enrichedTrades} />
 }

@@ -40,7 +40,7 @@ export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCa
         </div>
 
         {/* Bottom Section - Flex column on mobile, row on desktop */}
-        <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <Button
             variant="outline"
             size="sm"
@@ -56,13 +56,15 @@ export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCa
               const isLast = index === recentTrades.length - 1
               const isWin = trade.result === "win"
               return (
-                <div
+                <button
+                  type="button"
                   key={trade.id}
-                  className={`flex w-fit min-w-10 flex-none items-center justify-center rounded-md px-1.5 py-1 text-[10px] font-semibold sm:min-w-12 sm:px-2 sm:py-2 sm:text-xs ${isWin ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
-                  aria-label={isWin ? "Win" : "Loss"}
+                  className={`flex w-fit min-w-10 flex-none items-center justify-center rounded-md px-1.5 py-1 text-[10px] font-semibold transition-transform hover:scale-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary sm:min-w-12 sm:px-2 sm:py-2 sm:text-xs ${isWin ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"}`}
+                  onClick={() => router.push("/dashboard/advanced-stats/streaks")}
+                  aria-label={`${isWin ? "Win" : "Loss"} trade. Open streaks and discipline advanced stats`}
                 >
                   {isLast ? (isWin ? "Win" : "Loss") : (isWin ? "W" : "L")}
-                </div>
+                </button>
               )
             })}
             {recentTrades.length === 0 && <p className="text-xs text-muted-foreground">No completed trades yet</p>}

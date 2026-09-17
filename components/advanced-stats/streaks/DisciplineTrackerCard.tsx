@@ -83,7 +83,7 @@ export function DisciplineTrackerCard({ data }: DisciplineTrackerCardProps) {
       ) : (
         <>
           {/* Summary strip */}
-          <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-4">
             <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
               <p className="text-xs text-muted-foreground mb-1">Avg adherence</p>
               <p className="text-lg font-bold text-foreground">
@@ -102,6 +102,10 @@ export function DisciplineTrackerCard({ data }: DisciplineTrackerCardProps) {
               <p className={`text-lg font-bold ${totalHardViolations > 0 ? 'text-red-600' : 'text-foreground'}`}>
                 {totalHardViolations}
               </p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30 border border-border/50 text-center">
+              <p className="text-xs text-muted-foreground mb-1">Journal coverage</p>
+              <p className="text-lg font-bold text-foreground">{totalTradingDays > 0 ? Math.round((journaledDays / totalTradingDays) * 100) : 0}%</p>
             </div>
           </div>
 

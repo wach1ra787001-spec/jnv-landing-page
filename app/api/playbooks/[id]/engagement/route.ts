@@ -1,6 +1,17 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 
+export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const supabase = await createClient()
+  const { id } = await params
+  const [{ count: activeUsers }, { data: comments, error }] = await Promise.all([
+    supabase.from('playbook_usage').select('*', { count: 'exact', head: true }).eq('playbook_id', id),
+    supabase.from('playbook_comments').select('id, body, created_at, user_id, profiles(full_name, avatar_url)').eq('playbook_id', id).order('created_at', { ascending: false }).limit(50),
+  ])
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json({ activeUsers: activeUsers ?? 0, comments: comments ?? [] })
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const supabase = await createClient()
   const { id } = await params
@@ -48,7 +59,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   if (action === 'comment') {
     const content = String(body.content || '').trim()
     if (!content || content.length > 1000) return NextResponse.json({ error: 'Comment must be 1–1000 characters' }, { status: 400 })
-    const { data, error } = await supabase.from('playbook_comments').insert({ playbook_id: id, user_id: user.id, content }).select().single()
+    const { data, error } = await supabase.from('playbook_comments').insert({ playbook_id: id, user_id: user.id, body: content }).select('id, body, created_at, user_id').single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
     return NextResponse.json(data, { status: 201 })
   }
