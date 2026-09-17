@@ -39,8 +39,6 @@ export function WinLossStreaksCard({ data }: WinLossStreaksCardProps) {
   const { sequence, histogram, longestWinStreak, longestLossStreak, currentStreak, avgWinStreakLength, avgLossStreakLength } = data
   const [showAll, setShowAll] = useState(false)
 
-  const visibleSequence = showAll ? sequence : sequence.slice(-60)
-
   return (
     <Card className="p-6 bg-card border border-border/50">
       <h3 className="text-lg font-semibold text-foreground mb-1">Win-Loss Streaks</h3>
@@ -88,10 +86,13 @@ export function WinLossStreaksCard({ data }: WinLossStreaksCardProps) {
             </div>
           </div>
 
-          {/* Chronological sequence strip */}
+          {/* Grouped streak bands */}
           <div className="mb-8">
             <div className="flex items-center justify-between mb-3">
-              <h4 className="text-sm font-semibold text-foreground">Trade Sequence</h4>
+              <div>
+                <h4 className="text-sm font-semibold text-foreground">Streak Timeline</h4>
+                <p className="mt-1 text-xs text-muted-foreground">Each block groups consecutive outcomes; width reflects its length.</p>
+              </div>
               {sequence.length > 60 && (
                 <button
                   onClick={() => setShowAll(v => !v)}
@@ -102,25 +103,19 @@ export function WinLossStreaksCard({ data }: WinLossStreaksCardProps) {
               )}
             </div>
             <TooltipProvider delayDuration={100}>
-              <div className="flex flex-wrap gap-1">
-                {visibleSequence.map(entry => (
-                  <UiTooltip key={entry.index}>
+              <div className="flex min-h-16 items-end gap-1 overflow-x-auto rounded-lg bg-muted/20 p-3">
+                {data.streaks.filter((streak) => streak.endIndex >= (showAll ? 0 : Math.max(0, sequence.length - 60))).map((streak, index) => (
+                  <UiTooltip key={`${streak.startIndex}-${index}`}>
                     <TooltipTrigger asChild>
-                      <div
-                        className="w-4 h-6 rounded-[3px] cursor-default transition-transform hover:scale-125"
-                        style={{ backgroundColor: outcomeColor(entry.outcome) }}
-                      />
+                      <div className="flex h-10 min-w-5 flex-col justify-end gap-1 transition-transform hover:scale-105" style={{ width: `${Math.max(20, Math.min(96, streak.length * 18))}px` }}>
+                        <span className="text-center text-[10px] font-semibold text-muted-foreground">{streak.length}</span>
+                        <div className="h-5 rounded-sm" style={{ backgroundColor: outcomeColor(streak.type) }} />
+                      </div>
                     </TooltipTrigger>
                     <TooltipContent side="top" className="text-xs">
-                      <p className="font-medium">
-                        {new Date(entry.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                      <p>
-                        {entry.symbol ?? 'Trade'} {entry.direction ? `· ${entry.direction}` : ''}
-                      </p>
-                      <p className={entry.pnl >= 0 ? 'text-emerald-500' : 'text-red-500'}>
-                        {entry.pnl >= 0 ? '+' : ''}{entry.pnl.toFixed(2)}
-                      </p>
+                      <p className="font-medium">{streak.length} {streak.type} trade{streak.length > 1 ? 's' : ''}</p>
+                      <p>{new Date(streak.startDate).toLocaleDateString()} – {new Date(streak.endDate).toLocaleDateString()}</p>
+                      <p className={streak.totalPnl >= 0 ? 'text-emerald-500' : 'text-red-500'}>{streak.totalPnl >= 0 ? '+' : ''}{streak.totalPnl.toFixed(2)} total P&L</p>
                     </TooltipContent>
                   </UiTooltip>
                 ))}
