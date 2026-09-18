@@ -22,6 +22,9 @@ interface PlaybookData {
   entryCriteria: Rule[]
   exitCriteria: Rule[]
   linkedRuleIds: string[]
+  isPublic: boolean
+  publicDisplayName: string
+  youtubeLinks: string
 }
 
 const colors = ['#FF6B35', '#004E89', '#F7931E', '#06A77D', '#D62828', '#F77F00']
@@ -34,6 +37,9 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
     entryCriteria: [{ id: '1', title: '', description: '' }],
     exitCriteria: [{ id: '1', title: '', description: '' }],
     linkedRuleIds: [],
+    isPublic: false,
+    publicDisplayName: '',
+    youtubeLinks: '',
   })
   const [userRules, setUserRules] = useState<Rule[]>([])
   const [rulesLoading, setRulesLoading] = useState(true)
@@ -136,6 +142,17 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
             <div className="flex flex-col divide-y divide-border/50 rounded-lg border border-border/50">
               {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={data.linkedRuleIds.includes(rule.id)} onChange={(event) => setData((current) => ({ ...current, linkedRuleIds: event.target.checked ? [...current.linkedRuleIds, rule.id] : current.linkedRuleIds.filter((id) => id !== rule.id) }))} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.description || rule.rule || 'No description provided.'}</span></span></label>)}
             </div>
+          </div>
+
+          <div className="mt-6 rounded-lg border border-border/50 bg-muted/30 p-4 space-y-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" checked={data.isPublic} onChange={(event) => setData({ ...data, isPublic: event.target.checked })} className="mt-1 h-4 w-4 accent-primary" />
+              <span><span className="block text-sm font-medium text-foreground">Make this playbook public</span><span className="block text-xs text-muted-foreground mt-1">Anyone can discover and view it in Templates & Playbooks.</span></span>
+            </label>
+            {data.isPublic && <div className="space-y-4">
+              <div><label className="block text-sm font-medium text-primary mb-2">Name shown publicly</label><Input placeholder="Your preferred display name" value={data.publicDisplayName} onChange={(event) => setData({ ...data, publicDisplayName: event.target.value })} className="bg-input border border-border/50" /></div>
+              <div><label className="block text-sm font-medium text-primary mb-2">YouTube videos</label><textarea rows={3} placeholder="One YouTube URL per line" value={data.youtubeLinks} onChange={(event) => setData({ ...data, youtubeLinks: event.target.value })} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground resize-none" /></div>
+            </div>}
           </div>
         </div>
 

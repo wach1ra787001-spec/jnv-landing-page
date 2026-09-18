@@ -242,8 +242,18 @@ export default function TemplatesPage() {
     return (
       <div className="space-y-6 flex flex-col items-center">
         <CreatePlaybookForm
-          onSubmit={(data) => {
-            console.log("New playbook created:", data)
+          onSubmit={async (data) => {
+            const response = await fetch('/api/playbooks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+              title: data.name,
+              description: data.label,
+              strategy_type: 'general',
+              is_public: data.isPublic,
+              public_display_name: data.publicDisplayName,
+              youtube_links: data.youtubeLinks.split('\\n').map((link) => link.trim()).filter(Boolean),
+              color: data.color,
+              rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds },
+            }) })
+            if (!response.ok) throw new Error('Failed to create playbook')
             setShowCreateForm(false)
           }}
           onCancel={() => setShowCreateForm(false)}

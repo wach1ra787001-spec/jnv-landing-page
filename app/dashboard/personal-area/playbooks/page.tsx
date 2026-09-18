@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { PlaybookEmptyState } from '@/components/playbooks/empty-state'
+import { CreatePlaybookForm } from '@/components/dashboard/create-playbook-form'
 
 interface UserRule {
   id: string
@@ -118,6 +119,29 @@ export default function PlaybooksPage() {
       closeModal()
     } catch {
       toast.error('Failed to save playbook')
+    }
+  }
+
+  const handleReusableCreate = async (data: { name: string; color: string; label: string; entryCriteria: Array<{ title: string; description: string }>; exitCriteria: Array<{ title: string; description: string }>; linkedRuleIds: string[]; isPublic: boolean; publicDisplayName: string; youtubeLinks: string }) => {
+    try {
+      const response = await fetch('/api/playbooks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        title: data.name,
+        description: data.label,
+        strategy_type: 'general',
+        is_public: data.isPublic,
+        public_display_name: data.publicDisplayName,
+        youtube_links: data.youtubeLinks.split('\\n').map((link) => link.trim()).filter(Boolean),
+        color: data.color,
+        rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds },
+      }) })
+      if (!response.ok) throw new Error('Failed to create playbook')
+      const saved = await response.json()
+      setPlaybooks((current) => [...current, saved])
+      toast.success('Playbook created')
+      closeModal()
+    } catch (error) {
+      console.error('[v0] Error creating playbook:', error)
+      toast.error('Failed to create playbook')
     }
   }
 
@@ -378,8 +402,15 @@ export default function PlaybooksPage() {
         </div>
       )}
 
+      {/* Reusable create form; edits retain the existing edit dialog below. */}
+      {showModal && !editingId && (
+        <div className="flex justify-center">
+          <CreatePlaybookForm onSubmit={handleReusableCreate} onCancel={closeModal} />
+        </div>
+      )}
+
       {/* Modal */}
-      {showModal && (
+      {showModal && editingId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
           <Card className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-border">
