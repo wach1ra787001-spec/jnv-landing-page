@@ -48,7 +48,7 @@ export function CSVImportWizard() {
   // ── Upload / parse ──────────────────────────────────────────────────────────
 
   const processFile = useCallback((file: File) => {
-    if (!file.name.endsWith('.csv')) {
+    if (!file.name.toLowerCase().endsWith('.csv') && file.type !== 'text/csv') {
       appToast.error('Invalid file type', 'Please upload a .csv file')
       return
     }
@@ -194,7 +194,7 @@ export function CSVImportWizard() {
             ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
           onClick={() => inputRef.current?.click()}
         >
-          <input ref={inputRef} type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
+          <input ref={inputRef} type="file" accept=".csv,text/csv" onChange={handleFileChange} className="hidden" aria-label="Browse CSV files" />
           <FileUp className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="font-semibold text-foreground">Upload a new file</p>
           <p className="text-sm text-muted-foreground mt-1">Drag & drop your CSV here, or click to browse</p>
