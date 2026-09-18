@@ -2,6 +2,13 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { attachPlaybookMetrics, getPlaybookMetrics } from '@/lib/playbooks/metrics'
 
+function normalizePlaybookRules(playbook: Record<string, unknown>) {
+  const raw = playbook.rules && typeof playbook.rules === 'object' ? playbook.rules as Record<string, unknown> : {}
+  const entry = Array.isArray(raw.entry) ? raw.entry : Array.isArray(raw.entryCriteria) ? raw.entryCriteria : []
+  const exit = Array.isArray(raw.exit) ? raw.exit : Array.isArray(raw.exitCriteria) ? raw.exitCriteria : []
+  return { ...playbook, rules: { ...raw, entry, exit } }
+}
+
 async function attachEngagement(supabase: Awaited<ReturnType<typeof createClient>>, playbooks: Array<Record<string, unknown>>) {
   return Promise.all(playbooks.map(async (playbook) => {
     const [{ count: activeUsers }, { count: comments }] = await Promise.all([
@@ -25,7 +32,7 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false })
       if (error) throw error
       const withMetrics = await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>, true)
-      return NextResponse.json(await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>))
+      return NextResponse.json((await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>)).map(normalizePlaybookRules))
     }
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -43,7 +50,7 @@ export async function GET(request: NextRequest) {
     }
 
     const withMetrics = await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>)
-    return NextResponse.json(await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>))
+    return NextResponse.json((await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>)).map(normalizePlaybookRules))
   } catch (error) {
     console.error('Fetch playbooks error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

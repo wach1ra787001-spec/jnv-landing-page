@@ -353,7 +353,7 @@ export default function PlaybooksPage() {
                         <div>
                           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Playbook Rules</h4>
                           <ul className="space-y-1">
-                            {p.rules.custom.map((rule, i) => <li key={i} className="flex items-start gap-2 text-sm text-foreground"><span className="text-primary mt-0.5">•</span><span>{rule}</span></li>)}
+                            {p.rules.custom.map((rule, i) => <li key={i} className="flex items-start gap-2 text-sm text-foreground"><span className="text-primary mt-0.5">•</span><span>{getDisplayText(rule)}</span></li>)}
                           </ul>
                         </div>
                       )}
