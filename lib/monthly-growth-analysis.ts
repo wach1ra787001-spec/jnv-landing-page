@@ -15,7 +15,8 @@ export interface MonthlyGrowth {
  * Each month's growth is the sum of PnL for that month.
  */
 export function calculateMonthlyGrowthTimeline(
-  trades: Trade[]
+  trades: Trade[],
+  accountSize = 0,
 ): MonthlyGrowth[] {
   const now = new Date()
   const currentYear = now.getFullYear()
@@ -64,14 +65,14 @@ export function calculateMonthlyGrowthTimeline(
 
     // Calculate total PnL for the month
     const totalPnL = monthTrades.reduce((sum, trade) => {
-      const pnl = (trade.pnl as number) || 0
+      const pnl = (trade.net_pnl ?? trade.pnl ?? 0) as number
       return sum + pnl
     }, 0)
 
     // An empty month has no month-over-month growth value. Keep it distinct
     // from a real losing month so the UI can say "No trades taken yet".
-    const growthPercent = monthTrades.length > 0
-      ? totalPnL > 0 ? Math.min(totalPnL, 999.99) : totalPnL
+    const growthPercent = monthTrades.length > 0 && accountSize > 0
+      ? (totalPnL / accountSize) * 100
       : 0
 
     return {

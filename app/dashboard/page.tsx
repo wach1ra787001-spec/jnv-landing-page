@@ -50,7 +50,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   const { data: allTrades } = await tradesQuery
-  const actualTradeMetrics = calculateMetricsFromTrades(allTrades || [])
+  const { data: growthAccount } = accountId
+    ? await supabase.from("accounts").select("initial_balance").eq("id", accountId).eq("user_id", user?.id).maybeSingle()
+    : { data: null }
+  const accountSize = Number(growthAccount?.initial_balance) || 0
+  const actualTradeMetrics = calculateMetricsFromTrades(allTrades || [], accountSize)
 
   // The metrics table is a stale aggregate and is not account-scoped. Always
   // derive KPIs from the same account-filtered trades used by the dashboard.
@@ -172,7 +176,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   )
 
   // Calculate monthly growth timeline for current and previous 2 months
-  const monthlyGrowthTimeline = calculateMonthlyGrowthTimeline(allTrades || [])
+  const monthlyGrowthTimeline = calculateMonthlyGrowthTimeline(allTrades || [], accountSize)
 
   // Transform trades data for the table component
   const formattedTrades = (recentTrades || []).map(trade => ({
