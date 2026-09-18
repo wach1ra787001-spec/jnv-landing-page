@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   AlertCircle, CheckCircle2, ChevronDown, FileUp, Loader2,
-  Upload, X, ArrowRight, BookOpen,
+  Upload, X, ArrowRight, BookOpen, BarChart3, LayoutDashboard,
 } from 'lucide-react'
 import {
   parseCSV, autoMapColumns, FIELD_MAP, REQUIRED_FIELDS,
@@ -408,13 +408,34 @@ export function CSVImportWizard() {
               {importResult.skipped > 0 && <span className="text-muted-foreground">, {importResult.skipped} rows had errors</span>}
             </p>
           </div>
-          <div className="flex gap-2 mt-2">
-            <Button variant="outline" onClick={reset}>
-              Import Another File
-            </Button>
-            <Button onClick={() => router.push('/dashboard/trade-journal')} className="gap-2">
+          <div className="grid w-full max-w-xl gap-3 rounded-lg border border-border/60 bg-muted/20 p-4 text-left sm:grid-cols-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Imported</p>
+              <p className="text-lg font-semibold text-foreground">{importResult.imported}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Duplicates skipped</p>
+              <p className="text-lg font-semibold text-foreground">{importResult.duplicates}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Rows with errors</p>
+              <p className="text-lg font-semibold text-foreground">{importResult.skipped}</p>
+            </div>
+          </div>
+          <p className="max-w-xl text-sm text-muted-foreground">Your trade history and analytics now include the imported trades.</p>
+          <div className="flex flex-wrap justify-center gap-2 mt-2">
+            <Button variant="outline" onClick={reset}>Import Another File</Button>
+            <Button variant="outline" onClick={() => router.push('/dashboard/trade-history')} className="gap-2">
               <BookOpen className="w-4 h-4" />
-              Journal Now
+              View Trade History
+            </Button>
+            <Button onClick={() => router.push('/dashboard')} className="gap-2">
+              <LayoutDashboard className="w-4 h-4" />
+              View Dashboard
+            </Button>
+            <Button variant="secondary" onClick={() => router.push('/dashboard/advanced-stats/streaks')} className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              View Advanced Stats
             </Button>
           </div>
         </div>
