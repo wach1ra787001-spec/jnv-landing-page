@@ -25,6 +25,7 @@ interface PlaybookData {
   isPublic: boolean
   publicDisplayName: string
   youtubeLinks: string
+  tradingSessions: string[]
 }
 
 const colors = ['#FF6B35', '#004E89', '#F7931E', '#06A77D', '#D62828', '#F77F00']
@@ -33,7 +34,7 @@ const emptyPlaybookData: PlaybookData = {
   name: '', color: colors[0], label: '',
   entryCriteria: [{ id: 'entry-1', title: '', description: '' }],
   exitCriteria: [{ id: 'exit-1', title: '', description: '' }],
-  linkedRuleIds: [], isPublic: false, publicDisplayName: '', youtubeLinks: '',
+  linkedRuleIds: [], isPublic: false, publicDisplayName: '', youtubeLinks: '', tradingSessions: [],
 }
 
 export function CreatePlaybookForm({ onSubmit, onCancel, className, initialData, submitLabel = 'Create Playbook' }: { onSubmit: (data: PlaybookData) => void | Promise<void>; onCancel: () => void; className?: string; initialData?: Partial<PlaybookData>; submitLabel?: string }) {
@@ -81,6 +82,10 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className, initialData,
   const handleSubmit = () => {
     if (!data.name.trim()) {
       alert('Please enter a playbook name')
+      return
+    }
+    if (data.tradingSessions.length < 1 || data.tradingSessions.length > 2) {
+      alert('Please select one or two trading sessions')
       return
     }
     onSubmit(data)
@@ -131,6 +136,21 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className, initialData,
                 className="bg-input border border-border/50"
               />
             </div>
+          </div>
+
+            <div className="border-t border-border/50 pt-5">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Trading sessions</h3>
+            <p className="text-sm text-muted-foreground mb-3">Choose one or two sessions for your pre-market alerts.</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {['New York', 'London', 'Asian'].map((session) => {
+                const selected = data.tradingSessions.includes(session)
+                return <label key={session} className={cn('flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm transition-colors', selected ? 'border-primary bg-primary/10 text-foreground' : 'border-border/50 text-muted-foreground')}>
+                  <input type="checkbox" checked={selected} disabled={!selected && data.tradingSessions.length >= 2} onChange={() => setData((current) => ({ ...current, tradingSessions: selected ? current.tradingSessions.filter((item) => item !== session) : [...current.tradingSessions, session] }))} className="size-4 accent-primary" />
+                  {session}
+                </label>
+              })}
+            </div>
+            <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Please provide accurate information. We use your selected sessions to deliver relevant pre-market alerts.</p>
           </div>
 
           <div className="border-t border-border/50 pt-5">

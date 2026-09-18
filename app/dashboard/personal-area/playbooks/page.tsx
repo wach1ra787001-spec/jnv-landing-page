@@ -122,7 +122,7 @@ export default function PlaybooksPage() {
     }
   }
 
-  const handleReusableCreate = async (data: { name: string; color: string; label: string; entryCriteria: Array<{ title: string; description: string }>; exitCriteria: Array<{ title: string; description: string }>; linkedRuleIds: string[]; isPublic: boolean; publicDisplayName: string; youtubeLinks: string }) => {
+  const handleReusableCreate = async (data: { name: string; color: string; label: string; entryCriteria: Array<{ title: string; description: string }>; exitCriteria: Array<{ title: string; description: string }>; linkedRuleIds: string[]; isPublic: boolean; publicDisplayName: string; youtubeLinks: string; tradingSessions: string[] }) => {
     try {
       const response = await fetch('/api/playbooks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
         title: data.name,
@@ -132,7 +132,7 @@ export default function PlaybooksPage() {
         public_display_name: data.publicDisplayName,
         youtube_links: data.youtubeLinks.split('\\n').map((link) => link.trim()).filter(Boolean),
         color: data.color,
-        rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds },
+        rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds, tradingSessions: data.tradingSessions },
       }) })
       if (!response.ok) throw new Error('Failed to create playbook')
       const saved = await response.json()
@@ -150,7 +150,7 @@ export default function PlaybooksPage() {
     const response = await fetch(`/api/playbooks/${editingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
       title: data.name, description: data.label, is_public: data.isPublic, public_display_name: data.publicDisplayName,
       youtube_links: data.youtubeLinks.split('\\n').map((link) => link.trim()).filter(Boolean), color: data.color,
-      rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds },
+      rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds, tradingSessions: data.tradingSessions },
     }) })
     if (!response.ok) throw new Error('Failed to update playbook')
     const saved = await response.json()
@@ -439,7 +439,7 @@ export default function PlaybooksPage() {
         if (!playbook) return null
         const rules = playbook.rules || {}
         const toCriteria = (items: unknown[] | undefined, prefix: string) => (items || []).map((item, index) => typeof item === 'object' && item !== null ? { id: String((item as { id?: unknown }).id || `${prefix}-${index}`), title: String((item as { title?: unknown }).title || ''), description: String((item as { description?: unknown }).description || '') } : { id: `${prefix}-${index}`, title: String(item || ''), description: '' })
-        return <div className="flex justify-center"><CreatePlaybookForm submitLabel="Update Playbook" initialData={{ name: playbook.title, label: getDisplayText(playbook.description), color: typeof (rules as { color?: unknown }).color === 'string' ? String((rules as { color?: unknown }).color) : '#FF6B35', entryCriteria: toCriteria((rules as { entry?: unknown[]; entryCriteria?: unknown[] }).entry || (rules as { entryCriteria?: unknown[] }).entryCriteria, 'entry'), exitCriteria: toCriteria((rules as { exit?: unknown[]; exitCriteria?: unknown[] }).exit || (rules as { exitCriteria?: unknown[] }).exitCriteria, 'exit'), linkedRuleIds: (rules.linkedRuleIds || []).map(String), isPublic: playbook.is_public, publicDisplayName: playbook.public_display_name || '', youtubeLinks: (playbook.youtube_links || []).join('\\n') }} onSubmit={handleReusableSave} onCancel={closeModal} /></div>
+        return <div className="flex justify-center"><CreatePlaybookForm submitLabel="Update Playbook" initialData={{ name: playbook.title, label: getDisplayText(playbook.description), color: typeof (rules as { color?: unknown }).color === 'string' ? String((rules as { color?: unknown }).color) : '#FF6B35', tradingSessions: Array.isArray((rules as { tradingSessions?: unknown }).tradingSessions) ? (rules as { tradingSessions: string[] }).tradingSessions : [], entryCriteria: toCriteria((rules as { entry?: unknown[]; entryCriteria?: unknown[] }).entry || (rules as { entryCriteria?: unknown[] }).entryCriteria, 'entry'), exitCriteria: toCriteria((rules as { exit?: unknown[]; exitCriteria?: unknown[] }).exit || (rules as { exitCriteria?: unknown[] }).exitCriteria, 'exit'), linkedRuleIds: (rules.linkedRuleIds || []).map(String), isPublic: playbook.is_public, publicDisplayName: playbook.public_display_name || '', youtubeLinks: (playbook.youtube_links || []).join('\\n') }} onSubmit={handleReusableSave} onCancel={closeModal} /></div>
       })()}
 
       {/* Legacy modal retained for backwards compatibility but no longer shown */}
