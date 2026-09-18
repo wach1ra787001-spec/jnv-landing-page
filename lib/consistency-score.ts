@@ -42,6 +42,8 @@ export interface ConsistencyScoreInputs {
   accountRiskAmount?: number | null
   tradeRiskPercent?: number | null
   accountRiskPercent?: number | null
+  /** Whether the trade occurred during a session allowed by its playbook. */
+  tradeModelFollowed?: boolean
   /** Does the trade have any non-empty journal note text? */
   hasMeaningfulNotes: boolean
 }
@@ -67,6 +69,7 @@ export function calculateTradeConsistencyScore(
   const rulesFollowed = !hasActiveRules || (Array.isArray(followedRuleIds) && activeRulesCount > 0 && followedRuleIds.length >= activeRulesCount)
   const riskCompliant = typeof tradeRiskAmount === 'number' && typeof accountRiskAmount === 'number' && tradeRiskAmount <= accountRiskAmount && typeof tradeRiskPercent === 'number' && typeof accountRiskPercent === 'number' && tradeRiskPercent <= accountRiskPercent
   const journalCompleted = hasMeaningfulNotes
+  const tradeModelFollowed = inputs.tradeModelFollowed ?? (rulesFollowed && riskCompliant && journalCompleted)
 
   // Rules followed (30%) - use the per-trade checklist when available.
   let rulesScore = 0
@@ -84,7 +87,7 @@ export function calculateTradeConsistencyScore(
   const riskModelScore = riskCompliant ? CONSISTENCY_WEIGHTS.riskModel : 0
 
   // Trade Model is earned only when rules, risk, and journaling are all complete.
-  const tradeModelScore = rulesFollowed && riskCompliant && journalCompleted
+  const tradeModelScore = tradeModelFollowed
     ? CONSISTENCY_WEIGHTS.tradeModel
     : 0
 
