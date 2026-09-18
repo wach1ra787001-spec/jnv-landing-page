@@ -37,8 +37,9 @@ export function calculateMetricsFromTrades(trades: Trade[]): CalculatedMetrics {
     }
   }
 
-  // Filter closed trades - use pnl field from database
-  const closedTrades = trades.filter(t => t.status === 'closed' && t.pnl !== null)
+  // Completed trades include legacy breakeven rows. Prefer generated net_pnl
+  // so dashboard KPIs match the P&L chart and account analytics.
+  const closedTrades = trades.filter(t => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()) && (t.net_pnl !== null || t.pnl !== null))
   const total_trades = closedTrades.length
   
   let total_profit_loss = 0
@@ -51,7 +52,7 @@ export function calculateMetricsFromTrades(trades: Trade[]): CalculatedMetrics {
 
   // Calculate PnL and streak
   closedTrades.forEach((trade) => {
-    const pnl = trade.pnl || 0
+    const pnl = trade.net_pnl ?? trade.pnl ?? 0
     total_profit_loss += pnl
 
     if (pnl > 0) {
