@@ -36,6 +36,13 @@ export interface TradeFormValues {
   playbook_id: string
   followed_rule_ids: string[]
   followed_rules: string[]
+  // Carried through from imported (CSV/broker) trades so P&L analytics stay
+  // accurate once the trade is journaled and actually saved to the database.
+  net_pnl: string
+  commission: string
+  swap: string
+  external_ref: string
+  import_source: string
 }
 
 export const DEFAULT_TRADE_FORM_VALUES: TradeFormValues = {
@@ -60,6 +67,11 @@ export const DEFAULT_TRADE_FORM_VALUES: TradeFormValues = {
   playbook_id: '',
   followed_rule_ids: [],
   followed_rules: [],
+  net_pnl: '',
+  commission: '',
+  swap: '',
+  external_ref: '',
+  import_source: '',
 }
 
 interface Account {
@@ -236,6 +248,15 @@ export function TradeForm({
       })()
 
       if (mode === 'create') {
+        const pnlValue = formData.pnl ? parseFloat(formData.pnl) : 0
+        const commissionValue = formData.commission ? parseFloat(formData.commission) : 0
+        const swapValue = formData.swap ? parseFloat(formData.swap) : 0
+        // Net P&L drives dashboard KPIs, account balance, and every analytics
+        // view. Use the imported value if we have one (CSV/broker import),
+        // otherwise derive it from gross P&L minus commission/swap so it's
+        // never left null for manually journaled trades.
+        const netPnlValue = formData.net_pnl ? parseFloat(formData.net_pnl) : (pnlValue - commissionValue - swapValue)
+
         const tradeData = {
           ...formData,
           direction: toDbDirection(formData.direction),
@@ -248,13 +269,17 @@ export function TradeForm({
           lot_size: parseFloat(formData.lot_size),
           entry_time: formData.open_time ? new Date(formData.open_time).toISOString() : new Date().toISOString(),
           exit_time: formData.close_time ? new Date(formData.close_time).toISOString() : new Date().toISOString(),
-          pnl: formData.pnl ? parseFloat(formData.pnl) : 0,
+          pnl: pnlValue,
           pnl_percent: formData.pnl_percent ? parseFloat(formData.pnl_percent) : 0,
+          net_pnl: netPnlValue,
+          commission: commissionValue,
+          swap: swapValue,
+          external_ref: formData.external_ref || null,
           r_multiple: formData.r_multiple ? parseFloat(formData.r_multiple) : null,
           risk_amount: formData.risk_amount ? parseFloat(formData.risk_amount) : null,
           strategy: formData.strategy || null,
           setup_type: formData.strategy || null,
-          source: 'manual',
+          source: formData.import_source || 'manual',
           notes: formData.notes || null,
           emotion_before: formData.emotion_before || null,
           status: 'closed',
@@ -280,6 +305,7 @@ export function TradeForm({
           appToast.tradeSaveFailed()
         }
       } else {
+        const editedPnl = formData.pnl ? parseFloat(formData.pnl) : 0
         const tradeData = {
           symbol: formData.symbol.toUpperCase().trim(),
           direction: toDbDirection(formData.direction),
@@ -290,8 +316,11 @@ export function TradeForm({
           quantity: parseFloat(formData.lot_size),
           entry_time: formData.open_time ? new Date(formData.open_time).toISOString() : new Date().toISOString(),
           exit_time: formData.close_time ? new Date(formData.close_time).toISOString() : new Date().toISOString(),
-          pnl: formData.pnl ? parseFloat(formData.pnl) : 0,
+          pnl: editedPnl,
           pnl_percent: formData.pnl_percent ? parseFloat(formData.pnl_percent) : 0,
+          // Keep net P&L in sync with gross P&L edits so dashboard/account
+          // analytics (which read net_pnl) don't drift from what the user sees.
+          net_pnl: editedPnl,
           r_multiple: formData.r_multiple ? parseFloat(formData.r_multiple) : null,
           risk_amount: formData.risk_amount ? parseFloat(formData.risk_amount) : null,
           strategy: formData.strategy || null,

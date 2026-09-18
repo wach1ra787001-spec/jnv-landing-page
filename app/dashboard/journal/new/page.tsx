@@ -41,6 +41,14 @@ export default function AddNewTradePage() {
         open_time: trade.open_time ? new Date(trade.open_time).toISOString().slice(0, 16) : '',
         close_time: trade.close_time ? new Date(trade.close_time).toISOString().slice(0, 16) : '',
         pnl: trade.pnl?.toString() || '',
+        // Carry the imported net P&L/commission/swap/reference through so the
+        // saved trade's analytics match the source broker/CSV data exactly,
+        // instead of being recalculated (or left blank) once journaled.
+        net_pnl: typeof trade.net_pnl === 'number' ? trade.net_pnl.toString() : '',
+        commission: typeof trade.commission === 'number' ? trade.commission.toString() : '',
+        swap: typeof trade.swap === 'number' ? trade.swap.toString() : '',
+        external_ref: typeof trade.external_ref === 'string' ? trade.external_ref : '',
+        import_source: typeof trade.source === 'string' ? trade.source : 'csv',
         status: 'closed',
       })
     } catch (error) {

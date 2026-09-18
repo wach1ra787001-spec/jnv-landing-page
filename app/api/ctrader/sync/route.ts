@@ -196,29 +196,48 @@ export async function POST(req: NextRequest) {
 
     logCTraderEvent('deals_fetched', { connectionId: connection.id, count: deals.length }, 'info')
 
+    // Resolve the trading account linked to this broker connection so synced
+    // trades are scoped correctly. Without this, trades land with a null
+    // account_id and silently disappear from every account-filtered view
+    // (dashboard, account balance, analytics).
+    const { data: accountRow } = await supabase
+      .from('accounts')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('broker_connection_id', connection.id)
+      .maybeSingle()
+
     // Map cTrader deals to our trades schema
-    const mappedTrades = deals.map((deal: any) => ({
-      user_id:              user.id,
-      source:               'ctrader',
-      ctrader_position_id:  deal.positionId,
-      ctrader_deal_id:      deal.dealId,
-      symbol:               deal.symbol.toUpperCase(),
-      direction:            deal.tradeSide === 'BUY' ? 'long' : 'short',
-      lot_size:             deal.volume / 100,
-      quantity:             deal.volume / 100,
-      entry_price:          deal.closePositionDetail?.entryPrice ?? deal.executionPrice,
-      exit_price:           deal.closePositionDetail?.closePrice ?? null,
-      entry_time:           new Date(deal.createTimestamp).toISOString(),
-      exit_time:            deal.closePositionDetail
-                              ? new Date(deal.executionTimestamp).toISOString()
-                              : null,
-      status:               deal.closePositionDetail ? 'closed' : 'open',
-      pnl:                  deal.closePositionDetail?.grossProfit ?? null,
-      commission:           deal.commission ?? 0,
-      swap:                 deal.swap ?? 0,
-      strategy:             deal.label || deal.comment || null,
-      raw_payload:          deal,
-    }))
+    const mappedTrades = deals.map((deal: any) => {
+      const grossPnl = deal.closePositionDetail?.grossProfit ?? null
+      const commission = deal.commission ?? 0
+      const swap = deal.swap ?? 0
+      return {
+        user_id:              user.id,
+        account_id:           accountRow?.id ?? null,
+        source:               'ctrader',
+        ctrader_position_id:  deal.positionId,
+        ctrader_deal_id:      deal.dealId,
+        symbol:               deal.symbol.toUpperCase(),
+        direction:            deal.tradeSide === 'BUY' ? 'long' : 'short',
+        lot_size:             deal.volume / 100,
+        quantity:             deal.volume / 100,
+        entry_price:          deal.closePositionDetail?.entryPrice ?? deal.executionPrice,
+        exit_price:           deal.closePositionDetail?.closePrice ?? null,
+        entry_time:           new Date(deal.createTimestamp).toISOString(),
+        exit_time:            deal.closePositionDetail
+                                ? new Date(deal.executionTimestamp).toISOString()
+                                : null,
+        status:               deal.closePositionDetail ? 'closed' : 'open',
+        pnl:                  grossPnl,
+        // net_pnl is what the dashboard/account balance/analytics read.
+        net_pnl:              grossPnl !== null ? grossPnl - commission - swap : null,
+        commission,
+        swap,
+        strategy:             deal.label || deal.comment || null,
+        raw_payload:          deal,
+      }
+    })
 
     // Upsert — safe to run multiple times
     const { error: upsertError } = await supabase
