@@ -29,18 +29,15 @@ interface PlaybookData {
 
 const colors = ['#FF6B35', '#004E89', '#F7931E', '#06A77D', '#D62828', '#F77F00']
 
-export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit: (data: PlaybookData) => void | Promise<void>; onCancel: () => void; className?: string }) {
-  const [data, setData] = useState<PlaybookData>({
-    name: '',
-    color: colors[0],
-    label: '',
-    entryCriteria: [{ id: '1', title: '', description: '' }],
-    exitCriteria: [{ id: '1', title: '', description: '' }],
-    linkedRuleIds: [],
-    isPublic: false,
-    publicDisplayName: '',
-    youtubeLinks: '',
-  })
+const emptyPlaybookData: PlaybookData = {
+  name: '', color: colors[0], label: '',
+  entryCriteria: [{ id: 'entry-1', title: '', description: '' }],
+  exitCriteria: [{ id: 'exit-1', title: '', description: '' }],
+  linkedRuleIds: [], isPublic: false, publicDisplayName: '', youtubeLinks: '',
+}
+
+export function CreatePlaybookForm({ onSubmit, onCancel, className, initialData, submitLabel = 'Create Playbook' }: { onSubmit: (data: PlaybookData) => void | Promise<void>; onCancel: () => void; className?: string; initialData?: Partial<PlaybookData>; submitLabel?: string }) {
+  const [data, setData] = useState<PlaybookData>({ ...emptyPlaybookData, ...initialData })
   const [userRules, setUserRules] = useState<Rule[]>([])
   const [rulesLoading, setRulesLoading] = useState(true)
 
@@ -91,7 +88,7 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
 
   return (
     <Card className={cn("p-6 md:p-8 bg-card border border-border/50 max-w-2xl w-full", className)}>
-      <h2 className="text-2xl font-bold text-foreground mb-6">Create Playbook</h2>
+      <h2 className="text-2xl font-bold text-foreground mb-6">{submitLabel === 'Update Playbook' ? 'Edit Playbook' : 'Build your own playbook'}</h2>
 
       {/* General Information */}
       <div className="space-y-6 mb-8">
@@ -262,7 +259,7 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
       {/* Action Buttons */}
       <div className="flex gap-3 pt-6 border-t border-border/50">
         <Button onClick={handleSubmit} className="flex-1 bg-primary hover:bg-primary/90">
-          Create Playbook
+          {submitLabel}
         </Button>
         <Button onClick={onCancel} variant="outline" className="flex-1">
           Cancel

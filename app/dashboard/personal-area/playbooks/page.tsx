@@ -145,6 +145,20 @@ export default function PlaybooksPage() {
     }
   }
 
+  const handleReusableSave = async (data: Parameters<typeof handleReusableCreate>[0]) => {
+    if (!editingId) return handleReusableCreate(data)
+    const response = await fetch(`/api/playbooks/${editingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      title: data.name, description: data.label, is_public: data.isPublic, public_display_name: data.publicDisplayName,
+      youtube_links: data.youtubeLinks.split('\\n').map((link) => link.trim()).filter(Boolean), color: data.color,
+      rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds },
+    }) })
+    if (!response.ok) throw new Error('Failed to update playbook')
+    const saved = await response.json()
+    setPlaybooks((current) => current.map((playbook) => playbook.id === editingId ? saved : playbook))
+    toast.success('Playbook updated')
+    closeModal()
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this playbook?')) return
     try {
@@ -158,7 +172,6 @@ export default function PlaybooksPage() {
   }
 
   const handleEdit = (p: Playbook) => {
-    setForm({ title: p.title, description: getDisplayText(p.description), strategy_type: p.strategy_type || '', is_public: p.is_public, public_display_name: p.public_display_name || '', public_avatar_url: p.public_avatar_url || '', youtube_links: (p.youtube_links || []).join('\n'), linkedRuleIds: p.rules?.linkedRuleIds || [], customRules: p.rules?.custom?.length ? p.rules.custom : [''] })
     setEditingId(p.id)
     setShowModal(true)
   }
@@ -409,8 +422,16 @@ export default function PlaybooksPage() {
         </div>
       )}
 
-      {/* Modal */}
-      {showModal && editingId && (
+      {showModal && editingId && (() => {
+        const playbook = playbooks.find((item) => item.id === editingId)
+        if (!playbook) return null
+        const rules = playbook.rules || {}
+        const toCriteria = (items: unknown[] | undefined, prefix: string) => (items || []).map((item, index) => typeof item === 'object' && item !== null ? { id: String((item as { id?: unknown }).id || `${prefix}-${index}`), title: String((item as { title?: unknown }).title || ''), description: String((item as { description?: unknown }).description || '') } : { id: `${prefix}-${index}`, title: String(item || ''), description: '' })
+        return <div className="flex justify-center"><CreatePlaybookForm submitLabel="Update Playbook" initialData={{ name: playbook.title, label: getDisplayText(playbook.description), color: typeof (rules as { color?: unknown }).color === 'string' ? String((rules as { color?: unknown }).color) : '#FF6B35', entryCriteria: toCriteria((rules as { entry?: unknown[]; entryCriteria?: unknown[] }).entry || (rules as { entryCriteria?: unknown[] }).entryCriteria, 'entry'), exitCriteria: toCriteria((rules as { exit?: unknown[]; exitCriteria?: unknown[] }).exit || (rules as { exitCriteria?: unknown[] }).exitCriteria, 'exit'), linkedRuleIds: (rules.linkedRuleIds || []).map(String), isPublic: playbook.is_public, publicDisplayName: playbook.public_display_name || '', youtubeLinks: (playbook.youtube_links || []).join('\\n') }} onSubmit={handleReusableSave} onCancel={closeModal} /></div>
+      })()}
+
+      {/* Legacy modal retained for backwards compatibility but no longer shown */}
+      {false && showModal && editingId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
           <Card className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-border">
