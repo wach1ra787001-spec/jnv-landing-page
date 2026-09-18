@@ -130,6 +130,11 @@ export function CSVImportWizard() {
       }
 
       setImportResult(data)
+      try {
+        window.sessionStorage.setItem('jnv_pending_import_trades', JSON.stringify(data.trades || parseResult.trades))
+      } catch (storageError) {
+        console.error('[v0] Could not stage imported trades:', storageError)
+      }
       setStep('done')
 
       // Fire "Journal Now" toast notification
@@ -403,7 +408,7 @@ export function CSVImportWizard() {
           <div>
             <h3 className="text-lg font-semibold text-foreground">Import Complete</h3>
             <p className="text-muted-foreground mt-1">
-              <span className="text-foreground font-semibold">{importResult.imported}</span> trades imported
+              <span className="text-foreground font-semibold">{importResult.imported}</span> trades ready to log
               {importResult.duplicates > 0 && <span className="text-muted-foreground">, {importResult.duplicates} duplicates skipped</span>}
               {importResult.skipped > 0 && <span className="text-muted-foreground">, {importResult.skipped} rows had errors</span>}
             </p>
@@ -422,9 +427,13 @@ export function CSVImportWizard() {
               <p className="text-lg font-semibold text-foreground">{importResult.skipped}</p>
             </div>
           </div>
-          <p className="max-w-xl text-sm text-muted-foreground">Your trade history and analytics now include the imported trades.</p>
+          <p className="max-w-xl text-sm text-muted-foreground">Complete each trade in Log a Trade before it is saved to Trade History and included in analytics.</p>
           <div className="flex flex-wrap justify-center gap-2 mt-2">
             <Button variant="outline" onClick={reset}>Import Another File</Button>
+            <Button onClick={() => router.push('/dashboard/journal/new')} className="gap-2">
+              <BookOpen className="w-4 h-4" />
+              Log Imported Trades
+            </Button>
             <Button variant="outline" onClick={() => router.push('/dashboard/trade-history')} className="gap-2">
               <BookOpen className="w-4 h-4" />
               View Trade History

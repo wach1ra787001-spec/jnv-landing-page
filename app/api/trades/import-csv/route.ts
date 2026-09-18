@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ── Build insert rows ─────────────────────────────────────────────────────
-  const toInsert = []
+  const toInsert: any[] = []
   let duplicates = 0
 
   for (const trade of trades) {
@@ -109,30 +109,13 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // ── Insert in batches of 500 ──────────────────────────────────────────────
-  const BATCH = 500
-  let totalInserted = 0
-  let skipped = 0
-
-  for (let i = 0; i < toInsert.length; i += BATCH) {
-    const batch = toInsert.slice(i, i + BATCH)
-    const { data: inserted, error } = await supabase
-      .from('trades')
-      .insert(batch)
-      .select('id')
-
-    if (error) {
-      console.error('[import-csv] Insert error:', error.message)
-      skipped += batch.length
-    } else {
-      totalInserted += inserted?.length ?? batch.length
-    }
-  }
-
+  // Do not save yet. Imported rows must go through the same journal form so
+  // the user can attach a strategy, rules, notes, and screenshots first.
   return NextResponse.json({
-    imported: totalInserted,
-    skipped,
+    imported: toInsert.length,
+    skipped: 0,
     duplicates,
-    message: `${totalInserted} trades imported successfully`,
+    trades: trades.filter((trade) => toInsert.some((row) => row.external_ref === trade.external_ref || (!trade.external_ref && row.symbol === trade.symbol && row.entry_time === trade.open_time && row.lot_size === trade.lot_size))),
+    message: `${toInsert.length} trades ready to be logged`,
   })
 }
