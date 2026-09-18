@@ -348,12 +348,12 @@ export default function TemplatesPage() {
                 <p className="font-bold text-sm text-green-600 dark:text-green-400">{playbook.winRate}%</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Trades</p>
+                <p className="text-xs text-muted-foreground mb-1">Trades taken</p>
                 <p className="font-bold text-sm text-foreground">{playbook.trades}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">P&L</p>
-                <p className="font-bold text-sm text-green-600 dark:text-green-400">${(playbook.pnl / 1000).toFixed(1)}k</p>
+                <p className={cn("font-bold text-sm", playbook.pnl >= 0 ? "text-emerald-600" : "text-destructive")}>{playbook.pnl < 0 ? '-' : ''}${Math.abs(playbook.pnl).toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Users</p>
@@ -377,6 +377,14 @@ export default function TemplatesPage() {
 
             {isExpanded && (
               <div className="mb-4 space-y-4 border-t border-border pt-4" onClick={(event) => event.stopPropagation()}>
+                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Performance using this playbook</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div><p className="text-xs text-muted-foreground">Trades taken</p><p className="font-semibold text-foreground">{playbook.trades}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Win rate</p><p className="font-semibold text-foreground">{playbook.winRate.toFixed(2)}%</p></div>
+                    <div><p className="text-xs text-muted-foreground">P&amp;L</p><p className={cn("font-semibold", playbook.pnl >= 0 ? "text-emerald-600" : "text-destructive")}>{playbook.pnl < 0 ? '-' : ''}${Math.abs(playbook.pnl).toFixed(2)}</p></div>
+                  </div>
+                </div>
                 <div>
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</p>
                   <p className="whitespace-pre-wrap text-sm text-foreground">{playbook.description || 'No description provided.'}</p>
