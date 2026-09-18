@@ -74,7 +74,8 @@ export async function PATCH(
       'stop_loss', 'take_profit', 'quantity', 'entry_time', 
       'exit_time', 'pnl', 'pnl_percent', 'r_multiple', 
       'risk_amount', 'strategy', 'setup_type', 'followed_rules', 'followed_rule_ids',
-      'status', 'screenshot_urls', 'playbook_rules_snapshot'
+      'status', 'screenshot_urls', 'playbook_rules_snapshot', 'notes', 'emotion_before',
+      'playbook_name', 'playbook_version',
     ]
     
     for (const field of allowedFields) {
