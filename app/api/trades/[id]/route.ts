@@ -87,22 +87,15 @@ export async function PATCH(
     const allowedFields = [
       'symbol', 'direction', 'entry_price', 'exit_price', 
       'stop_loss', 'take_profit', 'quantity', 'entry_time', 
-      'exit_time', 'pnl', 'pnl_percent', 'net_pnl', 'commission', 'swap', 'r_multiple', 
+      'exit_time', 'pnl', 'pnl_percent', 'commission', 'swap', 'r_multiple', 
       'risk_amount', 'strategy', 'setup_type',
-      'status', 'screenshot_urls', 'commission', 'swap', 'net_pnl',
+      'status', 'screenshot_urls',
     ]
     
     for (const field of allowedFields) {
       if (body[field] !== undefined) {
         updateData[field] = body[field]
       }
-    }
-
-    // net_pnl drives the dashboard, account balance, and every analytics view.
-    // If the caller updated gross pnl but didn't explicitly send net_pnl,
-    // keep it in sync instead of letting it drift or stay null.
-    if (body.pnl !== undefined && body.net_pnl === undefined) {
-      updateData.net_pnl = body.pnl
     }
 
     if (Object.keys(updateData).length === 0 && typeof body.notes !== 'string') {

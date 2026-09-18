@@ -168,12 +168,8 @@ export async function createTrade(tradeData: CreateTradeInput) {
     ? 'breakeven'
     : (tradeData.status || 'closed')
 
-  // net_pnl (not pnl) is what the dashboard, account balance, and every
-  // analytics view read. Always populate it so trades never silently vanish
-  // from those views just because a caller only sent gross pnl.
   const commission = tradeData.commission ?? 0
   const swap = tradeData.swap ?? 0
-  const netPnl = typeof tradeData.net_pnl === 'number' ? tradeData.net_pnl : tradeData.pnl - commission - swap
 
   const insertData: any = {
     user_id: user.id,
@@ -186,7 +182,6 @@ export async function createTrade(tradeData: CreateTradeInput) {
     exit_time: tradeData.exit_time,
     pnl: tradeData.pnl,
     pnl_percent: tradeData.pnl_percent,
-    net_pnl: netPnl,
     commission,
     swap,
     external_ref: tradeData.external_ref || null,

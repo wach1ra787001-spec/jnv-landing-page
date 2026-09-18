@@ -318,9 +318,8 @@ export function TradeForm({
           exit_time: formData.close_time ? new Date(formData.close_time).toISOString() : new Date().toISOString(),
           pnl: editedPnl,
           pnl_percent: formData.pnl_percent ? parseFloat(formData.pnl_percent) : 0,
-          // Keep net P&L in sync with gross P&L edits so dashboard/account
-          // analytics (which read net_pnl) don't drift from what the user sees.
-          net_pnl: editedPnl,
+          // net_pnl is a generated database column; it recalculates from
+          // the editable P&L inputs after this update.
           r_multiple: formData.r_multiple ? parseFloat(formData.r_multiple) : null,
           risk_amount: formData.risk_amount ? parseFloat(formData.risk_amount) : null,
           strategy: formData.strategy || null,

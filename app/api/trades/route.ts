@@ -111,7 +111,6 @@ export async function POST(request: NextRequest) {
       exit_time: exit_time || close_time ? new Date(exit_time || close_time).toISOString() : new Date().toISOString(),
       pnl: pnl !== undefined ? parseFloat(String(pnl)) : 0,
       pnl_percent: pnl_percent !== undefined ? parseFloat(String(pnl_percent)) : 0,
-      net_pnl: net_pnl !== undefined && net_pnl !== null ? parseFloat(String(net_pnl)) : undefined,
       commission: commission !== undefined && commission !== null ? parseFloat(String(commission)) : undefined,
       swap: swap !== undefined && swap !== null ? parseFloat(String(swap)) : undefined,
       external_ref: typeof external_ref === 'string' && external_ref.trim() ? external_ref.trim() : null,
