@@ -29,7 +29,7 @@ interface Playbook {
   publicDisplayName?: string | null
   publicAvatarUrl?: string | null
   youtubeLinks?: string[]
-  rules?: { entry?: unknown[]; exit?: unknown[]; linkedRuleIds?: unknown[]; custom?: unknown[] }
+  rules?: { entry?: unknown[]; exit?: unknown[]; linkedRuleIds?: unknown[]; custom?: unknown[]; color?: unknown }
   tags?: unknown[]
 }
 
@@ -326,7 +326,7 @@ export default function TemplatesPage() {
         {filteredPlaybooks.map((playbook) => {
           const isExpanded = expandedId === playbook.id
           return (
-          <Card key={playbook.id} className="p-6 bg-card border-border hover:border-primary transition-colors flex flex-col cursor-pointer" onClick={() => { setExpandedId(isExpanded ? null : playbook.id); if (!isExpanded) void loadComments(playbook.id) }}>
+          <Card key={playbook.id} className="p-6 bg-card border-border hover:border-primary transition-colors flex flex-col cursor-pointer" style={(() => { const color = typeof playbook.rules?.color === 'string' && /^#[0-9A-F]{6}$/i.test(playbook.rules.color) ? playbook.rules.color : null; return color ? { borderColor: `${color}66`, boxShadow: `0 0 0 1px ${color}33, 0 0 24px ${color}55` } : undefined })()} onClick={() => { setExpandedId(isExpanded ? null : playbook.id); if (!isExpanded) void loadComments(playbook.id) }}>
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3 flex-1 min-w-0">

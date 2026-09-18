@@ -259,6 +259,7 @@ export default function PlaybooksPage() {
                   'overflow-hidden transition-all',
                   isActive && 'border-primary/50 shadow-sm shadow-primary/10'
                 )}
+                style={(() => { const rules = p.rules as { color?: unknown } | null; const color = typeof rules?.color === 'string' && /^#[0-9A-F]{6}$/i.test(rules.color) ? rules.color : null; return color ? { borderColor: `${color}66`, boxShadow: `0 0 0 1px ${color}33, 0 0 24px ${color}55` } : undefined })()}
               >
                 {/* Active stripe */}
                 {isActive && <div className="h-0.5 w-full bg-primary" />}
