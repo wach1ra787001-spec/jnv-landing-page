@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   AlertCircle, CheckCircle2, ChevronDown, FileUp, Loader2,
-  Upload, X, ArrowRight, BookOpen,
+  Upload, X, ArrowRight, BookOpen, BarChart3, LayoutDashboard,
 } from 'lucide-react'
 import {
   parseCSV, autoMapColumns, FIELD_MAP, REQUIRED_FIELDS,
@@ -48,7 +48,7 @@ export function CSVImportWizard() {
   // ── Upload / parse ──────────────────────────────────────────────────────────
 
   const processFile = useCallback((file: File) => {
-    if (!file.name.endsWith('.csv')) {
+    if (!file.name.toLowerCase().endsWith('.csv') && file.type !== 'text/csv') {
       appToast.error('Invalid file type', 'Please upload a .csv file')
       return
     }
@@ -130,6 +130,11 @@ export function CSVImportWizard() {
       }
 
       setImportResult(data)
+      try {
+        window.sessionStorage.setItem('jnv_pending_import_trades', JSON.stringify(data.trades || parseResult.trades))
+      } catch (storageError) {
+        console.error('[v0] Could not stage imported trades:', storageError)
+      }
       setStep('done')
 
       // Fire "Journal Now" toast notification
@@ -189,7 +194,7 @@ export function CSVImportWizard() {
             ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
           onClick={() => inputRef.current?.click()}
         >
-          <input ref={inputRef} type="file" accept=".csv" onChange={handleFileChange} className="hidden" />
+          <input ref={inputRef} type="file" accept=".csv,text/csv" onChange={handleFileChange} className="hidden" aria-label="Browse CSV files" />
           <FileUp className="w-10 h-10 text-muted-foreground mx-auto mb-3" />
           <p className="font-semibold text-foreground">Upload a new file</p>
           <p className="text-sm text-muted-foreground mt-1">Drag & drop your CSV here, or click to browse</p>
@@ -403,18 +408,43 @@ export function CSVImportWizard() {
           <div>
             <h3 className="text-lg font-semibold text-foreground">Import Complete</h3>
             <p className="text-muted-foreground mt-1">
-              <span className="text-foreground font-semibold">{importResult.imported}</span> trades imported
+              <span className="text-foreground font-semibold">{importResult.imported}</span> trades ready to log
               {importResult.duplicates > 0 && <span className="text-muted-foreground">, {importResult.duplicates} duplicates skipped</span>}
               {importResult.skipped > 0 && <span className="text-muted-foreground">, {importResult.skipped} rows had errors</span>}
             </p>
           </div>
-          <div className="flex gap-2 mt-2">
-            <Button variant="outline" onClick={reset}>
-              Import Another File
-            </Button>
-            <Button onClick={() => router.push('/dashboard/trade-journal')} className="gap-2">
+          <div className="grid w-full max-w-xl gap-3 rounded-lg border border-border/60 bg-muted/20 p-4 text-left sm:grid-cols-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Imported</p>
+              <p className="text-lg font-semibold text-foreground">{importResult.imported}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Duplicates skipped</p>
+              <p className="text-lg font-semibold text-foreground">{importResult.duplicates}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Rows with errors</p>
+              <p className="text-lg font-semibold text-foreground">{importResult.skipped}</p>
+            </div>
+          </div>
+          <p className="max-w-xl text-sm text-muted-foreground">Complete each trade in Log a Trade before it is saved to Trade History and included in analytics.</p>
+          <div className="flex flex-wrap justify-center gap-2 mt-2">
+            <Button variant="outline" onClick={reset}>Import Another File</Button>
+            <Button onClick={() => router.push('/dashboard/journal/new')} className="gap-2">
               <BookOpen className="w-4 h-4" />
-              Journal Now
+              Log Imported Trades
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/dashboard/trade-history')} className="gap-2">
+              <BookOpen className="w-4 h-4" />
+              View Trade History
+            </Button>
+            <Button onClick={() => router.push('/dashboard')} className="gap-2">
+              <LayoutDashboard className="w-4 h-4" />
+              View Dashboard
+            </Button>
+            <Button variant="secondary" onClick={() => router.push('/dashboard/advanced-stats/streaks')} className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              View Advanced Stats
             </Button>
           </div>
         </div>

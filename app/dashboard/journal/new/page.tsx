@@ -64,10 +64,34 @@ export default function AddNewTradePage() {
   const [playbooks, setPlaybooks] = useState<any[]>([])
   const [loadingPlaybooks, setLoadingPlaybooks] = useState(true)
   const [showTradeSaveSuccess, setShowTradeSaveSuccess] = useState(false)
+  const [pendingImportedTrade, setPendingImportedTrade] = useState<any | null>(null)
+  const [pendingImportCount, setPendingImportCount] = useState(0)
 
   useEffect(() => {
     fetchAccounts()
     fetchPlaybooks()
+    try {
+      const stored = window.sessionStorage.getItem('jnv_pending_import_trades')
+      const queued = stored ? JSON.parse(stored) : []
+      if (Array.isArray(queued) && queued.length > 0) {
+        setPendingImportedTrade(queued[0])
+        setPendingImportCount(queued.length)
+        setFormData((current) => ({
+          ...current,
+          symbol: queued[0].symbol || '',
+          direction: queued[0].direction === 'short' ? 'sell' : 'buy',
+          entry_price: queued[0].entry_price?.toString() || '',
+          exit_price: queued[0].exit_price?.toString() || '',
+          lot_size: queued[0].lot_size?.toString() || '',
+          open_time: queued[0].open_time ? new Date(queued[0].open_time).toISOString().slice(0, 16) : '',
+          close_time: queued[0].close_time ? new Date(queued[0].close_time).toISOString().slice(0, 16) : '',
+          pnl: queued[0].pnl?.toString() || '',
+          status: 'closed',
+        }))
+      }
+    } catch (error) {
+      console.error('[v0] Could not load pending imported trade:', error)
+    }
   }, [])
 
   const fetchAccounts = async () => {
@@ -140,8 +164,8 @@ export default function AddNewTradePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!formData.symbol || !formData.entry_price || !formData.lot_size || !formData.account_id) {
-      appToast.tradeSaveFailed()
+    if (!formData.symbol || !formData.entry_price || !formData.lot_size || !formData.account_id || (pendingImportedTrade && !formData.playbook_id)) {
+      appToast.error('Strategy required', pendingImportedTrade ? 'Select the strategy or playbook used for this imported trade before saving.' : 'Complete the required trade fields.')
       return
     }
 
@@ -187,7 +211,7 @@ export default function AddNewTradePage() {
         risk_amount: formData.risk_amount ? parseFloat(formData.risk_amount) : null,
         strategy: formData.strategy || null,
         setup_type: formData.strategy || null,
-        source: 'manual',
+        source: pendingImportedTrade ? 'csv_import' : 'manual',
         notes: formData.notes || null,
         emotion_before: formData.emotion_before || null,
         status: 'closed',
@@ -216,6 +240,18 @@ export default function AddNewTradePage() {
 
       if (response.ok) {
         const result = await response.json()
+        if (pendingImportedTrade) {
+          const stored = window.sessionStorage.getItem('jnv_pending_import_trades')
+          const queued = stored ? JSON.parse(stored) : []
+          const remaining = Array.isArray(queued) ? queued.slice(1) : []
+          if (remaining.length > 0) {
+            window.sessionStorage.setItem('jnv_pending_import_trades', JSON.stringify(remaining))
+            router.refresh()
+            window.location.reload()
+            return
+          }
+          window.sessionStorage.removeItem('jnv_pending_import_trades')
+        }
         appToast.tradeSaved(result.symbol, result.pnl?.toFixed(2), '', result.pnl >= 0)
         setShowTradeSaveSuccess(true)
       } else {
@@ -302,8 +338,8 @@ export default function AddNewTradePage() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Add New Trade</h1>
-            <p className="text-sm text-muted-foreground">Enter your trade details below</p>
+            <h1 className="text-2xl font-bold text-foreground">Log a Trade</h1>
+            <p className="text-sm text-muted-foreground">{pendingImportedTrade ? `Review this imported trade and complete its strategy details${pendingImportCount > 1 ? ` (${pendingImportCount} remaining)` : ''}.` : 'Enter your trade details below'}</p>
           </div>
         </div>
 
