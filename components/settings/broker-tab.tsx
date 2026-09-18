@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CheckCircle2, Circle, ChevronDown, ChevronUp, Eye, EyeOff } from "lucide-react"
+import { CheckCircle2, Circle, ChevronDown, ChevronUp, Eye, EyeOff, LockKeyhole } from "lucide-react"
 import { BrokerLogo } from "@/components/broker-logo"
 import { BrokerConnection } from "@/types/ctrader"
 import { MT5ConnectionModal } from "@/components/mt5-connection-modal"
@@ -257,9 +257,17 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
       )}
 
       <div className="space-y-3">
-        {brokers.map((broker) => (
-          <div key={broker.id} className="border border-border rounded-lg bg-background overflow-hidden">
-            <div className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
+        {brokers.map((broker) => {
+          const comingSoon = ['mt5', 'ctrader', 'tradingview', 'tradelocker', 'interactive'].includes(broker.id)
+          return (
+          <div key={broker.id} className="relative border border-border rounded-lg bg-background overflow-hidden">
+            {comingSoon && (
+              <div className="absolute left-3 top-2 z-10 inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700" aria-label={`${broker.name} coming soon`}>
+                <LockKeyhole className="h-3 w-3" aria-hidden="true" />
+                Coming soon
+              </div>
+            )}
+            <div className={`flex items-center gap-4 p-4 pt-10 hover:bg-muted/50 transition-colors ${comingSoon ? 'opacity-75' : ''}`}>
               {/* Logo */}
               <div className="shrink-0">
                 <BrokerLogo source={broker.source} size="lg" />
@@ -349,7 +357,8 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
               </div>
             )}
           </div>
-        ))}
+          )
+        })}
       </div>
 
       <div className="pt-4 border-t border-border">
