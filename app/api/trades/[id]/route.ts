@@ -88,9 +88,8 @@ export async function PATCH(
       'symbol', 'direction', 'entry_price', 'exit_price', 
       'stop_loss', 'take_profit', 'quantity', 'entry_time', 
       'exit_time', 'pnl', 'pnl_percent', 'net_pnl', 'commission', 'swap', 'r_multiple', 
-      'risk_amount', 'strategy', 'setup_type', 'followed_rules', 'followed_rule_ids',
-      'status', 'screenshot_urls', 'playbook_rules_snapshot',
-      'playbook_name', 'playbook_version',
+      'risk_amount', 'strategy', 'setup_type',
+      'status', 'screenshot_urls', 'commission', 'swap', 'net_pnl',
     ]
     
     for (const field of allowedFields) {
