@@ -36,9 +36,14 @@ interface Playbook {
 function getDisplayText(value: unknown): string {
   if (typeof value === 'string' || typeof value === 'number') return String(value)
   if (value && typeof value === 'object') {
-    const item = value as { title?: unknown; description?: unknown; id?: unknown }
-    if (typeof item.title === 'string') return item.title
-    if (typeof item.description === 'string') return item.description
+    const item = value as { title?: unknown; description?: unknown; name?: unknown; text?: unknown; id?: unknown }
+    const title = typeof item.title === 'string' ? item.title.trim() : ''
+    const description = typeof item.description === 'string' ? item.description.trim() : ''
+    if (title && description) return `${title}: ${description}`
+    if (title) return title
+    if (description) return description
+    if (typeof item.name === 'string' && item.name.trim()) return item.name.trim()
+    if (typeof item.text === 'string' && item.text.trim()) return item.text.trim()
     if (typeof item.id === 'string') return item.id
   }
   return ''
@@ -379,7 +384,7 @@ export default function TemplatesPage() {
                 {(['entry', 'exit', 'custom'] as const).map((type) => playbook.rules?.[type]?.length ? (
                   <div key={type}>
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{type} rules</p>
-                    <ul className="space-y-1 text-sm text-foreground">{playbook.rules[type]!.map((rule, index) => <li key={index} className="flex gap-2"><span className="text-primary">•</span><span>{typeof rule === 'string' || typeof rule === 'number' ? String(rule) : getDisplayText(rule)}</span></li>)}</ul>
+                    <ul className="space-y-1 text-sm text-foreground">{playbook.rules[type]!.map((rule, index) => { const text = getDisplayText(rule); return text ? <li key={index} className="flex gap-2"><span className="text-primary">•</span><span>{text}</span></li> : null })}</ul>
                   </div>
                 ) : null)}
                 <div>

@@ -4,8 +4,16 @@ import { attachPlaybookMetrics, getPlaybookMetrics } from '@/lib/playbooks/metri
 
 function normalizePlaybookRules(playbook: Record<string, unknown>) {
   const raw = playbook.rules && typeof playbook.rules === 'object' ? playbook.rules as Record<string, unknown> : {}
-  const entry = Array.isArray(raw.entry) ? raw.entry : Array.isArray(raw.entryCriteria) ? raw.entryCriteria : []
-  const exit = Array.isArray(raw.exit) ? raw.exit : Array.isArray(raw.exitCriteria) ? raw.exitCriteria : []
+  const normalizeCriteria = (value: unknown) => Array.isArray(value) ? value.map((rule) => {
+    if (typeof rule === 'string' || typeof rule === 'number') return String(rule)
+    if (!rule || typeof rule !== 'object') return ''
+    const item = rule as Record<string, unknown>
+    return { id: String(item.id || crypto.randomUUID()), title: String(item.title || item.name || item.text || ''), description: String(item.description || '') }
+  }).filter((rule) => typeof rule === 'string' ? rule.trim() : rule.title.trim() || rule.description.trim()) : []
+  const entrySource = raw.entry ?? raw.entryCriteria ?? raw.entry_rules ?? raw.entryRules ?? playbook.entry_rules
+  const exitSource = raw.exit ?? raw.exitCriteria ?? raw.exit_rules ?? raw.exitRules ?? playbook.exit_rules
+  const entry = normalizeCriteria(entrySource)
+  const exit = normalizeCriteria(exitSource)
   return { ...playbook, rules: { ...raw, entry, exit } }
 }
 
