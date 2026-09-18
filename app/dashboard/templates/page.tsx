@@ -283,10 +283,15 @@ export default function TemplatesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Trading Templates & Playbooks</h1>
-        <Button onClick={() => setShowCreateForm(true)} className="gap-2 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" />
-          Build your own playbook
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button onClick={() => setShowCreateForm(true)} className="gap-2 bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4" />
+            Build your own playbook
+          </Button>
+          <Button variant="outline" onClick={() => router.push('/dashboard/personal-area/playbooks')}>
+            Go to your own playbooks
+          </Button>
+        </div>
       </div>
       
       <p className="text-sm text-muted-foreground">Most popular playbooks based on recent success, likes, and community feedback.</p>
