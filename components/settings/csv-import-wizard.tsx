@@ -7,13 +7,14 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   AlertCircle, CheckCircle2, ChevronDown, FileUp, Loader2,
-  Upload, X, ArrowRight, BookOpen, BarChart3, LayoutDashboard,
+  Upload, X, ArrowRight, BookOpen,
 } from 'lucide-react'
 import {
   parseCSV, autoMapColumns, FIELD_MAP, REQUIRED_FIELDS,
   type ColumnMapping, type FieldKey, type ParseResult,
 } from '@/lib/csv-import/parser'
 import { appToast } from '@/lib/toast-utils'
+import { setPendingImportedTrades } from '@/lib/pending-imports'
 
 type Step = 'upload' | 'map' | 'preview' | 'importing' | 'done'
 
@@ -130,20 +131,14 @@ export function CSVImportWizard() {
       }
 
       setImportResult(data)
-      try {
-        window.sessionStorage.setItem('jnv_pending_import_trades', JSON.stringify(data.trades || parseResult.trades))
-      } catch (storageError) {
-        console.error('[v0] Could not stage imported trades:', storageError)
-      }
+      setPendingImportedTrades(data.trades || parseResult.trades, 'CSV')
       setStep('done')
 
-      // Fire "Journal Now" toast notification
+      // Notify, then take the user straight to Log a Trade so they can
+      // complete each imported trade with a strategy, notes, and screenshots.
       if (data.imported > 0) {
-        appToast.tradeImported(
-          `${data.imported} trade${data.imported > 1 ? 's' : ''}`,
-          '',
-          () => router.push('/dashboard/trade-journal')
-        )
+        appToast.tradesImported(data.imported)
+        router.push('/dashboard/journal')
       }
     } catch (err: any) {
       setImportError(err.message)
@@ -406,46 +401,23 @@ export function CSVImportWizard() {
             <CheckCircle2 className="w-8 h-8 text-green-600" />
           </div>
           <div>
-            <h3 className="text-lg font-semibold text-foreground">Import Complete</h3>
+            <h3 className="text-lg font-semibold text-foreground">
+              {importResult.imported > 0 ? 'Redirecting to Log a Trade...' : 'No New Trades'}
+            </h3>
             <p className="text-muted-foreground mt-1">
               <span className="text-foreground font-semibold">{importResult.imported}</span> trades ready to log
               {importResult.duplicates > 0 && <span className="text-muted-foreground">, {importResult.duplicates} duplicates skipped</span>}
               {importResult.skipped > 0 && <span className="text-muted-foreground">, {importResult.skipped} rows had errors</span>}
             </p>
           </div>
-          <div className="grid w-full max-w-xl gap-3 rounded-lg border border-border/60 bg-muted/20 p-4 text-left sm:grid-cols-3">
-            <div>
-              <p className="text-xs text-muted-foreground">Imported</p>
-              <p className="text-lg font-semibold text-foreground">{importResult.imported}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Duplicates skipped</p>
-              <p className="text-lg font-semibold text-foreground">{importResult.duplicates}</p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Rows with errors</p>
-              <p className="text-lg font-semibold text-foreground">{importResult.skipped}</p>
-            </div>
-          </div>
-          <p className="max-w-xl text-sm text-muted-foreground">Complete each trade in Log a Trade before it is saved to Trade History and included in analytics.</p>
           <div className="flex flex-wrap justify-center gap-2 mt-2">
             <Button variant="outline" onClick={reset}>Import Another File</Button>
-            <Button onClick={() => router.push('/dashboard/journal/new')} className="gap-2">
-              <BookOpen className="w-4 h-4" />
-              Log Imported Trades
-            </Button>
-            <Button variant="outline" onClick={() => router.push('/dashboard/trade-history')} className="gap-2">
-              <BookOpen className="w-4 h-4" />
-              View Trade History
-            </Button>
-            <Button onClick={() => router.push('/dashboard')} className="gap-2">
-              <LayoutDashboard className="w-4 h-4" />
-              View Dashboard
-            </Button>
-            <Button variant="secondary" onClick={() => router.push('/dashboard/advanced-stats/streaks')} className="gap-2">
-              <BarChart3 className="w-4 h-4" />
-              View Advanced Stats
-            </Button>
+            {importResult.imported > 0 && (
+              <Button onClick={() => router.push('/dashboard/journal')} className="gap-2">
+                <BookOpen className="w-4 h-4" />
+                Go to Log a Trade
+              </Button>
+            )}
           </div>
         </div>
       )}

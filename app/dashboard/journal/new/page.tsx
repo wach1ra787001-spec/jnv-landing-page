@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { getPendingImportedTradeAt, removePendingImportedTradeAt, getPendingImportedTradesCount } from '@/lib/pending-imports'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -53,6 +54,7 @@ const toDbDirection = (d: string) => d === 'buy' ? 'long' : 'short'
 
 export default function AddNewTradePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { selectedAccountId } = useAccount()
   const [formData, setFormData] = useState(DEFAULT_FORM)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -65,33 +67,39 @@ export default function AddNewTradePage() {
   const [loadingPlaybooks, setLoadingPlaybooks] = useState(true)
   const [showTradeSaveSuccess, setShowTradeSaveSuccess] = useState(false)
   const [pendingImportedTrade, setPendingImportedTrade] = useState<any | null>(null)
+  const [pendingImportIndex, setPendingImportIndex] = useState<number | null>(null)
   const [pendingImportCount, setPendingImportCount] = useState(0)
 
   useEffect(() => {
     fetchAccounts()
     fetchPlaybooks()
     try {
-      const stored = window.sessionStorage.getItem('jnv_pending_import_trades')
-      const queued = stored ? JSON.parse(stored) : []
-      if (Array.isArray(queued) && queued.length > 0) {
-        setPendingImportedTrade(queued[0])
-        setPendingImportCount(queued.length)
-        setFormData((current) => ({
-          ...current,
-          symbol: queued[0].symbol || '',
-          direction: queued[0].direction === 'short' ? 'sell' : 'buy',
-          entry_price: queued[0].entry_price?.toString() || '',
-          exit_price: queued[0].exit_price?.toString() || '',
-          lot_size: queued[0].lot_size?.toString() || '',
-          open_time: queued[0].open_time ? new Date(queued[0].open_time).toISOString().slice(0, 16) : '',
-          close_time: queued[0].close_time ? new Date(queued[0].close_time).toISOString().slice(0, 16) : '',
-          pnl: queued[0].pnl?.toString() || '',
-          status: 'closed',
-        }))
-      }
+      const rawIndex = searchParams.get('importIndex')
+      const index = rawIndex !== null ? Number.parseInt(rawIndex, 10) : null
+      if (index === null || Number.isNaN(index)) return
+
+      const trade = getPendingImportedTradeAt(index)
+      if (!trade) return
+
+      setPendingImportedTrade(trade)
+      setPendingImportIndex(index)
+      setPendingImportCount(getPendingImportedTradesCount())
+      setFormData((current) => ({
+        ...current,
+        symbol: trade.symbol || '',
+        direction: trade.direction === 'short' ? 'sell' : 'buy',
+        entry_price: trade.entry_price?.toString() || '',
+        exit_price: trade.exit_price?.toString() || '',
+        lot_size: trade.lot_size?.toString() || '',
+        open_time: trade.open_time ? new Date(trade.open_time).toISOString().slice(0, 16) : '',
+        close_time: trade.close_time ? new Date(trade.close_time).toISOString().slice(0, 16) : '',
+        pnl: trade.pnl?.toString() || '',
+        status: 'closed',
+      }))
     } catch (error) {
       console.error('[v0] Could not load pending imported trade:', error)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchAccounts = async () => {
@@ -240,17 +248,8 @@ export default function AddNewTradePage() {
 
       if (response.ok) {
         const result = await response.json()
-        if (pendingImportedTrade) {
-          const stored = window.sessionStorage.getItem('jnv_pending_import_trades')
-          const queued = stored ? JSON.parse(stored) : []
-          const remaining = Array.isArray(queued) ? queued.slice(1) : []
-          if (remaining.length > 0) {
-            window.sessionStorage.setItem('jnv_pending_import_trades', JSON.stringify(remaining))
-            router.refresh()
-            window.location.reload()
-            return
-          }
-          window.sessionStorage.removeItem('jnv_pending_import_trades')
+        if (pendingImportedTrade && pendingImportIndex !== null) {
+          removePendingImportedTradeAt(pendingImportIndex)
         }
         appToast.tradeSaved(result.symbol, result.pnl?.toFixed(2), '', result.pnl >= 0)
         setShowTradeSaveSuccess(true)

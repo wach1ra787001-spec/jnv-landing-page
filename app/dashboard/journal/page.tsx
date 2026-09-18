@@ -1,11 +1,22 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Plus, ArrowRight, AlertTriangle } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Plus, ArrowRight, AlertTriangle, FileSpreadsheet, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { getPendingImportedTrades, type PendingImportedTrade } from '@/lib/pending-imports'
 
 export default function JournalPage() {
+  const router = useRouter()
+  const [pendingTrades, setPendingTrades] = useState<PendingImportedTrade[]>([])
+
+  useEffect(() => {
+    setPendingTrades(getPendingImportedTrades())
+  }, [])
+
   return (
     <div className="flex flex-col gap-8 pb-8">
       {/* Header */}
@@ -35,6 +46,57 @@ export default function JournalPage() {
           </div>
         </div>
       </div>
+
+      {/* Imported trades awaiting journaling */}
+      {pendingTrades.length > 0 && (
+        <Card className="border border-amber-500/30 bg-amber-500/5 overflow-hidden">
+          <div className="flex items-center justify-between gap-3 p-4 border-b border-amber-500/20">
+            <div className="flex items-center gap-2">
+              <FileSpreadsheet className="w-4 h-4 text-amber-600" />
+              <h2 className="text-sm sm:text-base font-semibold text-foreground">
+                Imported Trades from {pendingTrades[0]?.source_label || 'CSV'} ({pendingTrades.length})
+              </h2>
+            </div>
+            <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700">
+              Needs strategy to save
+            </Badge>
+          </div>
+          <p className="px-4 pt-3 text-xs sm:text-sm text-muted-foreground">
+            Complete each trade below with a strategy, notes, and screenshots before it is saved to Trade History.
+          </p>
+          <div className="divide-y divide-amber-500/10">
+            {pendingTrades.map((trade, index) => {
+              const isWin = (trade.pnl ?? 0) >= 0
+              return (
+                <button
+                  key={`${trade.external_ref || trade.symbol}-${index}`}
+                  type="button"
+                  onClick={() => router.push(`/dashboard/journal/new?importIndex=${index}`)}
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-amber-500/10"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className={`shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold ${trade.direction === 'short' ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      {trade.direction === 'short' ? 'SHORT' : 'LONG'}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="font-mono font-medium text-foreground truncate">{trade.symbol}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {trade.open_time ? new Date(trade.open_time as string).toLocaleDateString() : 'Unknown date'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <span className={`text-sm font-semibold ${isWin ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {isWin ? '+' : ''}{(trade.pnl ?? 0).toFixed(2)}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       {/* Navigation to Trade History */}
       <Card className="p-8 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
