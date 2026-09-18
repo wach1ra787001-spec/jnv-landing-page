@@ -19,6 +19,7 @@ import { DayToDayCard } from "@/components/dashboard/day-to-day-card"
 import { calculateMonthlyGrowthTimeline } from "@/lib/monthly-growth-analysis"
 import { getSelectedAccountId } from "@/lib/get-selected-account"
 import { endOfWeek, format, startOfWeek, subWeeks } from "date-fns"
+import { getDailyTradingQuote } from "@/lib/trading-quotes"
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ dayWeek?: string }> }) {
   const { dayWeek } = await searchParams
@@ -205,7 +206,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {/* Hero Card - Full Width */}
       <div className="pt-2">
         <HeroCard 
-          userName={userName} 
+          userName={userName}
+          quote={getDailyTradingQuote(user?.id || userName)}
           streakDays={actualTradeMetrics.current_streak}
           recentTrades={[...(recentTrades || [])].reverse().map((trade) => ({
             id: trade.id,

@@ -9,11 +9,12 @@ import { ChevronRight } from "lucide-react"
 
 interface HeroCardProps {
   userName: string
+  quote: string
   streakDays?: number
   recentTrades?: Array<{ id: string; result: "win" | "loss" }>
 }
 
-export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCardProps) {
+export function HeroCard({ userName, quote, streakDays = 0, recentTrades = [] }: HeroCardProps) {
   const router = useRouter()
   const [greeting, setGreeting] = useState("Good Morning")
   const [mounted, setMounted] = useState(false)
@@ -35,7 +36,7 @@ export function HeroCard({ userName, streakDays = 0, recentTrades = [] }: HeroCa
             {mounted ? greeting : "Welcome"}, {userName}
           </h1>
           <p className="text-[13px] sm:text-sm text-[#64748B] italic leading-relaxed">
-            {"\"Consistency compounds. Protect capital first.\""}
+            {`"${quote}"`}
           </p>
         </div>
 
