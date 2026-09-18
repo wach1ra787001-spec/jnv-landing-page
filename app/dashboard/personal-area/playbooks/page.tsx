@@ -314,7 +314,7 @@ export default function PlaybooksPage() {
                           {p.is_public ? <Lock className="w-4 h-4 mr-2" /> : <Globe className="w-4 h-4 mr-2" />}
                           {p.is_public ? 'Make private' : 'Publish to Templates'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(p)}><Edit2 className="w-4 h-4 mr-2" />Edit playbook</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleEdit(p)}><Edit2 className="w-4 h-4 mr-2" />Edit playbook</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="w-4 h-4 mr-2" />Delete playbook</DropdownMenuItem>
                       </DropdownMenuContent>
