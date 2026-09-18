@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
   const { data: savedImports, error: importError } = await supabase
     .from('csv_imports')
     .upsert(toInsert, { onConflict: 'user_id,source,external_ref', ignoreDuplicates: true })
-    .select('id, symbol, direction, entry_price, exit_price, lot_size, quantity, entry_time, exit_time, pnl, net_pnl, commission, swap, external_ref, status, raw_payload, source')
+    .select('id, symbol, direction, entry_price, exit_price, lot_size, quantity, entry_time, exit_time, pnl, net_pnl, commission, swap, stop_loss, take_profit, external_ref, status, raw_payload, source')
 
   if (importError) {
     console.error('[v0] Failed to persist pending CSV imports:', importError)
