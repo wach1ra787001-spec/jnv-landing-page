@@ -58,7 +58,36 @@ export async function GET(request: NextRequest) {
       else console.error('[v0] Failed to materialize connected accounts:', materializeError)
     }
 
-    return NextResponse.json(accountRows)
+    // Compute each account's current balance (initial balance + net PnL of its
+    // logged trades) so the accounts list can show live balance alongside
+    // the initial balance without a separate request per account.
+    const accountIds = accountRows.map((account) => account.id)
+    let pnlByAccountId = new Map<string, number>()
+    if (accountIds.length > 0) {
+      const { data: trades, error: tradesError } = await supabase
+        .from('trades')
+        .select('account_id, net_pnl')
+        .eq('user_id', user.id)
+        .in('account_id', accountIds)
+
+      if (tradesError) {
+        console.error('[v0] Error fetching trades for balance calculation:', tradesError)
+      } else {
+        pnlByAccountId = (trades || []).reduce((map, trade) => {
+          const accountId = trade.account_id as string
+          map.set(accountId, (map.get(accountId) || 0) + (trade.net_pnl || 0))
+          return map
+        }, new Map<string, number>())
+      }
+    }
+
+    const accountsWithBalance = accountRows.map((account) => ({
+      ...account,
+      total_pnl: pnlByAccountId.get(account.id) || 0,
+      current_balance: (account.initial_balance || 0) + (pnlByAccountId.get(account.id) || 0),
+    }))
+
+    return NextResponse.json(accountsWithBalance)
   } catch (error) {
     console.error('[v0] Error in GET /api/accounts:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })

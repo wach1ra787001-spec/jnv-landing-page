@@ -38,6 +38,12 @@ export interface CreateTradeInput {
   exit_time: string
   pnl: number
   pnl_percent: number
+  /** Net P&L (after commission/swap). Powers dashboard KPIs, account balance,
+   *  and every analytics view. Defaults to pnl - commission - swap when omitted. */
+  net_pnl?: number
+  commission?: number
+  swap?: number
+  external_ref?: string | null
   r_multiple?: number | null
   risk_amount?: number | null
   notes?: string
@@ -162,6 +168,9 @@ export async function createTrade(tradeData: CreateTradeInput) {
     ? 'breakeven'
     : (tradeData.status || 'closed')
 
+  const commission = tradeData.commission ?? 0
+  const swap = tradeData.swap ?? 0
+
   const insertData: any = {
     user_id: user.id,
     symbol: tradeData.symbol.trim().toUpperCase(),
@@ -173,6 +182,9 @@ export async function createTrade(tradeData: CreateTradeInput) {
     exit_time: tradeData.exit_time,
     pnl: tradeData.pnl,
     pnl_percent: tradeData.pnl_percent,
+    commission,
+    swap,
+    external_ref: tradeData.external_ref || null,
     stop_loss: tradeData.stop_loss || null,
     take_profit: tradeData.take_profit || null,
     r_multiple: tradeData.r_multiple || null,

@@ -8,7 +8,6 @@ import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
 import { ArrowDownRight, ArrowUpRight, Search, Loader2, Trash2, Edit2 } from 'lucide-react'
 import { appToast } from '@/lib/toast-utils'
-import { EditTradeModal } from '@/components/dashboard/edit-trade-modal'
 import { useAccount } from '@/components/dashboard/account-context'
 
 interface Trade {
@@ -42,7 +41,6 @@ export default function TradeHistoryPage() {
   const [loading, setLoading] = useState(true)
   const [deleteConfirm, setDeleteConfirm] = useState<{ show: boolean; tradeId: string | null }>({ show: false, tradeId: null })
   const [deleting, setDeleting] = useState(false)
-  const [editingTrade, setEditingTrade] = useState<Trade | null>(null)
   const [editingMissedTrade, setEditingMissedTrade] = useState<Trade | null>(null)
   const [savingMissed, setSavingMissed] = useState(false)
 
@@ -269,7 +267,7 @@ export default function TradeHistoryPage() {
                           className="gap-1"
                           onClick={(e) => {
                             e.stopPropagation()
-                            trade.missed ? setEditingMissedTrade(trade) : setEditingTrade(trade)
+                            trade.missed ? setEditingMissedTrade(trade) : router.push(`/dashboard/journal/${trade.id}/edit`)
                           }}
                         >
                           <Edit2 className="w-4 h-4" />
@@ -323,19 +321,6 @@ export default function TradeHistoryPage() {
             </form>
           </Card>
         </div>
-      )}
-
-      {/* Edit Trade Modal */}
-      {editingTrade && (
-        <EditTradeModal
-          trade={editingTrade}
-          onClose={() => setEditingTrade(null)}
-          onUpdate={(updatedTrade) => {
-            setTrades(trades.map(t => t.id === updatedTrade.id ? updatedTrade : t))
-            appToast.tradeSaved(updatedTrade.symbol, updatedTrade.pnl.toFixed(2), updatedTrade.pnlPercent.toFixed(2), updatedTrade.pnl >= 0)
-            setEditingTrade(null)
-          }}
-        />
       )}
 
       {/* Delete Confirmation Dialog */}
