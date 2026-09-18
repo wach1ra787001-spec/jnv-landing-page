@@ -46,7 +46,7 @@ const personalAreaSubItems = [
 ]
 
 const navItems = [
-  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/dashboard/journal", label: "Log a Trade", icon: BookOpen },
   { href: "/dashboard/monthly", label: "Monthly", icon: Calendar },
   { href: "/dashboard/trade-history", label: "Trade History", icon: History },

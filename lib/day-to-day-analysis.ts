@@ -116,7 +116,7 @@ export function computeCurrentStreak(
   allTrades: DayToDayTrade[],
 ): { count: number; type: 'win' | 'loss' | 'none' } {
   const closed = allTrades
-    .filter((t) => t.status === 'closed' && t.exit_time)
+    .filter((t) => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()) && t.exit_time)
     .sort((a, b) => new Date(b.exit_time!).getTime() - new Date(a.exit_time!).getTime())
 
   if (closed.length === 0) return { count: 0, type: 'none' }
@@ -153,7 +153,7 @@ export function computeDayToDaySnapshot(
   now: Date = new Date(),
 ): DayToDaySnapshot {
   const todaysTrades = allTrades.filter(
-    (t) => t.status === 'closed' && isSameLocalDay(t.exit_time, now),
+    (t) => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()) && isSameLocalDay(t.exit_time, now),
   )
 
   const currentStreak = computeCurrentStreak(allTrades)
@@ -326,7 +326,7 @@ export function computeSevenDayTrend(
     day.setDate(now.getDate() - i)
 
     const dayTrades = allTrades.filter(
-      (t) => t.status === 'closed' && isSameLocalDay(t.exit_time, day),
+      (t) => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()) && isSameLocalDay(t.exit_time, day),
     )
 
     if (dayTrades.length === 0) {

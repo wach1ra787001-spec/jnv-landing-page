@@ -163,10 +163,11 @@ export async function createTrade(tradeData: CreateTradeInput) {
     ownedAccountId = ownedAccount.id
   }
 
-  const normalizedPnlPercent = Number(tradeData.pnl_percent)
-  const normalizedStatus = Number.isFinite(normalizedPnlPercent) && Math.abs(normalizedPnlPercent) <= 0.1
-    ? 'breakeven'
-    : (tradeData.status || 'closed')
+  // Outcome (win/loss/breakeven) is derived from P&L by analytics. The
+  // trades table status describes lifecycle only and uses closed for any
+  // completed trade; writing breakeven here excludes trades from pages that
+  // query completed trades.
+  const normalizedStatus = tradeData.status === 'open' ? 'open' : 'closed'
 
   const commission = tradeData.commission ?? 0
   const swap = tradeData.swap ?? 0

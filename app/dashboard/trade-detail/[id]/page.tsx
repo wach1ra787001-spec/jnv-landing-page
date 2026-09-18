@@ -86,8 +86,13 @@ export default function TradeDetailPage() {
               const rulesColumn = playbook?.rules && typeof playbook.rules === 'object' ? playbook.rules : {}
               const playbookRules = ['entry', 'exit', 'custom']
                 .flatMap((section) => Array.isArray(rulesColumn[section]) ? rulesColumn[section] : [])
-                .filter((rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0)
-                .map((label: string, index: number) => ({ id: `custom-${index}`, title: label.trim(), rule: label.trim(), is_active: true, isCustom: true }))
+                .flatMap((rule: unknown, index: number) => {
+                  const item = rule && typeof rule === 'object' ? rule as { id?: unknown; title?: unknown; description?: unknown; name?: unknown; text?: unknown } : null
+                  const title = item ? (typeof item.title === 'string' ? item.title : typeof item.name === 'string' ? item.name : typeof item.text === 'string' ? item.text : '') : String(rule ?? '')
+                  const description = item && typeof item.description === 'string' ? item.description : ''
+                  const label = title.trim() && description.trim() ? `${title.trim()}: ${description.trim()}` : (title.trim() || description.trim())
+                  return label ? [{ id: item && typeof item.id === 'string' ? item.id : `custom-${index}`, title: label, rule: label, is_active: true, isCustom: true }] : []
+                })
               const directRuleLabels = typeof data.followed_rules === 'string'
                 ? data.followed_rules.split(/\r?\n|,/).map((label: string) => label.trim()).filter(Boolean)
                 : []

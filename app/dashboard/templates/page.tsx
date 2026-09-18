@@ -29,8 +29,24 @@ interface Playbook {
   publicDisplayName?: string | null
   publicAvatarUrl?: string | null
   youtubeLinks?: string[]
-  rules?: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[]; custom?: string[] }
-  tags?: string[]
+  rules?: { entry?: unknown[]; exit?: unknown[]; linkedRuleIds?: unknown[]; custom?: unknown[]; color?: unknown }
+  tags?: unknown[]
+}
+
+function getDisplayText(value: unknown): string {
+  if (typeof value === 'string' || typeof value === 'number') return String(value)
+  if (value && typeof value === 'object') {
+    const item = value as { title?: unknown; description?: unknown; name?: unknown; text?: unknown; id?: unknown }
+    const title = typeof item.title === 'string' ? item.title.trim() : ''
+    const description = typeof item.description === 'string' ? item.description.trim() : ''
+    if (title && description) return `${title}: ${description}`
+    if (title) return title
+    if (description) return description
+    if (typeof item.name === 'string' && item.name.trim()) return item.name.trim()
+    if (typeof item.text === 'string' && item.text.trim()) return item.text.trim()
+    if (typeof item.id === 'string') return item.id
+  }
+  return ''
 }
 
 const mockPlaybooks: Playbook[] = [
@@ -242,8 +258,18 @@ export default function TemplatesPage() {
     return (
       <div className="space-y-6 flex flex-col items-center">
         <CreatePlaybookForm
-          onSubmit={(data) => {
-            console.log("New playbook created:", data)
+          onSubmit={async (data) => {
+            const response = await fetch('/api/playbooks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+              title: data.name,
+              description: data.label,
+              strategy_type: 'general',
+              is_public: data.isPublic,
+              public_display_name: data.publicDisplayName,
+              youtube_links: data.youtubeLinks.split('\\n').map((link) => link.trim()).filter(Boolean),
+              color: data.color,
+              rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds },
+            }) })
+            if (!response.ok) throw new Error('Failed to create playbook')
             setShowCreateForm(false)
           }}
           onCancel={() => setShowCreateForm(false)}
@@ -257,10 +283,15 @@ export default function TemplatesPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Trading Templates & Playbooks</h1>
-        <Button onClick={() => setShowCreateForm(true)} className="gap-2 bg-primary hover:bg-primary/90">
-          <Plus className="w-4 h-4" />
-          Create Playbook
-        </Button>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Button onClick={() => setShowCreateForm(true)} className="gap-2 bg-primary hover:bg-primary/90">
+            <Plus className="w-4 h-4" />
+            Build your own playbook
+          </Button>
+          <Button variant="outline" onClick={() => router.push('/dashboard/personal-area/playbooks')}>
+            Go to your own playbooks
+          </Button>
+        </div>
       </div>
       
       <p className="text-sm text-muted-foreground">Most popular playbooks based on recent success, likes, and community feedback.</p>
@@ -300,7 +331,7 @@ export default function TemplatesPage() {
         {filteredPlaybooks.map((playbook) => {
           const isExpanded = expandedId === playbook.id
           return (
-          <Card key={playbook.id} className="p-6 bg-card border-border hover:border-primary transition-colors flex flex-col cursor-pointer" onClick={() => { setExpandedId(isExpanded ? null : playbook.id); if (!isExpanded) void loadComments(playbook.id) }}>
+          <Card key={playbook.id} className="p-6 bg-card border-border hover:border-primary transition-colors flex flex-col cursor-pointer" style={(() => { const color = typeof playbook.rules?.color === 'string' && /^#[0-9A-F]{6}$/i.test(playbook.rules.color) ? playbook.rules.color : null; return color ? { borderColor: `${color}66`, boxShadow: `0 0 0 1px ${color}33, 0 0 24px ${color}55` } : undefined })()} onClick={() => { setExpandedId(isExpanded ? null : playbook.id); if (!isExpanded) void loadComments(playbook.id) }}>
             {/* Header */}
             <div className="flex items-start justify-between mb-4">
               <div className="flex items-center gap-3 flex-1 min-w-0">
@@ -316,18 +347,18 @@ export default function TemplatesPage() {
             <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{playbook.description}</p>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-5 gap-2 mb-4 py-4 border-y border-border">
-              <div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-4 mb-4 py-4 border-y border-border sm:grid-cols-5 sm:gap-2">
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground mb-1">Win Rate</p>
                 <p className="font-bold text-sm text-green-600 dark:text-green-400">{playbook.winRate}%</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Trades</p>
+                <p className="text-xs text-muted-foreground mb-1">Trades taken</p>
                 <p className="font-bold text-sm text-foreground">{playbook.trades}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">P&L</p>
-                <p className="font-bold text-sm text-green-600 dark:text-green-400">${(playbook.pnl / 1000).toFixed(1)}k</p>
+                <p className={cn("font-bold text-sm", playbook.pnl >= 0 ? "text-emerald-600" : "text-destructive")}>{playbook.pnl < 0 ? '-' : ''}${Math.abs(playbook.pnl).toFixed(2)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Users</p>
@@ -335,7 +366,7 @@ export default function TemplatesPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Month</p>
-                <p className="font-bold text-sm text-foreground">{playbook.month}</p>
+                <p className="font-bold text-sm text-foreground break-words">{playbook.month}</p>
               </div>
             </div>
 
@@ -351,6 +382,14 @@ export default function TemplatesPage() {
 
             {isExpanded && (
               <div className="mb-4 space-y-4 border-t border-border pt-4" onClick={(event) => event.stopPropagation()}>
+                <div className="rounded-lg border border-border bg-muted/30 p-3">
+                  <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Performance using this playbook</p>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div><p className="text-xs text-muted-foreground">Trades taken</p><p className="font-semibold text-foreground">{playbook.trades}</p></div>
+                    <div><p className="text-xs text-muted-foreground">Win rate</p><p className="font-semibold text-foreground">{playbook.winRate.toFixed(2)}%</p></div>
+                    <div><p className="text-xs text-muted-foreground">P&amp;L</p><p className={cn("font-semibold", playbook.pnl >= 0 ? "text-emerald-600" : "text-destructive")}>{playbook.pnl < 0 ? '-' : ''}${Math.abs(playbook.pnl).toFixed(2)}</p></div>
+                  </div>
+                </div>
                 <div>
                   <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</p>
                   <p className="whitespace-pre-wrap text-sm text-foreground">{playbook.description || 'No description provided.'}</p>
@@ -358,7 +397,7 @@ export default function TemplatesPage() {
                 {(['entry', 'exit', 'custom'] as const).map((type) => playbook.rules?.[type]?.length ? (
                   <div key={type}>
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{type} rules</p>
-                    <ul className="space-y-1 text-sm text-foreground">{playbook.rules[type]!.map((rule, index) => <li key={index} className="flex gap-2"><span className="text-primary">•</span><span>{rule}</span></li>)}</ul>
+                    <ul className="space-y-1 text-sm text-foreground">{playbook.rules[type]!.map((rule, index) => { const text = getDisplayText(rule); return text ? <li key={index} className="flex gap-2"><span className="text-primary">•</span><span>{text}</span></li> : null })}</ul>
                   </div>
                 ) : null)}
                 <div>
@@ -382,25 +421,25 @@ export default function TemplatesPage() {
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 pt-4 border-t border-border mt-auto" onClick={(event) => event.stopPropagation()}>
-              <Button size="sm" className="flex-1" onClick={() => useTemplate(playbook)} disabled={importingId === playbook.id}>{importingId === playbook.id ? 'Importing…' : 'Use this template'}</Button>
+            <div className="grid grid-cols-2 gap-2 pt-4 border-t border-border mt-auto sm:flex" onClick={(event) => event.stopPropagation()}>
+              <Button size="sm" className="col-span-2 min-w-0 sm:flex-1" onClick={() => useTemplate(playbook)} disabled={importingId === playbook.id}>{importingId === playbook.id ? 'Importing…' : 'Use this template'}</Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex-1 gap-2"
+                className="min-w-0 gap-2 sm:flex-1"
                 onClick={() => toggleLike(playbook.id)}
               >
                 <Heart className={cn("w-4 h-4", playbook.liked && "fill-current text-red-500")} />
                 <span className="text-xs">{playbook.likes}</span>
               </Button>
-              <Button variant="ghost" size="sm" className="flex-1 gap-2">
+              <Button variant="ghost" size="sm" className="min-w-0 gap-2 sm:flex-1">
                 <MessageCircle className="w-4 h-4" />
                 <span className="text-xs">{playbook.comments}</span>
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex-1 gap-2"
+                className="min-w-0 gap-2 sm:flex-1"
                 onClick={() => sharePlaybook(playbook)}
                 disabled={!playbook.publicSlug}
                 aria-label={`Share ${playbook.name}`}

@@ -89,7 +89,7 @@ function getDurationMinutes(entryTime: string, exitTime: string): number {
 }
 
 export function getSessionAnalysis(trades: Trade[]): SessionStats[] {
-  const closedTrades = trades.filter(t => t.status === 'closed')
+  const closedTrades = trades.filter(t => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()))
   
   const sessions = {
     asia: { name: 'Asian', trades: [] as Trade[] },
@@ -127,7 +127,7 @@ export function getHoldingTimeAnalysis(trades: Trade[]): {
   tradeData: HoldingTimeTradeData[]
   totalTrades: number
 } {
-  const closedTrades = trades.filter(t => t.status === 'closed')
+  const closedTrades = trades.filter(t => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()))
   
   const tradeData: HoldingTimeTradeData[] = closedTrades.map(trade => ({
     duration: getDurationMinutes(trade.entry_time, trade.exit_time),
@@ -170,7 +170,7 @@ export function getHoldingTimeAnalysis(trades: Trade[]): {
 }
 
 export function getMonthOverMonth(trades: Trade[]): MonthData[] {
-  const closedTrades = trades.filter(t => t.status === 'closed')
+  const closedTrades = trades.filter(t => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()))
   
   const monthGroups: { [key: string]: Trade[] } = {}
   

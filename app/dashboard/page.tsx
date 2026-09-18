@@ -50,32 +50,23 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   }
 
   const { data: allTrades } = await tradesQuery
-  const actualTradeMetrics = calculateMetricsFromTrades(allTrades || [])
+  const { data: growthAccount } = accountId
+    ? await supabase.from("accounts").select("initial_balance").eq("id", accountId).eq("user_id", user?.id).maybeSingle()
+    : { data: null }
+  const accountSize = Number(growthAccount?.initial_balance) || 0
+  const actualTradeMetrics = calculateMetricsFromTrades(allTrades || [], accountSize)
 
-  // Fetch trade metrics from database or calculate from trades
-  let { data: metrics } = await supabase
-    .from("trade_metrics")
-    .select("*")
-    .eq("user_id", user?.id)
-    .single()
-
-  // If no metrics in DB, calculate from actual trades
-  if (!metrics && allTrades && allTrades.length > 0) {
-    const calculatedMetrics = calculateMetricsFromTrades(allTrades)
-    metrics = {
-      id: '',
-      user_id: user?.id || '',
-      total_trades: calculatedMetrics.total_trades,
-      total_profit_loss: calculatedMetrics.total_profit_loss,
-      win_rate: calculatedMetrics.win_rate,
-      monthly_growth: calculatedMetrics.monthly_growth,
-      growth_vs_last_month: calculatedMetrics.growth_vs_last_month,
-      avg_trades_per_day: calculatedMetrics.avg_trades_per_day,
-      risk_exposure: calculatedMetrics.risk_exposure,
-      current_streak: calculatedMetrics.current_streak,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    }
+  // The metrics table is a stale aggregate and is not account-scoped. Always
+  // derive KPIs from the same account-filtered trades used by the dashboard.
+  // This keeps newly journaled/imported trades visible immediately.
+  const metrics = {
+    total_trades: actualTradeMetrics.total_trades,
+    total_profit_loss: actualTradeMetrics.total_profit_loss,
+    win_rate: actualTradeMetrics.win_rate,
+    monthly_growth: actualTradeMetrics.monthly_growth,
+    growth_vs_last_month: actualTradeMetrics.growth_vs_last_month,
+    avg_trades_per_day: actualTradeMetrics.avg_trades_per_day,
+    risk_exposure: actualTradeMetrics.risk_exposure,
   }
 
   // Fetch recent trades (last 5) - filtered by account
@@ -185,7 +176,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   )
 
   // Calculate monthly growth timeline for current and previous 2 months
-  const monthlyGrowthTimeline = calculateMonthlyGrowthTimeline(allTrades || [])
+  const monthlyGrowthTimeline = calculateMonthlyGrowthTimeline(allTrades || [], accountSize)
 
   // Transform trades data for the table component
   const formattedTrades = (recentTrades || []).map(trade => ({

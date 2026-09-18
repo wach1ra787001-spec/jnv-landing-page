@@ -82,7 +82,7 @@ export function PlaybookEmptyState({ onCreateClick }: PlaybookEmptyStateProps) {
             className="w-full md:w-auto gap-2 px-8"
           >
             <span>+</span>
-            New Playbook
+            Build your own playbook
           </Button>
           <p className="text-sm text-muted-foreground">
             Get started in seconds and build your first playbook today.

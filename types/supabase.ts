@@ -1,5 +1,5 @@
 // Supabase types
-export type TradeStatus = 'open' | 'closed' | 'cancelled'
+export type TradeStatus = 'open' | 'closed' | 'breakeven' | 'cancelled'
 export type TradeDirection = 'long' | 'short'
 export type TradeSource = 'manual' | 'mt5' | 'ctrader'
 
@@ -41,6 +41,7 @@ export interface Trade {
   entry_time: string
   exit_time: string | null
   pnl: number | null
+  net_pnl: number | null
   pnl_percent: number | null
   stop_loss: number | null
   take_profit: number | null

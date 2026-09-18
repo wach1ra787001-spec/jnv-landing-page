@@ -101,11 +101,30 @@ export async function POST(req: NextRequest) {
     }
 
     // Upsert trades into database
-    const { error: upsertError } = await supabase
-      .from('trades')
-      .upsert(trades, {
-        onConflict: 'user_id,ctrader_position_id',
-      })
+  const pendingTrades = trades.map((trade: any) => ({
+    user_id: user.id,
+    source: 'ctrader',
+    external_ref: String(trade.ctrader_position_id ?? trade.position_id ?? `${trade.symbol}-${trade.entry_time}`),
+    symbol: trade.symbol,
+    direction: trade.direction,
+    entry_price: trade.entry_price,
+    exit_price: trade.exit_price,
+    quantity: trade.quantity,
+    lot_size: trade.lot_size,
+    entry_time: trade.entry_time,
+    exit_time: trade.exit_time,
+    pnl: trade.pnl,
+    net_pnl: trade.net_pnl,
+    commission: trade.commission,
+    swap: trade.swap,
+    stop_loss: trade.stop_loss,
+    take_profit: trade.take_profit,
+    status: 'closed',
+    raw_payload: trade,
+  }))
+  const { error: upsertError } = await supabase
+    .from('csv_imports')
+    .upsert(pendingTrades, { onConflict: 'user_id,source,external_ref', ignoreDuplicates: true })
 
     if (upsertError) {
       console.error('[CSV] Upsert error:', upsertError)

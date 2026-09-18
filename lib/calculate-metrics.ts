@@ -18,7 +18,7 @@ export interface CalculatedMetrics {
   current_streak: number
 }
 
-export function calculateMetricsFromTrades(trades: Trade[]): CalculatedMetrics {
+export function calculateMetricsFromTrades(trades: Trade[], accountSize = 0): CalculatedMetrics {
   if (!trades || trades.length === 0) {
     return {
       total_trades: 0,
@@ -37,8 +37,9 @@ export function calculateMetricsFromTrades(trades: Trade[]): CalculatedMetrics {
     }
   }
 
-  // Filter closed trades - use pnl field from database
-  const closedTrades = trades.filter(t => t.status === 'closed' && t.pnl !== null)
+  // Completed trades include legacy breakeven rows. Prefer generated net_pnl
+  // so dashboard KPIs match the P&L chart and account analytics.
+  const closedTrades = trades.filter(t => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()) && (t.net_pnl !== null || t.pnl !== null))
   const total_trades = closedTrades.length
   
   let total_profit_loss = 0
@@ -51,7 +52,7 @@ export function calculateMetricsFromTrades(trades: Trade[]): CalculatedMetrics {
 
   // Calculate PnL and streak
   closedTrades.forEach((trade) => {
-    const pnl = trade.pnl || 0
+    const pnl = trade.net_pnl ?? trade.pnl ?? 0
     total_profit_loss += pnl
 
     if (pnl > 0) {
@@ -105,11 +106,13 @@ export function calculateMetricsFromTrades(trades: Trade[]): CalculatedMetrics {
     t.entry_time && new Date(t.entry_time) >= lastMonth && new Date(t.entry_time) < currentMonth
   )
 
-  const currentMonthPnL = currentMonthTrades.reduce((sum, t) => sum + (t.pnl || 0), 0)
-  const lastMonthPnL = lastMonthTrades.reduce((sum, t) => sum + (t.pnl || 0), 0)
+  const currentMonthPnL = currentMonthTrades.reduce((sum, t) => sum + (t.net_pnl ?? t.pnl ?? 0), 0)
+  const lastMonthPnL = lastMonthTrades.reduce((sum, t) => sum + (t.net_pnl ?? t.pnl ?? 0), 0)
 
-  const monthly_growth = lastMonthPnL !== 0 ? ((currentMonthPnL - lastMonthPnL) / Math.abs(lastMonthPnL)) * 100 : 0
-  const growth_vs_last_month = currentMonthPnL - lastMonthPnL
+  // Growth is return on the selected account's starting size, not a
+  // month-over-month comparison. A $10 P&L on a $100 account is 10%.
+  const monthly_growth = accountSize > 0 ? (currentMonthPnL / accountSize) * 100 : 0
+  const growth_vs_last_month = accountSize > 0 ? (lastMonthPnL / accountSize) * 100 : 0
 
   // Calculate risk exposure (as % of total trades)
   const risk_exposure = total_trades > 0 ? (losing_trades / total_trades) * 100 : 0

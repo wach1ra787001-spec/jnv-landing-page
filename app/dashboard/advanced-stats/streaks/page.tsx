@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { StreaksAnalysisClient } from '@/components/advanced-stats/StreaksAnalysisClient'
-import { getSelectedAccountId } from '@/lib/get-selected-account'
+import { getUserTrades } from '@/lib/services/trade-service'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
@@ -16,20 +16,8 @@ export default async function StreaksAnalysisPage() {
     redirect('/auth/login')
   }
 
-  const accountId = await getSelectedAccountId(supabase, user.id)
-
-  // Read the base trades table directly. The journal view can be absent or
-  // stale for imported/manual accounts, which previously made every card empty.
-  let tradesQuery = supabase
-    .from('trades')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('entry_time', { ascending: false })
-
-  if (accountId) tradesQuery = tradesQuery.eq('account_id', accountId)
-
-  const { data: trades, error: tradesError } = await tradesQuery
-  if (tradesError) console.error('[v0] Advanced stats trade query failed:', tradesError)
+  // Reuse Trade History's canonical account-scoped trade query.
+  const trades = await getUserTrades('all')
 
   const tradeIds = (trades || []).map((trade) => trade.id)
   const { data: journals } = tradeIds.length

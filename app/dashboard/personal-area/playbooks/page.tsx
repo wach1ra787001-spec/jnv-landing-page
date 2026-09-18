@@ -9,6 +9,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { PlaybookEmptyState } from '@/components/playbooks/empty-state'
+import { CreatePlaybookForm } from '@/components/dashboard/create-playbook-form'
 
 interface UserRule {
   id: string
@@ -23,7 +24,7 @@ interface Playbook {
   title: string
   description: string | { id?: string; title?: string; description?: string }
   strategy_type: string
-  rules: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[]; custom?: string[] }
+  rules: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[]; custom?: string[]; tradingSessions?: string[] }
   tags: (string | { id?: string; title?: string; description?: string })[]
   is_public: boolean
   is_active: boolean
@@ -121,6 +122,43 @@ export default function PlaybooksPage() {
     }
   }
 
+  const handleReusableCreate = async (data: { name: string; color: string; label: string; entryCriteria: Array<{ title: string; description: string }>; exitCriteria: Array<{ title: string; description: string }>; linkedRuleIds: string[]; isPublic: boolean; publicDisplayName: string; youtubeLinks: string; tradingSessions: string[] }) => {
+    try {
+      const response = await fetch('/api/playbooks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+        title: data.name,
+        description: data.label,
+        strategy_type: 'general',
+        is_public: data.isPublic,
+        public_display_name: data.publicDisplayName,
+        youtube_links: data.youtubeLinks.split('\\n').map((link) => link.trim()).filter(Boolean),
+        color: data.color,
+        rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds, tradingSessions: data.tradingSessions },
+      }) })
+      if (!response.ok) throw new Error('Failed to create playbook')
+      const saved = await response.json()
+      setPlaybooks((current) => [...current, saved])
+      toast.success('Playbook created')
+      closeModal()
+    } catch (error) {
+      console.error('[v0] Error creating playbook:', error)
+      toast.error('Failed to create playbook')
+    }
+  }
+
+  const handleReusableSave = async (data: Parameters<typeof handleReusableCreate>[0]) => {
+    if (!editingId) return handleReusableCreate(data)
+    const response = await fetch(`/api/playbooks/${editingId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({
+      title: data.name, description: data.label, is_public: data.isPublic, public_display_name: data.publicDisplayName,
+      youtube_links: data.youtubeLinks.split('\\n').map((link) => link.trim()).filter(Boolean), color: data.color,
+      rules: { entry: data.entryCriteria, exit: data.exitCriteria, linkedRuleIds: data.linkedRuleIds, tradingSessions: data.tradingSessions },
+    }) })
+    if (!response.ok) throw new Error('Failed to update playbook')
+    const saved = await response.json()
+    setPlaybooks((current) => current.map((playbook) => playbook.id === editingId ? saved : playbook))
+    toast.success('Playbook updated')
+    closeModal()
+  }
+
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this playbook?')) return
     try {
@@ -134,7 +172,6 @@ export default function PlaybooksPage() {
   }
 
   const handleEdit = (p: Playbook) => {
-    setForm({ title: p.title, description: getDisplayText(p.description), strategy_type: p.strategy_type || '', is_public: p.is_public, public_display_name: p.public_display_name || '', public_avatar_url: p.public_avatar_url || '', youtube_links: (p.youtube_links || []).join('\n'), linkedRuleIds: p.rules?.linkedRuleIds || [], customRules: p.rules?.custom?.length ? p.rules.custom : [''] })
     setEditingId(p.id)
     setShowModal(true)
   }
@@ -190,7 +227,7 @@ export default function PlaybooksPage() {
         </div>
         <Button onClick={() => setShowModal(true)} size="sm" className="gap-2">
           <Plus className="w-4 h-4" />
-          New Playbook
+          Build your own playbook
         </Button>
       </div>
 
@@ -222,6 +259,7 @@ export default function PlaybooksPage() {
                   'overflow-hidden transition-all',
                   isActive && 'border-primary/50 shadow-sm shadow-primary/10'
                 )}
+                style={(() => { const rules = p.rules as { color?: unknown } | null; const color = typeof rules?.color === 'string' && /^#[0-9A-F]{6}$/i.test(rules.color) ? rules.color : null; return color ? { borderColor: `${color}66`, boxShadow: `0 0 0 1px ${color}33, 0 0 24px ${color}55` } : undefined })()}
               >
                 {/* Active stripe */}
                 {isActive && <div className="h-0.5 w-full bg-primary" />}
@@ -242,6 +280,11 @@ export default function PlaybooksPage() {
                       {p.strategy_type && (
                         <span className="px-1.5 py-0.5 rounded text-xs font-medium bg-secondary text-secondary-foreground">
                           {p.strategy_type}
+                        </span>
+                      )}
+                      {Array.isArray(p.rules?.tradingSessions) && p.rules.tradingSessions.length > 0 && (
+                        <span className="max-w-full truncate rounded px-1.5 py-0.5 text-xs font-medium bg-primary/10 text-primary" title={`Works during ${p.rules.tradingSessions.join(' and ')}`}>
+                          {p.rules.tradingSessions.join(' / ')} session{p.rules.tradingSessions.length > 1 ? 's' : ''}
                         </span>
                       )}
                     </div>
@@ -277,13 +320,24 @@ export default function PlaybooksPage() {
                           {p.is_public ? <Lock className="w-4 h-4 mr-2" /> : <Globe className="w-4 h-4 mr-2" />}
                           {p.is_public ? 'Make private' : 'Publish to Templates'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleEdit(p)}><Edit2 className="w-4 h-4 mr-2" />Edit playbook</DropdownMenuItem>
+                        <DropdownMenuItem onSelect={() => handleEdit(p)}><Edit2 className="w-4 h-4 mr-2" />Edit playbook</DropdownMenuItem>
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="w-4 h-4 mr-2" />Delete playbook</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-11 shrink-0 rounded-full touch-manipulation sm:size-9"
+                      aria-label={isExpanded ? `Collapse ${p.title}` : `Expand ${p.title}`}
+                      aria-expanded={isExpanded}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setExpandedId(isExpanded ? null : p.id)
+                      }}
+                    >
+                      {isExpanded ? <ChevronUp data-icon /> : <ChevronDown data-icon />}
                     </Button>
                   </div>
                 </div>
@@ -297,6 +351,15 @@ export default function PlaybooksPage() {
                         <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{getDisplayText(p.description)}</p>
                       </div>
 
+                      {Array.isArray(p.rules?.tradingSessions) && p.rules.tradingSessions.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Works during</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {p.rules.tradingSessions.map((session) => <span key={session} className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">{session}</span>)}
+                          </div>
+                        </div>
+                      )}
+
                       {p.rules?.entry && p.rules.entry.length > 0 && (
                         <div>
                           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Entry Rules</h4>
@@ -304,7 +367,7 @@ export default function PlaybooksPage() {
                             {p.rules.entry.map((r, i) => (
                               <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                                 <span className="text-primary mt-0.5">•</span>
-                                {r}
+                                {getDisplayText(r)}
                               </li>
                             ))}
                           </ul>
@@ -318,7 +381,7 @@ export default function PlaybooksPage() {
                             {p.rules.exit.map((r, i) => (
                               <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                                 <span className="text-primary mt-0.5">•</span>
-                                {r}
+                                {getDisplayText(r)}
                               </li>
                             ))}
                           </ul>
@@ -329,7 +392,7 @@ export default function PlaybooksPage() {
                         <div>
                           <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Playbook Rules</h4>
                           <ul className="space-y-1">
-                            {p.rules.custom.map((rule, i) => <li key={i} className="flex items-start gap-2 text-sm text-foreground"><span className="text-primary mt-0.5">•</span><span>{rule}</span></li>)}
+                            {p.rules.custom.map((rule, i) => <li key={i} className="flex items-start gap-2 text-sm text-foreground"><span className="text-primary mt-0.5">•</span><span>{getDisplayText(rule)}</span></li>)}
                           </ul>
                         </div>
                       )}
@@ -378,8 +441,23 @@ export default function PlaybooksPage() {
         </div>
       )}
 
-      {/* Modal */}
-      {showModal && (
+      {/* Reusable create form; edits retain the existing edit dialog below. */}
+      {showModal && !editingId && (
+        <div className="flex justify-center">
+          <CreatePlaybookForm onSubmit={handleReusableCreate} onCancel={closeModal} />
+        </div>
+      )}
+
+      {showModal && editingId && (() => {
+        const playbook = playbooks.find((item) => item.id === editingId)
+        if (!playbook) return null
+        const rules = playbook.rules || {}
+        const toCriteria = (items: unknown[] | undefined, prefix: string) => (items || []).map((item, index) => typeof item === 'object' && item !== null ? { id: String((item as { id?: unknown }).id || `${prefix}-${index}`), title: String((item as { title?: unknown }).title || ''), description: String((item as { description?: unknown }).description || '') } : { id: `${prefix}-${index}`, title: String(item || ''), description: '' })
+        return <div className="flex justify-center"><CreatePlaybookForm submitLabel="Update Playbook" initialData={{ name: playbook.title, label: getDisplayText(playbook.description), color: typeof (rules as { color?: unknown }).color === 'string' ? String((rules as { color?: unknown }).color) : '#FF6B35', tradingSessions: Array.isArray((rules as { tradingSessions?: unknown }).tradingSessions) ? (rules as { tradingSessions: string[] }).tradingSessions : [], entryCriteria: toCriteria((rules as { entry?: unknown[]; entryCriteria?: unknown[] }).entry || (rules as { entryCriteria?: unknown[] }).entryCriteria, 'entry'), exitCriteria: toCriteria((rules as { exit?: unknown[]; exitCriteria?: unknown[] }).exit || (rules as { exitCriteria?: unknown[] }).exitCriteria, 'exit'), linkedRuleIds: (rules.linkedRuleIds || []).map(String), isPublic: playbook.is_public, publicDisplayName: playbook.public_display_name || '', youtubeLinks: (playbook.youtube_links || []).join('\\n') }} onSubmit={handleReusableSave} onCancel={closeModal} /></div>
+      })()}
+
+      {/* Legacy modal retained for backwards compatibility but no longer shown */}
+      {false && showModal && editingId && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start sm:items-center justify-center z-50 p-4 overflow-y-auto">
           <Card className="w-full max-w-md max-h-[calc(100dvh-2rem)] overflow-y-auto bg-card shadow-2xl">
             <div className="flex items-center justify-between p-6 border-b border-border">

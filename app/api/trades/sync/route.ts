@@ -74,15 +74,16 @@ export async function POST(request: NextRequest) {
       pnl: trade.profit,
       commission: trade.commission,
       swap: trade.swap,
-      mt5_ticket: trade.ticket,
-      source: mt5Source,
-      created_at: new Date().toISOString(),
+      external_ref: String(trade.ticket),
+      source: 'mt5',
+      status: 'closed',
+      raw_payload: trade,
     }))
 
     // Insert trades (upsert to avoid duplicates using mt5_ticket)
     const { data: insertedTrades, error: insertError } = await supabase
-      .from('trades')
-      .upsert(formattedTrades, { onConflict: 'mt5_ticket' })
+      .from('csv_imports')
+      .upsert(formattedTrades, { onConflict: 'user_id,source,external_ref', ignoreDuplicates: true })
       .select()
 
     if (insertError) {

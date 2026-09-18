@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { ModelsAnalysisClient } from '@/components/advanced-stats/ModelsAnalysisClient'
-import { getSelectedAccountId } from '@/lib/get-selected-account'
+import { getUserTrades } from '@/lib/services/trade-service'
 import { redirect } from 'next/navigation'
 
 export const metadata = {
@@ -16,20 +16,8 @@ export default async function ModelsAnalysisPage() {
     redirect('/auth/login')
   }
 
-  const accountId = await getSelectedAccountId(supabase, user.id)
-
-  // Fetch all trades for the user, scoped to the active account
-  let tradesQuery = supabase
-    .from('trades')
-    .select('*')
-    .eq('user_id', user.id)
-    .order('entry_time', { ascending: false })
-
-  if (accountId) {
-    tradesQuery = tradesQuery.eq('account_id', accountId)
-  }
-
-  const { data: trades } = await tradesQuery
+  // Reuse Trade History's canonical account-scoped trade query.
+  const trades = await getUserTrades('all')
 
   return (
     <ModelsAnalysisClient trades={trades || []} />

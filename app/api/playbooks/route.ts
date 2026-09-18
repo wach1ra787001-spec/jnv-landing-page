@@ -2,6 +2,21 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { attachPlaybookMetrics, getPlaybookMetrics } from '@/lib/playbooks/metrics'
 
+function normalizePlaybookRules(playbook: Record<string, unknown>) {
+  const raw = playbook.rules && typeof playbook.rules === 'object' ? playbook.rules as Record<string, unknown> : {}
+  const normalizeCriteria = (value: unknown) => Array.isArray(value) ? value.map((rule) => {
+    if (typeof rule === 'string' || typeof rule === 'number') return String(rule)
+    if (!rule || typeof rule !== 'object') return ''
+    const item = rule as Record<string, unknown>
+    return { id: String(item.id || crypto.randomUUID()), title: String(item.title || item.name || item.text || ''), description: String(item.description || '') }
+  }).filter((rule) => typeof rule === 'string' ? rule.trim() : rule.title.trim() || rule.description.trim()) : []
+  const entrySource = raw.entry ?? raw.entryCriteria ?? raw.entry_rules ?? raw.entryRules ?? playbook.entry_rules
+  const exitSource = raw.exit ?? raw.exitCriteria ?? raw.exit_rules ?? raw.exitRules ?? playbook.exit_rules
+  const entry = normalizeCriteria(entrySource)
+  const exit = normalizeCriteria(exitSource)
+  return { ...playbook, rules: { ...raw, entry, exit } }
+}
+
 async function attachEngagement(supabase: Awaited<ReturnType<typeof createClient>>, playbooks: Array<Record<string, unknown>>) {
   return Promise.all(playbooks.map(async (playbook) => {
     const [{ count: activeUsers }, { count: comments }] = await Promise.all([
@@ -25,7 +40,7 @@ export async function GET(request: NextRequest) {
         .order('created_at', { ascending: false })
       if (error) throw error
       const withMetrics = await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>, true)
-      return NextResponse.json(await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>))
+      return NextResponse.json((await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>)).map(normalizePlaybookRules))
     }
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -43,7 +58,7 @@ export async function GET(request: NextRequest) {
     }
 
     const withMetrics = await attachPlaybookMetrics((data || []) as Array<{ id: string; user_id: string }>)
-    return NextResponse.json(await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>))
+    return NextResponse.json((await attachEngagement(supabase, withMetrics as Array<Record<string, unknown>>)).map(normalizePlaybookRules))
   } catch (error) {
     console.error('Fetch playbooks error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -62,6 +77,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { title, description, rules, strategy_type, tags, is_public, public_display_name, public_avatar_url, youtube_links } = body
     const linkedRuleIds = Array.isArray(rules?.linkedRuleIds) ? rules.linkedRuleIds.filter((id: unknown): id is string => typeof id === 'string').slice(0, 100) : []
+    const normalizeCriteria = (value: unknown) => Array.isArray(value) ? value.filter((rule) => {
+      if (typeof rule === 'string') return rule.trim().length > 0
+      return Boolean(rule && typeof rule === 'object' && (((rule as Record<string, unknown>).title as string)?.trim() || ((rule as Record<string, unknown>).description as string)?.trim()))
+    }) : []
+    const entry = normalizeCriteria(rules?.entry ?? rules?.entryCriteria)
+    const exit = normalizeCriteria(rules?.exit ?? rules?.exitCriteria)
+    const highlightColor = typeof body.color === 'string' && /^#[0-9A-F]{6}$/i.test(body.color) ? body.color : '#FF6B35'
 
     if (!title) {
       return NextResponse.json({ error: 'Title is required' }, { status: 400 })
@@ -76,7 +98,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         title,
         description: description || '',
-        rules: { ...(rules && typeof rules === 'object' ? rules : {}), linkedRuleIds },
+        rules: { ...(rules && typeof rules === 'object' ? rules : {}), entry, exit, linkedRuleIds, color: highlightColor },
         strategy_type: strategy_type || 'general',
         tags: tags || [],
         is_public: publicProfile,

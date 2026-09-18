@@ -110,7 +110,7 @@ export function PnLChart({
         .from('trades')
         .select('exit_time, net_pnl, pnl, commission, swap')
         .eq('user_id', userId)
-        .eq('status', 'closed')
+        .in('status', ['closed', 'breakeven'])
         .order('exit_time', { ascending: true })
 
       if (accountId) {

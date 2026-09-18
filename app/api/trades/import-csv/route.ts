@@ -109,13 +109,21 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // Do not save yet. Imported rows must go through the same journal form so
-  // the user can attach a strategy, rules, notes, and screenshots first.
+  const { data: savedImports, error: importError } = await supabase
+    .from('csv_imports')
+    .upsert(toInsert, { onConflict: 'user_id,source,external_ref', ignoreDuplicates: true })
+    .select('id, symbol, direction, entry_price, exit_price, lot_size, quantity, entry_time, exit_time, pnl, net_pnl, commission, swap, stop_loss, take_profit, external_ref, status, raw_payload, source')
+
+  if (importError) {
+    console.error('[v0] Failed to persist pending CSV imports:', importError)
+    return NextResponse.json({ error: 'Could not save imported trades for journaling' }, { status: 500 })
+  }
+
   return NextResponse.json({
-    imported: toInsert.length,
+    imported: savedImports?.length ?? 0,
     skipped: 0,
     duplicates,
-    trades: trades.filter((trade) => toInsert.some((row) => row.external_ref === trade.external_ref || (!trade.external_ref && row.symbol === trade.symbol && row.entry_time === trade.open_time && row.lot_size === trade.lot_size))),
-    message: `${toInsert.length} trades ready to be logged`,
+    trades: savedImports ?? [],
+    message: `${savedImports?.length ?? 0} trades ready to be logged`,
   })
 }

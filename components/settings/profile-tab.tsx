@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
+import { useRouter } from "next/navigation"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -35,6 +36,7 @@ interface Profile {
 export function ProfileTab() {
   const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
@@ -188,6 +190,7 @@ export function ProfileTab() {
         throw new Error(result.error || "Unable to upload profile picture")
       }
 
+      setAvatarUrl(result.url)
       setTempAvatarUrl(result.url)
     } catch (error) {
       console.error("Error uploading avatar:", error)
@@ -229,6 +232,7 @@ export function ProfileTab() {
       if (!user) throw new Error("No user found")
 
       const fullName = `${formData.firstName} ${formData.lastName}`.trim()
+      const savedAvatarUrl = tempAvatarUrl.trim() || avatarUrl.trim()
 
       const { error } = await supabase
         .from("profiles")
@@ -236,7 +240,7 @@ export function ProfileTab() {
           full_name: fullName,
           email: formData.email,
           phone_number: formData.phoneNumber || null,
-          avatar_url: avatarUrl || null,
+          avatar_url: savedAvatarUrl || null,
           timezone: formData.timezone,
           currency: formData.currency,
         })
@@ -244,9 +248,11 @@ export function ProfileTab() {
 
       if (error) throw error
 
-      setProfile((current) => current ? { ...current, full_name: fullName, email: formData.email, phone_number: formData.phoneNumber || null, avatar_url: avatarUrl || null, timezone: formData.timezone, currency: formData.currency } : current)
-      setTempAvatarUrl(avatarUrl)
+      setAvatarUrl(savedAvatarUrl)
+      setProfile((current) => current ? { ...current, full_name: fullName, email: formData.email, phone_number: formData.phoneNumber || null, avatar_url: savedAvatarUrl || null, timezone: formData.timezone, currency: formData.currency } : current)
+      setTempAvatarUrl(savedAvatarUrl)
       setAvatarError("")
+      router.refresh()
     } catch (error) {
       console.error("Error saving profile:", error)
       setAvatarError(error instanceof Error ? error.message : "Unable to save profile")

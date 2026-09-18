@@ -237,14 +237,16 @@ export function TradeForm({
       const playbook = playbooks.find((item) => item.id === formData.playbook_id)
       const playbookRulesSnapshot = (() => {
         if (!playbook) return null
-        const rules = [...(playbook.rules?.entry || []), ...(playbook.rules?.exit || []), ...(playbook.rules?.custom || [])].filter(
-          (rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0,
-        )
-        return rules.map((label: string, index: number) => ({
-          id: `custom-${index}`,
-          label,
-          followed: formData.followed_rule_ids.includes(`custom-${index}`),
-        }))
+        const rules = [...(playbook.rules?.entry || []), ...(playbook.rules?.exit || []), ...(playbook.rules?.custom || [])]
+        return rules.flatMap((rule: unknown, index: number) => {
+          const item = rule && typeof rule === 'object' ? rule as { id?: unknown; title?: unknown; description?: unknown; name?: unknown; text?: unknown } : null
+          const title = item ? (typeof item.title === 'string' ? item.title : typeof item.name === 'string' ? item.name : typeof item.text === 'string' ? item.text : '') : String(rule ?? '')
+          const description = item && typeof item.description === 'string' ? item.description : ''
+          const label = title.trim() && description.trim() ? `${title.trim()}: ${description.trim()}` : (title.trim() || description.trim())
+          if (!label) return []
+          const id = item && typeof item.id === 'string' ? item.id : `custom-${index}`
+          return [{ id, label, followed: formData.followed_rule_ids.includes(id) || formData.followed_rule_ids.includes(`custom-${index}`) }]
+        })
       })()
 
       if (mode === 'create') {
@@ -665,9 +667,22 @@ export function TradeForm({
               {formData.playbook_id &&
                 (() => {
                   const playbook = playbooks.find((item) => item.id === formData.playbook_id)
-                  const playbookRules = [...(playbook?.rules?.entry || []), ...(playbook?.rules?.exit || []), ...(playbook?.rules?.custom || [])].filter(
-                    (rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0,
-                  )
+                  const playbookRules = [
+                    ...(playbook?.rules?.entry || []).map((rule: unknown, index: number) => ({ rule, source: 'entry', index })),
+                    ...(playbook?.rules?.exit || []).map((rule: unknown, index: number) => ({ rule, source: 'exit', index })),
+                    ...(playbook?.rules?.custom || []).map((rule: unknown, index: number) => ({ rule, source: 'custom', index })),
+                  ].flatMap(({ rule, source, index }) => {
+                    if (typeof rule === 'string' || typeof rule === 'number') {
+                      const label = String(rule).trim()
+                      return label ? [{ id: `${source}-${index}`, label }] : []
+                    }
+                    if (!rule || typeof rule !== 'object') return []
+                    const item = rule as { id?: unknown; title?: unknown; description?: unknown; name?: unknown; text?: unknown }
+                    const title = typeof item.title === 'string' ? item.title.trim() : typeof item.name === 'string' ? item.name.trim() : typeof item.text === 'string' ? item.text.trim() : ''
+                    const description = typeof item.description === 'string' ? item.description.trim() : ''
+                    const label = title && description ? `${title}: ${description}` : title || description
+                    return label ? [{ id: typeof item.id === 'string' ? item.id : `${source}-${index}`, label }] : []
+                  })
                   return (
                     <div className="mt-4 rounded-lg border border-border/50 bg-muted/20 p-4">
                       <div className="mb-3 flex items-center justify-between">
@@ -677,9 +692,7 @@ export function TradeForm({
                         </span>
                       </div>
                       <div className="space-y-2">
-                        {playbookRules
-                          .map((label: string, index: number) => ({ id: `custom-${index}`, label }))
-                          .map((rule) => (
+                        {playbookRules.map((rule) => (
                             <label key={rule.id} className="flex items-start gap-3 rounded-md p-2 hover:bg-muted/40">
                               <input
                                 type="checkbox"

@@ -22,19 +22,23 @@ interface PlaybookData {
   entryCriteria: Rule[]
   exitCriteria: Rule[]
   linkedRuleIds: string[]
+  isPublic: boolean
+  publicDisplayName: string
+  youtubeLinks: string
+  tradingSessions: string[]
 }
 
 const colors = ['#FF6B35', '#004E89', '#F7931E', '#06A77D', '#D62828', '#F77F00']
 
-export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit: (data: PlaybookData) => void | Promise<void>; onCancel: () => void; className?: string }) {
-  const [data, setData] = useState<PlaybookData>({
-    name: '',
-    color: colors[0],
-    label: '',
-    entryCriteria: [{ id: '1', title: '', description: '' }],
-    exitCriteria: [{ id: '1', title: '', description: '' }],
-    linkedRuleIds: [],
-  })
+const emptyPlaybookData: PlaybookData = {
+  name: '', color: colors[0], label: '',
+  entryCriteria: [{ id: 'entry-1', title: '', description: '' }],
+  exitCriteria: [{ id: 'exit-1', title: '', description: '' }],
+  linkedRuleIds: [], isPublic: false, publicDisplayName: '', youtubeLinks: '', tradingSessions: [],
+}
+
+export function CreatePlaybookForm({ onSubmit, onCancel, className, initialData, submitLabel = 'Create Playbook' }: { onSubmit: (data: PlaybookData) => void | Promise<void>; onCancel: () => void; className?: string; initialData?: Partial<PlaybookData>; submitLabel?: string }) {
+  const [data, setData] = useState<PlaybookData>({ ...emptyPlaybookData, ...initialData })
   const [userRules, setUserRules] = useState<Rule[]>([])
   const [rulesLoading, setRulesLoading] = useState(true)
 
@@ -80,12 +84,16 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
       alert('Please enter a playbook name')
       return
     }
+    if (data.tradingSessions.length < 1 || data.tradingSessions.length > 2) {
+      alert('Please select one or two trading sessions')
+      return
+    }
     onSubmit(data)
   }
 
   return (
     <Card className={cn("p-6 md:p-8 bg-card border border-border/50 max-w-2xl w-full", className)}>
-      <h2 className="text-2xl font-bold text-foreground mb-6">Create Playbook</h2>
+      <h2 className="text-2xl font-bold text-foreground mb-6">{submitLabel === 'Update Playbook' ? 'Edit Playbook' : 'Build your own playbook'}</h2>
 
       {/* General Information */}
       <div className="space-y-6 mb-8">
@@ -130,12 +138,38 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
             </div>
           </div>
 
+            <div className="border-t border-border/50 pt-5">
+            <h3 className="text-lg font-semibold text-foreground mb-2">Trading sessions</h3>
+            <p className="text-sm text-muted-foreground mb-3">Choose one or two sessions for your pre-market alerts.</p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+              {['New York', 'London', 'Asian'].map((session) => {
+                const selected = data.tradingSessions.includes(session)
+                return <label key={session} className={cn('flex cursor-pointer items-center gap-2 rounded-lg border p-3 text-sm transition-colors', selected ? 'border-primary bg-primary/10 text-foreground' : 'border-border/50 text-muted-foreground')}>
+                  <input type="checkbox" checked={selected} disabled={!selected && data.tradingSessions.length >= 2} onChange={() => setData((current) => ({ ...current, tradingSessions: selected ? current.tradingSessions.filter((item) => item !== session) : [...current.tradingSessions, session] }))} className="size-4 accent-primary" />
+                  {session}
+                </label>
+              })}
+            </div>
+            <p className="mt-3 text-xs text-amber-700 dark:text-amber-300">Please provide accurate information. We use your selected sessions to deliver relevant pre-market alerts.</p>
+          </div>
+
           <div className="border-t border-border/50 pt-5">
             <h3 className="text-lg font-semibold text-foreground mb-2">Rules</h3>
             <p className="text-sm text-muted-foreground mb-4">Select the existing rules that this playbook follows.</p>
             <div className="flex flex-col divide-y divide-border/50 rounded-lg border border-border/50">
               {rulesLoading ? <p className="p-3 text-sm text-muted-foreground">Loading rules…</p> : userRules.length === 0 ? <p className="p-3 text-sm text-muted-foreground">No active rules found.</p> : userRules.map((rule) => <label key={rule.id} className="flex cursor-pointer items-start gap-3 p-3"><input type="checkbox" checked={data.linkedRuleIds.includes(rule.id)} onChange={(event) => setData((current) => ({ ...current, linkedRuleIds: event.target.checked ? [...current.linkedRuleIds, rule.id] : current.linkedRuleIds.filter((id) => id !== rule.id) }))} className="mt-0.5 size-4 shrink-0 accent-primary" /><span><span className="block text-sm font-medium text-foreground">{rule.title}</span><span className="mt-1 block text-sm leading-relaxed text-muted-foreground">{rule.description || rule.rule || 'No description provided.'}</span></span></label>)}
             </div>
+          </div>
+
+          <div className="mt-6 rounded-lg border border-border/50 bg-muted/30 p-4 space-y-4">
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input type="checkbox" checked={data.isPublic} onChange={(event) => setData({ ...data, isPublic: event.target.checked })} className="mt-1 h-4 w-4 accent-primary" />
+              <span><span className="block text-sm font-medium text-foreground">Make this playbook public</span><span className="block text-xs text-muted-foreground mt-1">Anyone can discover and view it in Templates & Playbooks.</span></span>
+            </label>
+            {data.isPublic && <div className="space-y-4">
+              <div><label className="block text-sm font-medium text-primary mb-2">Name shown publicly</label><Input placeholder="Your preferred display name" value={data.publicDisplayName} onChange={(event) => setData({ ...data, publicDisplayName: event.target.value })} className="bg-input border border-border/50" /></div>
+              <div><label className="block text-sm font-medium text-primary mb-2">YouTube videos</label><textarea rows={3} placeholder="One YouTube URL per line" value={data.youtubeLinks} onChange={(event) => setData({ ...data, youtubeLinks: event.target.value })} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground resize-none" /></div>
+            </div>}
           </div>
         </div>
 
@@ -154,16 +188,18 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
               {data.entryCriteria.map((rule, idx) => (
                 <div key={rule.id} className="space-y-2 p-3 bg-muted rounded-lg">
                   <Input
+                    type="text"
+                    aria-label={`Entry rule ${idx + 1}`}
                     placeholder={`Rule ${idx + 1}`}
                     value={rule.title}
                     onChange={(e) => updateRule('entry', rule.id, 'title', e.target.value)}
-                    className="bg-card border border-border/50 text-sm"
+                    className="relative z-10 cursor-text bg-card border border-border/50 text-sm"
                   />
                   <Input
                     placeholder="Description"
                     value={rule.description}
                     onChange={(e) => updateRule('entry', rule.id, 'description', e.target.value)}
-                    className="bg-card border border-border/50 text-sm"
+                    className="relative z-10 cursor-text bg-card border border-border/50 text-sm"
                   />
                   {data.entryCriteria.length > 1 && (
                     <Button
@@ -200,16 +236,18 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
               {data.exitCriteria.map((rule, idx) => (
                 <div key={rule.id} className="space-y-2 p-3 bg-muted rounded-lg">
                   <Input
+                    type="text"
+                    aria-label={`Exit rule ${idx + 1}`}
                     placeholder={`Rule ${idx + 1}`}
                     value={rule.title}
                     onChange={(e) => updateRule('exit', rule.id, 'title', e.target.value)}
-                    className="bg-card border border-border/50 text-sm"
+                    className="relative z-10 cursor-text bg-card border border-border/50 text-sm"
                   />
                   <Input
                     placeholder="Description"
                     value={rule.description}
                     onChange={(e) => updateRule('exit', rule.id, 'description', e.target.value)}
-                    className="bg-card border border-border/50 text-sm"
+                    className="relative z-10 cursor-text bg-card border border-border/50 text-sm"
                   />
                   {data.exitCriteria.length > 1 && (
                     <Button
@@ -241,7 +279,7 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
       {/* Action Buttons */}
       <div className="flex gap-3 pt-6 border-t border-border/50">
         <Button onClick={handleSubmit} className="flex-1 bg-primary hover:bg-primary/90">
-          Create Playbook
+          {submitLabel}
         </Button>
         <Button onClick={onCancel} variant="outline" className="flex-1">
           Cancel

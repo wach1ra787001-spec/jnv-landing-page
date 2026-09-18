@@ -6,7 +6,7 @@ import {
   type ConsistencyScoreInputs,
 } from "@/lib/consistency-score"
 import { ConsistencyAnalysisClient } from "@/components/advanced-stats/ConsistencyAnalysisClient"
-import { getSelectedAccountId } from "@/lib/get-selected-account"
+import { getUserTrades } from "@/lib/services/trade-service"
 
 export const metadata = {
   title: "Consistency Analysis | Advanced Statistics",
@@ -21,19 +21,8 @@ export default async function ConsistencyAnalysisPage() {
     redirect("/auth/login")
   }
 
-  const accountId = await getSelectedAccountId(supabase, user.id)
-
-  let tradesQuery = supabase
-    .from("trades")
-    .select("id, entry_time, net_pnl, status, followed_rule_ids, playbook_rules_snapshot, account_id, risk_amount, playbook_id")
-    .eq("user_id", user.id)
-    .order("entry_time", { ascending: false })
-
-  if (accountId) {
-    tradesQuery = tradesQuery.eq("account_id", accountId)
-  }
-
-  const { data: allTrades } = await tradesQuery
+  // Reuse the exact account-scoped trade set shown in Trade History.
+  const allTrades = await getUserTrades("all")
 
   const tradeIds = (allTrades || []).map((trade) => trade.id)
 
@@ -84,6 +73,21 @@ export default async function ConsistencyAnalysisPage() {
   const ruleCountByPlaybookId = new Map(
     (playbookRows || []).map((playbook) => [playbook.id, countPlaybookRules(playbook.rules)]),
   )
+  const playbookSessionsById = new Map(
+    (playbookRows || []).map((playbook) => {
+      const rules = playbook.rules && typeof playbook.rules === 'object' ? playbook.rules as { tradingSessions?: unknown } : null
+      const sessions = Array.isArray(rules?.tradingSessions) ? rules.tradingSessions.filter((session): session is string => typeof session === 'string') : []
+      return [playbook.id, sessions]
+    }),
+  )
+  const getTradeSession = (value: unknown): string | null => {
+    if (typeof value !== 'string') return null
+    const hour = new Date(value).getUTCHours()
+    if (hour >= 13 && hour < 22) return 'New York'
+    if (hour >= 8 && hour < 13) return 'London'
+    if (hour >= 0 && hour < 8) return 'Asian'
+    return null
+  }
   const hasActiveRules = Array.from(ruleCountByPlaybookId.values()).some((count) => count > 0)
   const accountById = new Map((accountRows || []).map((account) => [account.id, account]))
 
@@ -99,15 +103,20 @@ export default async function ConsistencyAnalysisPage() {
     const journal = journalByTradeId.get(trade.id)
     const extraNotes = notesByTradeId.get(trade.id) || []
     const snapshot = Array.isArray(trade.playbook_rules_snapshot)
-      ? trade.playbook_rules_snapshot.filter((rule): rule is { id: string; label: string; followed: boolean } => Boolean(rule && typeof rule.id === "string" && typeof rule.label === "string"))
+      ? trade.playbook_rules_snapshot.filter((rule: unknown): rule is { id: string; label: string; followed: boolean } => Boolean(rule && typeof rule === "object" && typeof (rule as { id?: unknown }).id === "string" && typeof (rule as { label?: unknown }).label === "string"))
       : []
     const hasSnapshot = snapshot.length > 0
     const tradeRuleCount = hasSnapshot
       ? snapshot.length
       : trade.playbook_id ? ruleCountByPlaybookId.get(trade.playbook_id) || 0 : 0
     const followedRuleIds = hasSnapshot
-      ? snapshot.filter((rule) => rule.followed).map((rule) => rule.id)
+      ? snapshot.filter((rule: { followed: boolean }) => rule.followed).map((rule: { id: string }) => rule.id)
       : trade.followed_rule_ids
+    const allowedSessions = trade.playbook_id ? playbookSessionsById.get(trade.playbook_id) || [] : []
+    const actualSession = getTradeSession(trade.open_time || trade.entry_time)
+    const tradeModelFollowed = allowedSessions.length === 0
+      ? undefined
+      : actualSession !== null && allowedSessions.includes(actualSession)
 
     return {
       hasActiveRules: tradeRuleCount > 0,
@@ -119,6 +128,7 @@ export default async function ConsistencyAnalysisPage() {
       accountRiskAmount: accountById.get(trade.account_id)?.risk_amount,
       tradeRiskPercent: typeof trade.risk_amount === 'number' && accountById.get(trade.account_id)?.initial_balance ? (trade.risk_amount / accountById.get(trade.account_id)!.initial_balance) * 100 : null,
       accountRiskPercent: accountById.get(trade.account_id)?.risk_percent,
+      tradeModelFollowed,
       hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, extraNotes),
     }
   })
