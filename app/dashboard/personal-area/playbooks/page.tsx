@@ -320,8 +320,19 @@ export default function PlaybooksPage() {
                         <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(p.id)}><Trash2 className="w-4 h-4 mr-2" />Delete playbook</DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                      {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="size-11 shrink-0 rounded-full touch-manipulation sm:size-9"
+                      aria-label={isExpanded ? `Collapse ${p.title}` : `Expand ${p.title}`}
+                      aria-expanded={isExpanded}
+                      onClick={(event) => {
+                        event.stopPropagation()
+                        setExpandedId(isExpanded ? null : p.id)
+                      }}
+                    >
+                      {isExpanded ? <ChevronUp data-icon /> : <ChevronDown data-icon />}
                     </Button>
                   </div>
                 </div>
