@@ -44,7 +44,18 @@ export async function GET(
       }
     }
 
-    return NextResponse.json(data)
+    // 'trades' has no 'notes' column - the latest note lives in the
+    // separate 'trade_notes' table. Attach it so the edit form can prefill.
+    const { data: latestNote } = await supabase
+      .from('trade_notes')
+      .select('note')
+      .eq('trade_id', id)
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    return NextResponse.json({ ...data, notes: latestNote?.note || '' })
   } catch (error) {
     console.error('Fetch trade error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
@@ -69,12 +80,16 @@ export async function PATCH(
     // Build update object with only allowed fields
     const updateData: Record<string, any> = {}
     
+    // Note: 'notes' and 'emotion_before' are intentionally NOT columns on the
+    // 'trades' table (writing them causes a PGRST204 "column not found"
+    // error). Notes live in the separate 'trade_notes' table and are handled
+    // below; emotion_before has no persistence target in the current schema.
     const allowedFields = [
       'symbol', 'direction', 'entry_price', 'exit_price', 
       'stop_loss', 'take_profit', 'quantity', 'entry_time', 
       'exit_time', 'pnl', 'pnl_percent', 'net_pnl', 'commission', 'swap', 'r_multiple', 
       'risk_amount', 'strategy', 'setup_type', 'followed_rules', 'followed_rule_ids',
-      'status', 'screenshot_urls', 'playbook_rules_snapshot', 'notes', 'emotion_before',
+      'status', 'screenshot_urls', 'playbook_rules_snapshot',
       'playbook_name', 'playbook_version',
     ]
     
@@ -91,24 +106,80 @@ export async function PATCH(
       updateData.net_pnl = body.pnl
     }
 
-    if (Object.keys(updateData).length === 0) {
+    if (Object.keys(updateData).length === 0 && typeof body.notes !== 'string') {
       return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 })
     }
 
-    const { data, error } = await supabase
-      .from('trades')
-      .update(updateData)
-      .eq('id', id)
-      .eq('user_id', user.id)
-      .select()
-      .single()
+    let data: any = null
+    if (Object.keys(updateData).length > 0) {
+      const { data: updated, error } = await supabase
+        .from('trades')
+        .update(updateData)
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single()
 
-    if (error) {
-      console.error('Update trade error:', error)
-      return NextResponse.json({ error: 'Failed to update trade' }, { status: 500 })
+      if (error) {
+        console.error('Update trade error:', error)
+        return NextResponse.json({ error: 'Failed to update trade' }, { status: 500 })
+      }
+      data = updated
+    } else {
+      const { data: existing, error } = await supabase
+        .from('trades')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single()
+      if (error) {
+        console.error('Fetch trade error:', error)
+        return NextResponse.json({ error: 'Failed to update trade' }, { status: 500 })
+      }
+      data = existing
     }
 
-    return NextResponse.json(data)
+    // Notes live in 'trade_notes', keyed by trade_id, not on 'trades' itself.
+    // Keep the latest note in sync with what the form submitted: update the
+    // most recent note if one exists, otherwise create the first one.
+    if (typeof body.notes === 'string') {
+      const trimmedNotes = body.notes.trim()
+      const { data: existingNotes, error: notesFetchError } = await supabase
+        .from('trade_notes')
+        .select('id')
+        .eq('trade_id', id)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+
+      if (notesFetchError) {
+        console.error('Fetch trade notes error:', notesFetchError)
+      } else if (trimmedNotes) {
+        if (existingNotes && existingNotes.length > 0) {
+          const { error: noteUpdateError } = await supabase
+            .from('trade_notes')
+            .update({ note: trimmedNotes })
+            .eq('id', existingNotes[0].id)
+            .eq('user_id', user.id)
+          if (noteUpdateError) console.error('Update trade note error:', noteUpdateError)
+        } else {
+          const { error: noteInsertError } = await supabase
+            .from('trade_notes')
+            .insert({ user_id: user.id, trade_id: id, note: trimmedNotes })
+          if (noteInsertError) console.error('Insert trade note error:', noteInsertError)
+        }
+      } else if (existingNotes && existingNotes.length > 0) {
+        // Notes field was cleared out - remove the stale note.
+        const { error: noteDeleteError } = await supabase
+          .from('trade_notes')
+          .delete()
+          .eq('id', existingNotes[0].id)
+          .eq('user_id', user.id)
+        if (noteDeleteError) console.error('Delete trade note error:', noteDeleteError)
+      }
+    }
+
+    return NextResponse.json({ ...data, notes: body.notes ?? undefined })
   } catch (error) {
     console.error('Update trade error:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
