@@ -24,7 +24,7 @@ interface Playbook {
   title: string
   description: string | { id?: string; title?: string; description?: string }
   strategy_type: string
-  rules: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[]; custom?: string[] }
+  rules: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[]; custom?: string[]; tradingSessions?: string[] }
   tags: (string | { id?: string; title?: string; description?: string })[]
   is_public: boolean
   is_active: boolean
@@ -282,6 +282,11 @@ export default function PlaybooksPage() {
                           {p.strategy_type}
                         </span>
                       )}
+                      {Array.isArray(p.rules?.tradingSessions) && p.rules.tradingSessions.length > 0 && (
+                        <span className="max-w-full truncate rounded px-1.5 py-0.5 text-xs font-medium bg-primary/10 text-primary" title={`Works during ${p.rules.tradingSessions.join(' and ')}`}>
+                          {p.rules.tradingSessions.join(' / ')} session{p.rules.tradingSessions.length > 1 ? 's' : ''}
+                        </span>
+                      )}
                     </div>
                     {!isExpanded && (
                       <p className="text-sm text-muted-foreground mt-0.5 truncate">{getDisplayText(p.description)}</p>
@@ -345,6 +350,15 @@ export default function PlaybooksPage() {
                         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Description</h4>
                         <p className="text-sm text-foreground leading-relaxed whitespace-pre-wrap">{getDisplayText(p.description)}</p>
                       </div>
+
+                      {Array.isArray(p.rules?.tradingSessions) && p.rules.tradingSessions.length > 0 && (
+                        <div>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Works during</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {p.rules.tradingSessions.map((session) => <span key={session} className="rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">{session}</span>)}
+                          </div>
+                        </div>
+                      )}
 
                       {p.rules?.entry && p.rules.entry.length > 0 && (
                         <div>
