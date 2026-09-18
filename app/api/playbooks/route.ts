@@ -69,6 +69,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { title, description, rules, strategy_type, tags, is_public, public_display_name, public_avatar_url, youtube_links } = body
     const linkedRuleIds = Array.isArray(rules?.linkedRuleIds) ? rules.linkedRuleIds.filter((id: unknown): id is string => typeof id === 'string').slice(0, 100) : []
+    const normalizeCriteria = (value: unknown) => Array.isArray(value) ? value.filter((rule) => {
+      if (typeof rule === 'string') return rule.trim().length > 0
+      return Boolean(rule && typeof rule === 'object' && (((rule as Record<string, unknown>).title as string)?.trim() || ((rule as Record<string, unknown>).description as string)?.trim()))
+    }) : []
+    const entry = normalizeCriteria(rules?.entry ?? rules?.entryCriteria)
+    const exit = normalizeCriteria(rules?.exit ?? rules?.exitCriteria)
     const highlightColor = typeof body.color === 'string' && /^#[0-9A-F]{6}$/i.test(body.color) ? body.color : '#FF6B35'
 
     if (!title) {
@@ -84,7 +90,7 @@ export async function POST(request: NextRequest) {
         user_id: user.id,
         title,
         description: description || '',
-        rules: { ...(rules && typeof rules === 'object' ? rules : {}), linkedRuleIds, color: highlightColor },
+        rules: { ...(rules && typeof rules === 'object' ? rules : {}), entry, exit, linkedRuleIds, color: highlightColor },
         strategy_type: strategy_type || 'general',
         tags: tags || [],
         is_public: publicProfile,
