@@ -171,16 +171,18 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
               {data.entryCriteria.map((rule, idx) => (
                 <div key={rule.id} className="space-y-2 p-3 bg-muted rounded-lg">
                   <Input
+                    type="text"
+                    aria-label={`Entry rule ${idx + 1}`}
                     placeholder={`Rule ${idx + 1}`}
                     value={rule.title}
                     onChange={(e) => updateRule('entry', rule.id, 'title', e.target.value)}
-                    className="bg-card border border-border/50 text-sm"
+                    className="relative z-10 cursor-text bg-card border border-border/50 text-sm"
                   />
                   <Input
                     placeholder="Description"
                     value={rule.description}
                     onChange={(e) => updateRule('entry', rule.id, 'description', e.target.value)}
-                    className="bg-card border border-border/50 text-sm"
+                    className="relative z-10 cursor-text bg-card border border-border/50 text-sm"
                   />
                   {data.entryCriteria.length > 1 && (
                     <Button
@@ -217,16 +219,18 @@ export function CreatePlaybookForm({ onSubmit, onCancel, className }: { onSubmit
               {data.exitCriteria.map((rule, idx) => (
                 <div key={rule.id} className="space-y-2 p-3 bg-muted rounded-lg">
                   <Input
+                    type="text"
+                    aria-label={`Exit rule ${idx + 1}`}
                     placeholder={`Rule ${idx + 1}`}
                     value={rule.title}
                     onChange={(e) => updateRule('exit', rule.id, 'title', e.target.value)}
-                    className="bg-card border border-border/50 text-sm"
+                    className="relative z-10 cursor-text bg-card border border-border/50 text-sm"
                   />
                   <Input
                     placeholder="Description"
                     value={rule.description}
                     onChange={(e) => updateRule('exit', rule.id, 'description', e.target.value)}
-                    className="bg-card border border-border/50 text-sm"
+                    className="relative z-10 cursor-text bg-card border border-border/50 text-sm"
                   />
                   {data.exitCriteria.length > 1 && (
                     <Button
