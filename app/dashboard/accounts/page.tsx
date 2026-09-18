@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Plus, ArrowRight, Loader2, Wallet, DollarSign, Settings, Trash2 } from 'lucide-react'
+import { Plus, ArrowRight, Loader2, Wallet, DollarSign, Settings, Trash2, Lock, TrendingUp, TrendingDown } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { useAccount } from '@/components/dashboard/account-context'
 
 interface Account {
   id: string
@@ -30,6 +31,8 @@ interface Account {
   account_type: string
   currency: string
   initial_balance: number
+  current_balance: number
+  total_pnl: number
   risk_percent: number
   risk_amount: number
   created_at: string
@@ -38,11 +41,11 @@ interface Account {
 
 export default function AccountsPage() {
   const router = useRouter()
+  const { selectedAccountId, switchAccount, isSwitching, refreshAccounts } = useAccount()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(null)
   const [settingsAccount, setSettingsAccount] = useState<Account | null>(null)
   const [settingsData, setSettingsData] = useState({ account_name: '', risk_percent: '', risk_amount: '' })
   const [savingSettings, setSavingSettings] = useState(false)
@@ -85,9 +88,6 @@ export default function AccountsPage() {
       if (res.ok) {
         const data = await res.json()
         setAccounts(data)
-        // Set the first account or the one marked as active as selected
-        const activeAccount = data.find((acc: Account) => acc.is_active)
-        setSelectedAccountId(activeAccount?.id || data[0]?.id || null)
       }
     } catch (error) {
       console.error('[v0] Error fetching accounts:', error)
@@ -125,6 +125,7 @@ export default function AccountsPage() {
       if (res.ok) {
         const newAccount = await res.json()
         setAccounts([newAccount, ...accounts])
+        await refreshAccounts()
         toast.success('Account created successfully')
         setFormData({ account_name: '', account_type: 'Manual', currency: 'USD', initial_balance: '', risk_percent: '1', risk_amount: '' })
         setDialogOpen(false)
@@ -188,6 +189,13 @@ export default function AccountsPage() {
                     <SelectItem value="Manual">Manual</SelectItem>
                     <SelectItem value="MT4">MT4</SelectItem>
                     <SelectItem value="cTrader">cTrader</SelectItem>
+                    <SelectItem value="MT5" disabled className="opacity-50">
+                      <span className="flex items-center gap-2">
+                        MT5
+                        <Lock className="w-3 h-3" aria-hidden="true" />
+                        <span className="text-xs text-muted-foreground">Coming soon</span>
+                      </span>
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -273,6 +281,13 @@ export default function AccountsPage() {
                         <SelectItem value="Manual">Manual</SelectItem>
                         <SelectItem value="MT4">MT4</SelectItem>
                         <SelectItem value="cTrader">cTrader</SelectItem>
+                        <SelectItem value="MT5" disabled className="opacity-50">
+                          <span className="flex items-center gap-2">
+                            MT5
+                            <Lock className="w-3 h-3" aria-hidden="true" />
+                            <span className="text-xs text-muted-foreground">Coming soon</span>
+                          </span>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -316,38 +331,63 @@ export default function AccountsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {accounts.map(account => {
-            const isSelected = selectedAccountId === account.id
+            const isActive = selectedAccountId === account.id
+            const currentBalance = account.current_balance ?? account.initial_balance ?? 0
+            const totalPnl = account.total_pnl ?? 0
             return (
-            <Link key={account.id} href={`/dashboard/accounts/${account.id}`} onClick={() => setSelectedAccountId(account.id)}>
+            <Link key={account.id} href={`/dashboard/accounts/${account.id}`}>
               <Card className={`p-6 bg-card border cursor-pointer transition-all h-full ${
-                isSelected
-                  ? 'border-primary border-l-4 border-l-primary'
+                isActive
+                  ? 'border-primary border-l-4 border-l-primary ring-1 ring-primary/20'
                   : 'border-border hover:border-primary/50'
               }`}>
                 <div className="space-y-4">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
                       <h3 className="font-semibold text-foreground text-lg">{account.account_name}</h3>
                       <p className="text-sm text-muted-foreground">{account.account_type}</p>
                     </div>
-                    <Button type="button" variant="ghost" size="icon" aria-label={`Settings for ${account.account_name}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openSettings(account) }}><Settings className="w-4 h-4" /></Button>
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      account.is_active
-                        ? 'bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-300'
-                        : 'bg-gray-100 dark:bg-gray-950/30 text-gray-700 dark:text-gray-300'
-                    }`}>
-                      {account.is_active ? 'Active' : 'Inactive'}
-                    </span>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button type="button" variant="ghost" size="icon" aria-label={`Settings for ${account.account_name}`} onClick={(event) => { event.preventDefault(); event.stopPropagation(); openSettings(account) }}><Settings className="w-4 h-4" /></Button>
+                      {isActive ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 dark:bg-green-950/30 text-green-700 dark:text-green-300">
+                          Active
+                        </span>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="h-6 px-2 text-xs"
+                          disabled={isSwitching}
+                          onClick={(event) => { event.preventDefault(); event.stopPropagation(); switchAccount(account.id) }}
+                        >
+                          Set active
+                        </Button>
+                      )}
+                    </div>
                   </div>
                   <div className="flex items-center justify-between text-xs text-muted-foreground"><span>Risk limit</span><span>{account.risk_percent}% · {account.currency} {Number(account.risk_amount).toLocaleString()}</span></div>
-                  {account.initial_balance && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-border/50">
-                      <DollarSign className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        Initial: {account.currency} {account.initial_balance.toLocaleString()}
-                      </span>
+                  {account.initial_balance ? (
+                    <div className="flex flex-col gap-2 pt-2 border-t border-border/50 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Initial: {account.currency} {account.initial_balance.toLocaleString()}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {totalPnl >= 0 ? (
+                          <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
+                        ) : (
+                          <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
+                        )}
+                        <span className={`text-sm font-medium ${totalPnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                          Current: {account.currency} {currentBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
                     </div>
-                  )}
+                  ) : null}
 
                   <div className="flex items-center justify-between pt-2">
                     <p className="text-xs text-muted-foreground">
