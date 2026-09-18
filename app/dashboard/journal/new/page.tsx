@@ -16,21 +16,27 @@ export default function AddNewTradePage() {
   const [initialValues, setInitialValues] = useState<Partial<TradeFormValues>>({})
   const [showTradeSaveSuccess, setShowTradeSaveSuccess] = useState(false)
   const [pendingImportIndex, setPendingImportIndex] = useState<number | null>(null)
+  const [pendingImportId, setPendingImportId] = useState<string | null>(null)
   const [pendingImportCount, setPendingImportCount] = useState(0)
   const [hasPendingImport, setHasPendingImport] = useState(false)
 
   useEffect(() => {
-    try {
+    const loadPendingTrade = async () => {
+      try {
       const rawIndex = searchParams.get('importIndex')
       const index = rawIndex !== null ? Number.parseInt(rawIndex, 10) : null
       if (index === null || Number.isNaN(index)) return
 
-      const trade = getPendingImportedTradeAt(index)
+      const response = await fetch('/api/trades/pending-imports')
+      const payload = response.ok ? await response.json() : null
+      const persistentTrade = payload?.trades?.[index]
+      const trade = persistentTrade ?? getPendingImportedTradeAt(index)
       if (!trade) return
 
       setHasPendingImport(true)
       setPendingImportIndex(index)
-      setPendingImportCount(getPendingImportedTradesCount())
+      setPendingImportId(typeof persistentTrade?.id === 'string' ? persistentTrade.id : null)
+      setPendingImportCount(Array.isArray(payload?.trades) ? payload.trades.length : getPendingImportedTradesCount())
       setInitialValues({
         ...DEFAULT_TRADE_FORM_VALUES,
         symbol: trade.symbol || '',
@@ -53,12 +59,16 @@ export default function AddNewTradePage() {
       })
     } catch (error) {
       console.error('[v0] Could not load pending imported trade:', error)
+      }
     }
+    void loadPendingTrade()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleSaved = (result: any) => {
-    if (hasPendingImport && pendingImportIndex !== null) {
+    if (hasPendingImport && pendingImportId) {
+      void fetch('/api/trades/pending-imports', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: pendingImportId }) })
+    } else if (hasPendingImport && pendingImportIndex !== null) {
       removePendingImportedTradeAt(pendingImportIndex)
     }
     appToast.tradeSaved(result.symbol, result.pnl?.toFixed(2), '', result.pnl >= 0)
