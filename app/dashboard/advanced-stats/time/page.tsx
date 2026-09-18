@@ -19,7 +19,7 @@ export default async function TimeAnalysisPage() {
 
   // Use the exact canonical query that powers Trade History. Advanced stats
   // must analyze the same journaled trade set users see there.
-  const trades = await getUserTrades('all')
+  const trades = await getUserTrades('history')
 
   // Calculate news impact analysis using economic calendar data
   let newsImpactData = {

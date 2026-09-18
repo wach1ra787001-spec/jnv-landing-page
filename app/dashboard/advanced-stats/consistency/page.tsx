@@ -22,7 +22,7 @@ export default async function ConsistencyAnalysisPage() {
   }
 
   // Reuse the exact account-scoped trade set shown in Trade History.
-  const allTrades = await getUserTrades("all")
+  const allTrades = await getUserTrades("history")
 
   const tradeIds = (allTrades || []).map((trade) => trade.id)
 

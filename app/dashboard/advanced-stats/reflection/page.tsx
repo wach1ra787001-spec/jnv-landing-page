@@ -17,7 +17,7 @@ export default async function ReflectionAnalysisPage() {
   }
 
   // Reuse Trade History's canonical account-scoped trade query.
-  const trades = await getUserTrades('all')
+  const trades = await getUserTrades('history')
 
   return (
     <ReflectionAnalysisClient trades={trades || []} />
