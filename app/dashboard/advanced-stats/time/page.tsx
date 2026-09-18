@@ -24,7 +24,7 @@ export default async function TimeAnalysisPage() {
     .from('trades')
     .select('*')
     .eq('user_id', user.id)
-    .eq('status', 'closed')
+    .in('status', ['closed', 'breakeven'])
     .order('entry_time', { ascending: false })
 
   if (accountId) {

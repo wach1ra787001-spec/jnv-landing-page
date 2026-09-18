@@ -155,7 +155,7 @@ export default function MonthlyPage() {
         .from('trades')
         .select('id, symbol, net_pnl, pnl, commission, swap, exit_time, entry_time, status')
         .eq('user_id', user.id)
-        .eq('status', 'closed')
+        .in('status', ['closed', 'breakeven'])
         .gte('exit_time', startIso)
         .lte('exit_time', endIso)
         .order('exit_time', { ascending: true })
