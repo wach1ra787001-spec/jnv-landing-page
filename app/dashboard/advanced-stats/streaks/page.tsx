@@ -17,7 +17,7 @@ export default async function StreaksAnalysisPage() {
   }
 
   // Reuse Trade History's canonical account-scoped trade query.
-  const trades = await getUserTrades('history')
+  const trades = await getUserTrades('all')
 
   const tradeIds = (trades || []).map((trade) => trade.id)
   const { data: journals } = tradeIds.length

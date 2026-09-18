@@ -17,7 +17,7 @@ export interface DailyPnL {
 export function generateEquityCurveData(trades: Trade[], period: string = 'monthly'): EquityCurveDataPoint[] {
   if (!trades || trades.length === 0) return []
 
-  const closedTrades = trades.filter(t => t.status === 'closed' && t.profit_loss !== null)
+  const closedTrades = trades.filter(t => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()) && t.pnl !== null)
   
   // Group trades by time period
   const groupedTrades = new Map<string, number>()
@@ -92,7 +92,7 @@ export function generateEquityCurveData(trades: Trade[], period: string = 'month
 export function generateDailyPnLByPeriod(trades: Trade[], period: string = 'monthly'): DailyPnL[] {
   if (!trades || trades.length === 0) return []
 
-  const closedTrades = trades.filter(t => t.status === 'closed' && t.pnl !== null)
+  const closedTrades = trades.filter(t => ['closed', 'breakeven'].includes(String(t.status).toLowerCase()) && t.pnl !== null)
   const dailyPnL = new Map<string, { pnl: number; exitDate: Date }>()
   const now = new Date()
 

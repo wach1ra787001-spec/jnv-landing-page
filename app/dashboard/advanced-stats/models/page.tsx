@@ -17,7 +17,7 @@ export default async function ModelsAnalysisPage() {
   }
 
   // Reuse Trade History's canonical account-scoped trade query.
-  const trades = await getUserTrades('history')
+  const trades = await getUserTrades('all')
 
   return (
     <ModelsAnalysisClient trades={trades || []} />
