@@ -259,7 +259,7 @@ export default function TemplatesPage() {
         <h1 className="text-2xl md:text-3xl font-bold text-foreground">Trading Templates & Playbooks</h1>
         <Button onClick={() => setShowCreateForm(true)} className="gap-2 bg-primary hover:bg-primary/90">
           <Plus className="w-4 h-4" />
-          Create Playbook
+          Build your own playbook
         </Button>
       </div>
       

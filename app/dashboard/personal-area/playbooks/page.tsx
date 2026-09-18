@@ -190,7 +190,7 @@ export default function PlaybooksPage() {
         </div>
         <Button onClick={() => setShowModal(true)} size="sm" className="gap-2">
           <Plus className="w-4 h-4" />
-          New Playbook
+          Build your own playbook
         </Button>
       </div>
 
