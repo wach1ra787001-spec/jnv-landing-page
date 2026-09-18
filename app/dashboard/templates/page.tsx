@@ -342,8 +342,8 @@ export default function TemplatesPage() {
             <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{playbook.description}</p>
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-5 gap-2 mb-4 py-4 border-y border-border">
-              <div>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-4 mb-4 py-4 border-y border-border sm:grid-cols-5 sm:gap-2">
+              <div className="min-w-0">
                 <p className="text-xs text-muted-foreground mb-1">Win Rate</p>
                 <p className="font-bold text-sm text-green-600 dark:text-green-400">{playbook.winRate}%</p>
               </div>
@@ -361,7 +361,7 @@ export default function TemplatesPage() {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Month</p>
-                <p className="font-bold text-sm text-foreground">{playbook.month}</p>
+                <p className="font-bold text-sm text-foreground break-words">{playbook.month}</p>
               </div>
             </div>
 
@@ -416,25 +416,25 @@ export default function TemplatesPage() {
             )}
 
             {/* Actions */}
-            <div className="flex gap-2 pt-4 border-t border-border mt-auto" onClick={(event) => event.stopPropagation()}>
-              <Button size="sm" className="flex-1" onClick={() => useTemplate(playbook)} disabled={importingId === playbook.id}>{importingId === playbook.id ? 'Importing…' : 'Use this template'}</Button>
+            <div className="grid grid-cols-2 gap-2 pt-4 border-t border-border mt-auto sm:flex" onClick={(event) => event.stopPropagation()}>
+              <Button size="sm" className="col-span-2 min-w-0 sm:flex-1" onClick={() => useTemplate(playbook)} disabled={importingId === playbook.id}>{importingId === playbook.id ? 'Importing…' : 'Use this template'}</Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex-1 gap-2"
+                className="min-w-0 gap-2 sm:flex-1"
                 onClick={() => toggleLike(playbook.id)}
               >
                 <Heart className={cn("w-4 h-4", playbook.liked && "fill-current text-red-500")} />
                 <span className="text-xs">{playbook.likes}</span>
               </Button>
-              <Button variant="ghost" size="sm" className="flex-1 gap-2">
+              <Button variant="ghost" size="sm" className="min-w-0 gap-2 sm:flex-1">
                 <MessageCircle className="w-4 h-4" />
                 <span className="text-xs">{playbook.comments}</span>
               </Button>
               <Button
                 variant="ghost"
                 size="sm"
-                className="flex-1 gap-2"
+                className="min-w-0 gap-2 sm:flex-1"
                 onClick={() => sharePlaybook(playbook)}
                 disabled={!playbook.publicSlug}
                 aria-label={`Share ${playbook.name}`}
