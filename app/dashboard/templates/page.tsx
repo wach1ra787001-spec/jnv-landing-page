@@ -29,8 +29,19 @@ interface Playbook {
   publicDisplayName?: string | null
   publicAvatarUrl?: string | null
   youtubeLinks?: string[]
-  rules?: { entry?: string[]; exit?: string[]; linkedRuleIds?: string[]; custom?: string[] }
-  tags?: string[]
+  rules?: { entry?: unknown[]; exit?: unknown[]; linkedRuleIds?: unknown[]; custom?: unknown[] }
+  tags?: unknown[]
+}
+
+function getDisplayText(value: unknown): string {
+  if (typeof value === 'string' || typeof value === 'number') return String(value)
+  if (value && typeof value === 'object') {
+    const item = value as { title?: unknown; description?: unknown; id?: unknown }
+    if (typeof item.title === 'string') return item.title
+    if (typeof item.description === 'string') return item.description
+    if (typeof item.id === 'string') return item.id
+  }
+  return ''
 }
 
 const mockPlaybooks: Playbook[] = [
@@ -368,7 +379,7 @@ export default function TemplatesPage() {
                 {(['entry', 'exit', 'custom'] as const).map((type) => playbook.rules?.[type]?.length ? (
                   <div key={type}>
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">{type} rules</p>
-                    <ul className="space-y-1 text-sm text-foreground">{playbook.rules[type]!.map((rule, index) => <li key={index} className="flex gap-2"><span className="text-primary">•</span><span>{rule}</span></li>)}</ul>
+                    <ul className="space-y-1 text-sm text-foreground">{playbook.rules[type]!.map((rule, index) => <li key={index} className="flex gap-2"><span className="text-primary">•</span><span>{typeof rule === 'string' || typeof rule === 'number' ? String(rule) : getDisplayText(rule)}</span></li>)}</ul>
                   </div>
                 ) : null)}
                 <div>

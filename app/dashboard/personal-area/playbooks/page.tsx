@@ -328,7 +328,7 @@ export default function PlaybooksPage() {
                             {p.rules.entry.map((r, i) => (
                               <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                                 <span className="text-primary mt-0.5">•</span>
-                                {r}
+                                {getDisplayText(r)}
                               </li>
                             ))}
                           </ul>
@@ -342,7 +342,7 @@ export default function PlaybooksPage() {
                             {p.rules.exit.map((r, i) => (
                               <li key={i} className="flex items-start gap-2 text-sm text-foreground">
                                 <span className="text-primary mt-0.5">•</span>
-                                {r}
+                                {getDisplayText(r)}
                               </li>
                             ))}
                           </ul>
