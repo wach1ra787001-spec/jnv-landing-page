@@ -237,14 +237,16 @@ export function TradeForm({
       const playbook = playbooks.find((item) => item.id === formData.playbook_id)
       const playbookRulesSnapshot = (() => {
         if (!playbook) return null
-        const rules = [...(playbook.rules?.entry || []), ...(playbook.rules?.exit || []), ...(playbook.rules?.custom || [])].filter(
-          (rule: unknown): rule is string => typeof rule === 'string' && rule.trim().length > 0,
-        )
-        return rules.map((label: string, index: number) => ({
-          id: `custom-${index}`,
-          label,
-          followed: formData.followed_rule_ids.includes(`custom-${index}`),
-        }))
+        const rules = [...(playbook.rules?.entry || []), ...(playbook.rules?.exit || []), ...(playbook.rules?.custom || [])]
+        return rules.flatMap((rule: unknown, index: number) => {
+          const item = rule && typeof rule === 'object' ? rule as { id?: unknown; title?: unknown; description?: unknown; name?: unknown; text?: unknown } : null
+          const title = item ? (typeof item.title === 'string' ? item.title : typeof item.name === 'string' ? item.name : typeof item.text === 'string' ? item.text : '') : String(rule ?? '')
+          const description = item && typeof item.description === 'string' ? item.description : ''
+          const label = title.trim() && description.trim() ? `${title.trim()}: ${description.trim()}` : (title.trim() || description.trim())
+          if (!label) return []
+          const id = item && typeof item.id === 'string' ? item.id : `custom-${index}`
+          return [{ id, label, followed: formData.followed_rule_ids.includes(id) || formData.followed_rule_ids.includes(`custom-${index}`) }]
+        })
       })()
 
       if (mode === 'create') {
