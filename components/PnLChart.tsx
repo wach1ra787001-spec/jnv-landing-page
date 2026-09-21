@@ -196,8 +196,8 @@ export function PnLChart({
           }),
           pnl: parseFloat(cumulative.toFixed(2)),
           tradePnl: netPnL,
-          positivePnl: cumulative >= 0 ? parseFloat(cumulative.toFixed(2)) : null,
-          negativePnl: cumulative < 0 ? parseFloat(cumulative.toFixed(2)) : null,
+          positivePnl: parseFloat(Math.max(cumulative, 0).toFixed(2)),
+          negativePnl: parseFloat(Math.min(cumulative, 0).toFixed(2)),
         }
       })
 
@@ -407,7 +407,7 @@ export function PnLChart({
                 content={({ active, payload }) => (
                   <CustomTooltip
                     active={active}
-                    payload={payload as Array<{ value: number; payload: ChartDataPoint }>}
+                    payload={payload?.[0]?.payload ? [{ value: payload[0].payload.pnl, payload: payload[0].payload as ChartDataPoint }] : []}
                     isPositive={isPositive}
                     currency={currency}
                   />
