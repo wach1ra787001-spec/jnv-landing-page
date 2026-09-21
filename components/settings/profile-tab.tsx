@@ -234,19 +234,24 @@ export function ProfileTab() {
       const fullName = `${formData.firstName} ${formData.lastName}`.trim()
       const savedAvatarUrl = tempAvatarUrl.trim() || avatarUrl.trim()
 
-      const { error } = await supabase
+      const { data: savedProfile, error } = await supabase
         .from("profiles")
-        .update({
+        .upsert({
+          id: user.id,
           full_name: fullName,
-          email: formData.email,
+          email: formData.email || user.email || "",
           phone_number: formData.phoneNumber || null,
           avatar_url: savedAvatarUrl || null,
           timezone: formData.timezone,
           currency: formData.currency,
-        })
-        .eq("id", user.id)
+        }, { onConflict: "id" })
+        .select("id, full_name, email, phone_number, avatar_url, timezone, currency")
+        .single()
 
       if (error) throw error
+      if (!savedProfile || savedProfile.avatar_url !== (savedAvatarUrl || null)) {
+        throw new Error("The profile picture could not be confirmed in the database")
+      }
 
       setAvatarUrl(savedAvatarUrl)
       setProfile((current) => current ? { ...current, full_name: fullName, email: formData.email, phone_number: formData.phoneNumber || null, avatar_url: savedAvatarUrl || null, timezone: formData.timezone, currency: formData.currency } : current)
