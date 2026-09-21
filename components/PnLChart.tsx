@@ -22,6 +22,8 @@ interface ChartDataPoint {
   date: string
   pnl: number
   tradePnl: number
+  positivePnl: number | null
+  negativePnl: number | null
 }
 
 interface PnLChartProps {
@@ -194,6 +196,8 @@ export function PnLChart({
           }),
           pnl: parseFloat(cumulative.toFixed(2)),
           tradePnl: netPnL,
+          positivePnl: cumulative >= 0 ? parseFloat(cumulative.toFixed(2)) : null,
+          negativePnl: cumulative < 0 ? parseFloat(cumulative.toFixed(2)) : null,
         }
       })
 
@@ -227,18 +231,6 @@ export function PnLChart({
   const latestPnL = chartData.length > 0 ? chartData[chartData.length - 1].pnl : 0
   const isPositive = latestPnL > 0
   const isNegative = latestPnL < 0
-
-  // Determine colors
-  let lineColor = '#94a3b8'
-  let gradientColor = '#94a3b8'
-
-  if (isPositive) {
-    lineColor = '#16a34a'
-    gradientColor = '#16a34a'
-  } else if (isNegative) {
-    lineColor = '#dc2626'
-    gradientColor = '#dc2626'
-  }
 
   // Calculate Y axis domain
   const minPnL = Math.min(...chartData.map((d) => d.pnl), 0)
@@ -384,9 +376,13 @@ export function PnLChart({
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ left: 16, right: 16, top: 8, bottom: 8 }}>
               <defs>
-                <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={gradientColor} stopOpacity={0.52} />
-                  <stop offset="100%" stopColor={gradientColor} stopOpacity={0.06} />
+                <linearGradient id="pnlPositiveGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#16a34a" stopOpacity={0.52} />
+                  <stop offset="100%" stopColor="#16a34a" stopOpacity={0.06} />
+                </linearGradient>
+                <linearGradient id="pnlNegativeGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#dc2626" stopOpacity={0.06} />
+                  <stop offset="100%" stopColor="#dc2626" stopOpacity={0.52} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
@@ -425,10 +421,20 @@ export function PnLChart({
               />
               <Area
                 type="monotone"
-                dataKey="pnl"
-                stroke={lineColor}
-                fill="url(#pnlGradient)"
+                dataKey="positivePnl"
+                stroke="#16a34a"
+                fill="url(#pnlPositiveGradient)"
                 strokeWidth={2}
+                connectNulls={false}
+                isAnimationActive={true}
+              />
+              <Area
+                type="monotone"
+                dataKey="negativePnl"
+                stroke="#dc2626"
+                fill="url(#pnlNegativeGradient)"
+                strokeWidth={2}
+                connectNulls={false}
                 isAnimationActive={true}
               />
             </AreaChart>
