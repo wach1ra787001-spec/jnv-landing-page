@@ -34,6 +34,13 @@ export function HeroCard({ userName, quote, streakDays = 0, recentTrades = [] }:
         <div className="space-y-1 sm:space-y-2">
           <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-[#1E293B] dark:text-foreground leading-tight">
             {mounted ? greeting : "Welcome"}, {userName}
+            <span
+              className="ml-2 inline-flex items-center gap-1 rounded-full bg-orange-50 px-2 py-0.5 align-middle text-sm font-semibold text-orange-700 dark:bg-orange-950/40 dark:text-orange-300 sm:text-base"
+              title={`${streakDays} consecutive winning trades`}
+              aria-label={`${streakDays} consecutive winning trades`}
+            >
+              <span aria-hidden="true">🔥</span>{streakDays}
+            </span>
           </h1>
           <p className="text-[13px] sm:text-sm text-[#64748B] italic leading-relaxed">
             {`"${quote}"`}
