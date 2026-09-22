@@ -94,8 +94,8 @@ export async function POST(req: NextRequest) {
       swap:         trade.swap,
       stop_loss:    trade.stop_loss,
       take_profit:  trade.take_profit,
-      external_ref: trade.external_ref,
-      status:       trade.status,
+      external_ref: trade.external_ref || `csv-${trade.symbol}-${trade.open_time}-${trade.lot_size}`,
+      status:       trade.status || 'closed',
       raw_payload:  trade.raw,
     })
   }
@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
 
   if (importError) {
     console.error('[v0] Failed to persist pending CSV imports:', importError)
-    return NextResponse.json({ error: 'Could not save imported trades for journaling' }, { status: 500 })
+    return NextResponse.json({ error: `Could not save imported trades for journaling: ${importError.message}` }, { status: 500 })
   }
 
   return NextResponse.json({

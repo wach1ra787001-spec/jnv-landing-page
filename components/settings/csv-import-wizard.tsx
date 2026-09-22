@@ -14,7 +14,6 @@ import {
   type ColumnMapping, type FieldKey, type ParseResult,
 } from '@/lib/csv-import/parser'
 import { appToast } from '@/lib/toast-utils'
-import { setPendingImportedTrades } from '@/lib/pending-imports'
 
 type Step = 'upload' | 'map' | 'preview' | 'importing' | 'done'
 
@@ -131,7 +130,6 @@ export function CSVImportWizard() {
       }
 
       setImportResult(data)
-      setPendingImportedTrades(data.trades || parseResult.trades, 'CSV')
       setStep('done')
 
       // Notify, then take the user straight to Log a Trade so they can
@@ -197,7 +195,7 @@ export function CSVImportWizard() {
         </div>
       )}
 
-      {/* ── STEP: Map Columns ── */}
+      {/* ��─ STEP: Map Columns ── */}
       {step === 'map' && parseResult && (
         <div className="space-y-4">
           {/* Detected broker */}

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { getPendingImportedTradeAt, removePendingImportedTradeAt, getPendingImportedTradesCount } from '@/lib/pending-imports'
 import { Button } from '@/components/ui/button'
 import { ArrowLeft } from 'lucide-react'
 import { appToast } from '@/lib/toast-utils'
@@ -30,13 +29,13 @@ export default function AddNewTradePage() {
       const response = await fetch('/api/trades/pending-imports')
       const payload = response.ok ? await response.json() : null
       const persistentTrade = payload?.trades?.[index]
-      const trade = persistentTrade ?? getPendingImportedTradeAt(index)
-      if (!trade) return
+  const trade = persistentTrade
+  if (!trade) return
 
       setHasPendingImport(true)
       setPendingImportIndex(index)
       setPendingImportId(typeof persistentTrade?.id === 'string' ? persistentTrade.id : null)
-      setPendingImportCount(Array.isArray(payload?.trades) ? payload.trades.length : getPendingImportedTradesCount())
+      setPendingImportCount(Array.isArray(payload?.trades) ? payload.trades.length : 0)
       setInitialValues({
         ...DEFAULT_TRADE_FORM_VALUES,
         symbol: trade.symbol || '',
@@ -70,9 +69,7 @@ export default function AddNewTradePage() {
   const handleSaved = (result: any) => {
     if (hasPendingImport && pendingImportId) {
       void fetch('/api/trades/pending-imports', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: pendingImportId }) })
-    } else if (hasPendingImport && pendingImportIndex !== null) {
-      removePendingImportedTradeAt(pendingImportIndex)
-    }
+  }
     appToast.tradeSaved(result.symbol, result.pnl?.toFixed(2), '', result.pnl >= 0)
     setShowTradeSaveSuccess(true)
   }
