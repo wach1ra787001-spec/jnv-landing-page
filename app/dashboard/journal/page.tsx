@@ -7,14 +7,30 @@ import { Badge } from '@/components/ui/badge'
 import { Plus, ArrowRight, AlertTriangle, FileSpreadsheet, ChevronRight } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { getPendingImportedTrades, type PendingImportedTrade } from '@/lib/pending-imports'
+type PendingImportedTrade = {
+  id: string
+  symbol?: string
+  direction?: string
+  entry_time?: string
+  open_time?: string
+  pnl?: number
+  external_ref?: string
+  source?: string
+}
 
 export default function JournalPage() {
   const router = useRouter()
   const [pendingTrades, setPendingTrades] = useState<PendingImportedTrade[]>([])
 
   useEffect(() => {
-    setPendingTrades(getPendingImportedTrades())
+    let cancelled = false
+    fetch('/api/trades/pending-imports')
+      .then((response) => response.ok ? response.json() : { trades: [] })
+      .then((payload) => {
+        if (!cancelled) setPendingTrades(Array.isArray(payload.trades) ? payload.trades : [])
+      })
+      .catch(() => { if (!cancelled) setPendingTrades([]) })
+    return () => { cancelled = true }
   }, [])
 
   return (
@@ -54,7 +70,7 @@ export default function JournalPage() {
             <div className="flex items-center gap-2">
               <FileSpreadsheet className="w-4 h-4 text-amber-600" />
               <h2 className="text-sm sm:text-base font-semibold text-foreground">
-                Imported Trades from {pendingTrades[0]?.source_label || 'CSV'} ({pendingTrades.length})
+                Imported Trades from {(pendingTrades[0]?.source || 'csv').toUpperCase()} ({pendingTrades.length})
               </h2>
             </div>
             <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-700">
@@ -81,7 +97,7 @@ export default function JournalPage() {
                     <div className="min-w-0">
                       <p className="font-mono font-medium text-foreground truncate">{trade.symbol}</p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {trade.open_time ? new Date(trade.open_time as string).toLocaleDateString() : 'Unknown date'}
+                        {(trade.entry_time || trade.open_time) ? new Date((trade.entry_time || trade.open_time) as string).toLocaleDateString() : 'Unknown date'}
                       </p>
                     </div>
                   </div>

@@ -22,6 +22,8 @@ interface ChartDataPoint {
   date: string
   pnl: number
   tradePnl: number
+  positivePnl: number | null
+  negativePnl: number | null
 }
 
 interface PnLChartProps {
@@ -194,6 +196,8 @@ export function PnLChart({
           }),
           pnl: parseFloat(cumulative.toFixed(2)),
           tradePnl: netPnL,
+          positivePnl: parseFloat(Math.max(cumulative, 0).toFixed(2)),
+          negativePnl: parseFloat(Math.min(cumulative, 0).toFixed(2)),
         }
       })
 
@@ -228,18 +232,6 @@ export function PnLChart({
   const isPositive = latestPnL > 0
   const isNegative = latestPnL < 0
 
-  // Determine colors
-  let lineColor = '#94a3b8'
-  let gradientColor = '#94a3b8'
-
-  if (isPositive) {
-    lineColor = '#16a34a'
-    gradientColor = '#16a34a'
-  } else if (isNegative) {
-    lineColor = '#dc2626'
-    gradientColor = '#dc2626'
-  }
-
   // Calculate Y axis domain
   const minPnL = Math.min(...chartData.map((d) => d.pnl), 0)
   const maxPnL = Math.max(...chartData.map((d) => d.pnl), 0)
@@ -250,6 +242,11 @@ export function PnLChart({
     yDomain[0] = minPnL - 100
     yDomain[1] = maxPnL + 100
   }
+
+  // The zero baseline position lets one SVG gradient change color exactly at P&L zero.
+  const zeroOffset = yDomain[1] === yDomain[0]
+    ? 50
+    : (yDomain[1] / (yDomain[1] - yDomain[0])) * 100
 
   const periodButtons = ['1W', '1M', '3M', '6M', '1Y', 'All']
 
@@ -385,8 +382,14 @@ export function PnLChart({
             <AreaChart data={chartData} margin={{ left: 16, right: 16, top: 8, bottom: 8 }}>
               <defs>
                 <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor={gradientColor} stopOpacity={0.52} />
-                  <stop offset="100%" stopColor={gradientColor} stopOpacity={0.06} />
+                  <stop offset={`${Math.max(0, zeroOffset - 0.5)}%`} stopColor="#16a34a" stopOpacity={0.52} />
+                  <stop offset={`${zeroOffset}%`} stopColor="#16a34a" stopOpacity={0.08} />
+                  <stop offset={`${zeroOffset}%`} stopColor="#dc2626" stopOpacity={0.08} />
+                  <stop offset={`${Math.min(100, zeroOffset + 0.5)}%`} stopColor="#dc2626" stopOpacity={0.52} />
+                </linearGradient>
+                <linearGradient id="pnlLineGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset={`${zeroOffset}%`} stopColor="#16a34a" />
+                  <stop offset={`${zeroOffset}%`} stopColor="#dc2626" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
@@ -411,8 +414,8 @@ export function PnLChart({
                 content={({ active, payload }) => (
                   <CustomTooltip
                     active={active}
-                    payload={payload as Array<{ value: number; payload: ChartDataPoint }>}
-                    isPositive={isPositive}
+                    payload={payload?.[0]?.payload ? [{ value: payload[0].payload.pnl, payload: payload[0].payload as ChartDataPoint }] : []}
+                    isPositive={(payload?.[0]?.payload?.pnl ?? 0) >= 0}
                     currency={currency}
                   />
                 )}
@@ -426,9 +429,10 @@ export function PnLChart({
               <Area
                 type="monotone"
                 dataKey="pnl"
-                stroke={lineColor}
+                baseValue={0}
+                stroke="url(#pnlLineGradient)"
                 fill="url(#pnlGradient)"
-                strokeWidth={2}
+                strokeWidth={2.5}
                 isAnimationActive={true}
               />
             </AreaChart>
