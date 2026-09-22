@@ -415,7 +415,7 @@ export function PnLChart({
                   <CustomTooltip
                     active={active}
                     payload={payload?.[0]?.payload ? [{ value: payload[0].payload.pnl, payload: payload[0].payload as ChartDataPoint }] : []}
-                    isPositive={isPositive}
+                    isPositive={(payload?.[0]?.payload?.pnl ?? 0) >= 0}
                     currency={currency}
                   />
                 )}
