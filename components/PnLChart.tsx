@@ -243,6 +243,11 @@ export function PnLChart({
     yDomain[1] = maxPnL + 100
   }
 
+  // The zero baseline position lets one SVG gradient change color exactly at P&L zero.
+  const zeroOffset = yDomain[1] === yDomain[0]
+    ? 50
+    : (yDomain[1] / (yDomain[1] - yDomain[0])) * 100
+
   const periodButtons = ['1W', '1M', '3M', '6M', '1Y', 'All']
 
   if (loading) {
@@ -376,13 +381,15 @@ export function PnLChart({
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ left: 16, right: 16, top: 8, bottom: 8 }}>
               <defs>
-                <linearGradient id="pnlPositiveGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#16a34a" stopOpacity={0.52} />
-                  <stop offset="100%" stopColor="#16a34a" stopOpacity={0.06} />
+                <linearGradient id="pnlGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset={`${Math.max(0, zeroOffset - 0.5)}%`} stopColor="#16a34a" stopOpacity={0.52} />
+                  <stop offset={`${zeroOffset}%`} stopColor="#16a34a" stopOpacity={0.08} />
+                  <stop offset={`${zeroOffset}%`} stopColor="#dc2626" stopOpacity={0.08} />
+                  <stop offset={`${Math.min(100, zeroOffset + 0.5)}%`} stopColor="#dc2626" stopOpacity={0.52} />
                 </linearGradient>
-                <linearGradient id="pnlNegativeGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#dc2626" stopOpacity={0.06} />
-                  <stop offset="100%" stopColor="#dc2626" stopOpacity={0.52} />
+                <linearGradient id="pnlLineGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset={`${zeroOffset}%`} stopColor="#16a34a" />
+                  <stop offset={`${zeroOffset}%`} stopColor="#dc2626" />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="4 4" stroke="#e2e8f0" vertical={false} />
@@ -421,20 +428,11 @@ export function PnLChart({
               />
               <Area
                 type="monotone"
-                dataKey="positivePnl"
-                stroke="#16a34a"
-                fill="url(#pnlPositiveGradient)"
-                strokeWidth={2}
-                connectNulls={false}
-                isAnimationActive={true}
-              />
-              <Area
-                type="monotone"
-                dataKey="negativePnl"
-                stroke="#dc2626"
-                fill="url(#pnlNegativeGradient)"
-                strokeWidth={2}
-                connectNulls={false}
+                dataKey="pnl"
+                baseValue={0}
+                stroke="url(#pnlLineGradient)"
+                fill="url(#pnlGradient)"
+                strokeWidth={2.5}
                 isAnimationActive={true}
               />
             </AreaChart>
