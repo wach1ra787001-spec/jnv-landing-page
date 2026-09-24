@@ -149,9 +149,9 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
         <div className="p-4 pt-[18px] border-b border-border/50 shrink-0">
           {/* Spacer so logo doesn't overlap the toggle button */}
           <Link href="/" className="flex items-center gap-2 ml-8">
-            <JnvMark className="h-7 w-7" title="JnV Journal Logo" />
-            <span className="text-base font-bold text-sidebar-foreground whitespace-nowrap">
-              JnV Journal
+<JnvMark className="h-7 w-7" title="JnV Trading Journal Logo" />
+  <span className="text-sm font-bold text-sidebar-foreground whitespace-nowrap">
+  JnV Trading Journal
             </span>
           </Link>
         </div>
