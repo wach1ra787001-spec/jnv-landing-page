@@ -40,6 +40,9 @@ CREATE POLICY "users manage own connections"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON broker_connections TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON broker_connections TO service_role;
+
 -- Index for faster queries
 CREATE INDEX idx_broker_connections_user_broker 
   ON broker_connections(user_id, broker);

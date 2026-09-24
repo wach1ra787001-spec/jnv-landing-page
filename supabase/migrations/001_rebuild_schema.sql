@@ -128,8 +128,12 @@ CREATE TABLE public.trade_attachments (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- =====================================================
--- CREATE INDEXES FOR PERFORMANCE
+  -- Explicit Data API grants for Supabase projects created after October 30, 2026.
+  GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_settings, public.journal_trades, public.playbooks, public.playbook_rules, public.personal_notes, public.trading_goals, public.trade_tags, public.trade_attachments TO authenticated;
+  GRANT SELECT, INSERT, UPDATE, DELETE ON public.user_settings, public.journal_trades, public.playbooks, public.playbook_rules, public.personal_notes, public.trading_goals, public.trade_tags, public.trade_attachments TO service_role;
+
+  -- =====================================================
+  -- CREATE INDEXES FOR PERFORMANCE
 -- =====================================================
 
 CREATE INDEX idx_journal_trades_user_id ON public.journal_trades(user_id);

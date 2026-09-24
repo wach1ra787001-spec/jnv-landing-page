@@ -172,6 +172,9 @@ CREATE INDEX IF NOT EXISTS idx_holding_time_trades_user_period
 CREATE INDEX IF NOT EXISTS idx_holding_time_trends_user_period 
   ON holding_time_trends(user_id, period_start, period_end);
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON session_performance, holding_time_buckets, news_time_impact, holding_time_trades, news_times_config, holding_time_trends, news_pnl_timeline TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON session_performance, holding_time_buckets, news_time_impact, holding_time_trades, news_times_config, holding_time_trends, news_pnl_timeline TO service_role;
+
 CREATE INDEX IF NOT EXISTS idx_news_pnl_timeline_user_period 
   ON news_pnl_timeline(user_id, period_start, period_end);
 
