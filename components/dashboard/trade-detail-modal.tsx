@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { X, ArrowDownRight, ArrowUpRight, Upload, Plus, Trash2, Loader2 } from "lucide-react"
+import { X, ArrowDownRight, ArrowUpRight, Upload, Plus, Trash2, Loader2, LockKeyhole } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 interface Trade {
@@ -42,33 +42,6 @@ export function TradeDetailModal({ trade, onClose, onUpdate }: TradeDetailModalP
     setScreenshots(trade.screenshot_urls || [])
   }, [trade.screenshot_urls])
 
-  useEffect(() => {
-    // Load TradingView Lightweight Charts library
-    if (!window.TradingView && chartContainerRef.current) {
-      const script = document.createElement("script")
-      script.src = "https://unpkg.com/lightweight-charts@4.0.0/dist/lightweight-charts.standalone.production.js"
-      script.async = true
-      script.onload = () => {
-        if (chartContainerRef.current && window.TradingView) {
-          initChart()
-        }
-      }
-      document.head.appendChild(script)
-    } else if (window.TradingView && chartContainerRef.current) {
-      initChart()
-    }
-  }, [trade])
-
-  const initChart = () => {
-    if (!chartContainerRef.current || !window.TradingView) return
-
-    const container = chartContainerRef.current
-    container.innerHTML = `
-      <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #f5f7fa 0%, #fbfff1 100%); border-radius: 12px;">
-        <p style="color: #7a8292; font-size: 14px;">TradingView Lightweight Chart Loading...</p>
-      </div>
-    `
-  }
 
   const handleFileSelect = async (files: FileList | null) => {
     if (!files || files.length === 0) return
@@ -184,7 +157,22 @@ export function TradeDetailModal({ trade, onClose, onUpdate }: TradeDetailModalP
 
         <div className="p-6 space-y-6">
           {/* Chart Container */}
-          <div ref={chartContainerRef} className="w-full h-96 rounded-lg border border-border" />
+          <div
+            ref={chartContainerRef}
+            aria-label="TradingView chart unavailable"
+            className="relative flex h-96 w-full items-center justify-center overflow-hidden rounded-lg border border-border bg-gradient-to-br from-muted/80 via-background to-primary/5"
+          >
+            <div className="pointer-events-none absolute inset-0 bg-white/20 backdrop-blur-[2px] dark:bg-black/10" />
+            <div className="relative z-10 flex flex-col items-center gap-3 rounded-2xl border border-white/70 bg-white/55 px-7 py-5 text-center shadow-lg backdrop-blur-xl dark:border-white/10 dark:bg-black/25">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/80 bg-white/70 text-muted-foreground shadow-sm dark:border-white/10 dark:bg-white/10">
+                <LockKeyhole className="h-5 w-5" aria-hidden="true" />
+              </div>
+              <div>
+                <p className="font-semibold text-foreground">TradingView chart unavailable</p>
+                <p className="mt-1 text-sm text-muted-foreground">This feature is not available at the moment.</p>
+              </div>
+            </div>
+          </div>
 
           {/* Trade Details Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

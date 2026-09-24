@@ -19,3 +19,4 @@ CREATE POLICY "users manage own missed trades" ON missed_trades
 CREATE INDEX IF NOT EXISTS idx_missed_trades_user_account ON missed_trades(user_id, account_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_missed_trades_account ON missed_trades(account_id, created_at DESC);
 GRANT SELECT, INSERT, UPDATE, DELETE ON missed_trades TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON missed_trades TO service_role;

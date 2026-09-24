@@ -25,6 +25,9 @@ CREATE POLICY "users manage own accounts"
   USING (auth.uid() = user_id)
   WITH CHECK (auth.uid() = user_id);
 
+GRANT SELECT, INSERT, UPDATE, DELETE ON accounts TO authenticated;
+GRANT SELECT, INSERT, UPDATE, DELETE ON accounts TO service_role;
+
 -- Index for faster queries
 CREATE INDEX idx_accounts_user_active 
   ON accounts(user_id, is_active);
