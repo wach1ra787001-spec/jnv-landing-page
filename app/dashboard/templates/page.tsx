@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Heart, MessageCircle, Share2, Plus, Search, X, Check } from "lucide-react"
 import { CreatePlaybookForm } from "@/components/dashboard/create-playbook-form"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface Playbook {
   id: string
@@ -168,10 +169,18 @@ export default function TemplatesPage() {
       const { createClient } = await import('@/lib/supabase/client')
       const { data: { session } } = await createClient().auth.getSession()
       const response = await fetch('/api/playbooks/import', { method: 'POST', headers: { 'Content-Type': 'application/json', ...(session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}) }, body: JSON.stringify({ templateId: playbook.id }) })
-      if (!response.ok) { const result = await response.json().catch(() => ({})); throw new Error(result.error || 'Failed to import template') }
-      router.push(returnTo && returnTo.startsWith('/') ? returnTo : '/dashboard/personal-area/playbooks')
-    } catch (error) {
-      window.alert(error instanceof Error ? error.message : 'Failed to import template')
+    if (!response.ok) {
+      const result = await response.json().catch(() => ({}))
+      if (response.status === 409) {
+        toast.info(result.error || 'This template already exists in your personal playbooks.')
+        return
+      }
+      throw new Error(result.error || 'Failed to import template')
+    }
+    toast.success(`“${playbook.name}” imported to your personal playbooks`)
+    router.push('/dashboard/personal-area/playbooks')
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Failed to import template')
     } finally {
       setImportingId(null)
     }

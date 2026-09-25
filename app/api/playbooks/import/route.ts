@@ -29,6 +29,17 @@ export async function POST(request: NextRequest) {
     if (sourceError) throw sourceError
     if (!source) return NextResponse.json({ error: 'Public template not found' }, { status: 404 })
 
+    const { data: existing, error: existingError } = await supabase
+      .from('playbooks')
+      .select('id, title')
+      .eq('user_id', user.id)
+      .eq('title', `${source.title} (Copy)`)
+      .maybeSingle()
+    if (existingError) throw existingError
+    if (existing) {
+      return NextResponse.json({ error: 'This template already exists in your personal playbooks.', existing }, { status: 409 })
+    }
+
     const { data: imported, error } = await supabase
       .from('playbooks')
       .insert({ user_id: user.id, title: `${source.title} (Copy)`, description: source.description || '', rules: source.rules || {}, strategy_type: source.strategy_type || 'general', tags: source.tags || [], is_public: false, youtube_links: [] })
