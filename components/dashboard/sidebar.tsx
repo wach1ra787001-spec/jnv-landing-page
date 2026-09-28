@@ -48,7 +48,6 @@ const personalAreaSubItems = [
 const navItems = [
   { href: "/dashboard", label: "Home", icon: LayoutDashboard },
   { href: "/dashboard/journal", label: "Log a Trade", icon: BookOpen },
-  { href: "/dashboard/journal/premarket", label: "Pre-market Routine", icon: Calendar, card: true },
   { href: "/dashboard/monthly", label: "Monthly", icon: Calendar },
   { href: "/dashboard/trade-history", label: "Trade History", icon: History },
   { href: "/dashboard/templates", label: "Templates & Playbooks", icon: Zap },
@@ -159,11 +158,11 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
 
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
-          {navItems.slice(0, 5).map((item) => {
+          {navItems.slice(0, 4).map((item) => {
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
             return (
-              <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150", isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground", item.card && "mx-1 my-2 rounded-xl border border-primary/20 bg-primary/5 px-3 py-3 shadow-sm hover:border-primary/40 hover:bg-primary/10")}>
-                <item.icon className={cn("w-4 h-4 shrink-0", item.card && "text-primary")} strokeWidth={1.5} />
+              <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150", isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground")}>
+                <item.icon className={"w-4 h-4 shrink-0"} strokeWidth={1.5} />
                 <span>{item.label}</span>
               </Link>
             )
