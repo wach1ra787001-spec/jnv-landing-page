@@ -315,6 +315,8 @@ function tradeDisciplineScore(t: StreakTrade): number | null {
     tradeRiskPercent: t.trade_risk_percent,
     accountRiskPercent: t.account_risk_percent,
     hasMeaningfulNotes: hasMeaningfulJournalNotes(t),
+    hasPremarketReview: Boolean(t.pre_trade_notes?.trim()),
+    hasPostmarketReview: Boolean(t.post_trade_notes?.trim() || t.lessons_learned?.trim() || t.what_went_well?.trim()),
   }).total
 }
 

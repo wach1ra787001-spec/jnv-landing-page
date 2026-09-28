@@ -7,7 +7,7 @@
  *   - Rules followed:        30%  -> scaled by fraction of rules followed
  *   - Followed risk model:   20%  -> all-or-nothing
  *   - Followed trade model:  20%  -> all-or-nothing
- *   - Meaningful journaling: 30%  -> all-or-nothing (any non-empty note)
+ *   - Journaling: 30%  -> all-or-nothing (pre-market and post-market reviews completed)
  *
  * Example: 3/4 rules followed (22.5) + risk model followed (20) + trade model
  * followed (20) + journaled (30) = 92.5
@@ -46,6 +46,10 @@ export interface ConsistencyScoreInputs {
   tradeModelFollowed?: boolean
   /** Does the trade have any non-empty journal note text? */
   hasMeaningfulNotes: boolean
+  /** Whether the user completed a pre-market review for this trade. */
+  hasPremarketReview?: boolean
+  /** Whether the user completed a post-market review for this trade. */
+  hasPostmarketReview?: boolean
 }
 
 export interface ConsistencyScoreBreakdown {
@@ -68,7 +72,9 @@ export function calculateTradeConsistencyScore(
 
   const rulesFollowed = !hasActiveRules || (Array.isArray(followedRuleIds) && activeRulesCount > 0 && followedRuleIds.length >= activeRulesCount)
   const riskCompliant = typeof tradeRiskAmount === 'number' && typeof accountRiskAmount === 'number' && tradeRiskAmount <= accountRiskAmount && typeof tradeRiskPercent === 'number' && typeof accountRiskPercent === 'number' && tradeRiskPercent <= accountRiskPercent
-  const journalCompleted = hasMeaningfulNotes
+  const hasPremarketReview = inputs.hasPremarketReview ?? false
+  const hasPostmarketReview = inputs.hasPostmarketReview ?? false
+  const journalCompleted = hasMeaningfulNotes && hasPremarketReview && hasPostmarketReview
   const tradeModelFollowed = inputs.tradeModelFollowed ?? (rulesFollowed && riskCompliant && journalCompleted)
 
   // Rules followed (30%) - use the per-trade checklist when available.
