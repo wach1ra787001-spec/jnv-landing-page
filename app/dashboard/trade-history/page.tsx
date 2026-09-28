@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -35,6 +35,8 @@ interface Trade {
 
 export default function TradeHistoryPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const selectingPremarketTrade = searchParams.get('select_for') === 'premarket'
   const { selectedAccountId } = useAccount()
   const [searchTerm, setSearchTerm] = useState('')
   const [trades, setTrades] = useState<Trade[]>([])
@@ -153,7 +155,7 @@ export default function TradeHistoryPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6">{selectingPremarketTrade && <Card className="border-primary/30 bg-primary/5 p-5"><h1 className="text-xl font-semibold">Select a trade to link</h1><p className="mt-1 text-sm text-muted-foreground">Choose a trade to attach to your pre-market routine.</p></Card>}
       {/* Header Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="p-6 bg-card border-border">
@@ -217,7 +219,7 @@ export default function TradeHistoryPage() {
                   <tr
                     key={trade.id}
                     className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer"
-                    onClick={() => router.push(`/dashboard/trade-detail/${trade.id}`)}
+                    onClick={() => router.push(selectingPremarketTrade ? `/dashboard/journal/premarket?trade_id=${encodeURIComponent(trade.id)}` : `/dashboard/trade-detail/${trade.id}`)}
                   >
                     <td className="relative px-6 py-4">
                       {trade.missed && <span className="absolute left-0 top-0 rounded-br bg-red-600 px-2 py-0.5 text-[10px] font-bold tracking-wider text-white">MISSED</span>}
