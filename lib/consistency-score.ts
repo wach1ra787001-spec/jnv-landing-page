@@ -7,7 +7,7 @@
  *   - Rules followed:        30%  -> scaled by fraction of rules followed
  *   - Followed risk model:   20%  -> all-or-nothing
  *   - Followed trade model:  20%  -> all-or-nothing
- *   - Journaling: 30%  -> all-or-nothing (pre-market and post-market reviews completed)
+ *   - Journaling: 30%  -> 10 points each for notes, pre-market, and post-market review
  *
  * Example: 3/4 rules followed (22.5) + risk model followed (20) + trade model
  * followed (20) + journaled (30) = 92.5
@@ -97,8 +97,9 @@ export function calculateTradeConsistencyScore(
     ? CONSISTENCY_WEIGHTS.tradeModel
     : 0
 
-  // Meaningful journaling (30%) - all-or-nothing.
-  const journalingScore = journalCompleted ? CONSISTENCY_WEIGHTS.journaling : 0
+  // Journaling (30%) is earned independently: notes, pre-market, and post-market are worth 10 points each.
+  const journalComponentsCompleted = [hasMeaningfulNotes, hasPremarketReview, hasPostmarketReview].filter(Boolean).length
+  const journalingScore = (journalComponentsCompleted / 3) * CONSISTENCY_WEIGHTS.journaling
 
   const total = rulesScore + riskModelScore + tradeModelScore + journalingScore
 
