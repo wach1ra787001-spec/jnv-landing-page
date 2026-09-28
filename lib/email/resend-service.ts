@@ -227,3 +227,24 @@ export async function sendTestEmail(email: string) {
     throw error
   }
 }
+
+interface PremarketReminderEmailParams {
+  userEmail: string
+  firstName: string
+  sessionName: string
+  unsubscribeUrl: string
+}
+
+export async function sendPremarketReminderEmail({ userEmail, firstName, sessionName, unsubscribeUrl }: PremarketReminderEmailParams) {
+  if (!process.env.RESEND_FROM_EMAIL) throw new Error('Email service not configured')
+  const routineUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://jnvpro.com'}/dashboard/journal/premarket?session=${encodeURIComponent(sessionName)}`
+  const safeName = firstName.replace(/[<>&"']/g, '')
+  const response = await resend.emails.send({
+    from: process.env.RESEND_FROM_EMAIL,
+    to: userEmail,
+    subject: `${sessionName} session starts in one hour — log your pre-market routine`,
+    html: `<div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#1f2937;line-height:1.6"><p>Hi ${safeName},</p><p>Before you enter the market, take a few minutes to prepare.</p><p>Log your pre-market routine in JnV and record your mindset, market bias, planned setups, risk limits, and trading rules before the session begins.</p><p>This gives you a clear reference point to compare against what actually happened during your trading session.</p><p style="margin:28px 0"><a href="${routineUrl}" style="background:#111827;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none">Log Pre-Market Routine</a></p><p>Stay disciplined. Trade the plan.</p><p>— jnv trading journal</p><hr style="border:0;border-top:1px solid #e5e7eb;margin:28px 0"><p style="font-size:12px;color:#6b7280">You’re receiving this email because you enabled JnV trading routine reminders.<br>If you no longer want these reminders, <a href="${unsubscribeUrl}">unsubscribe here</a>.</p></div>`,
+  })
+  if (response.error) throw new Error(response.error.message)
+  return response.data
+}

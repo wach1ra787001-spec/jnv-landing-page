@@ -27,11 +27,11 @@ export async function GET(request: Request) {
     .select("id, title, message, href, created_at, status, channel, notification_type")
     .eq("user_id", user.id)
     .eq("channel", "in_app")
-    .eq("notification_type", "trade_imported")
+    .in("notification_type", ["trade_imported", "premarket_reminder"])
     .order("created_at", { ascending: false })
     .limit(25)
   if (importedNotificationsError) console.error("[v0] Imported notification query failed:", importedNotificationsError)
-  const storedNotifications = (importedNotifications || []).map((item) => ({ id: item.id, type: "trade_imported" as const, title: item.title || "New trade ready to journal", message: item.message || "A trade was pulled from your trading account. Click to journal it.", href: item.href || "/dashboard/journal", timestamp: item.created_at, read: item.status === "read" }))
+  const storedNotifications = (importedNotifications || []).map((item) => ({ id: item.id, type: item.notification_type === "premarket_reminder" ? "premarket_reminder" as const : "trade_imported" as const, title: item.title || (item.notification_type === "premarket_reminder" ? "Session starts in one hour" : "New trade ready to journal"), message: item.message || (item.notification_type === "premarket_reminder" ? "Log your pre-market routine before the session begins." : "A trade was pulled from your trading account. Click to journal it."), href: item.href || (item.notification_type === "premarket_reminder" ? "/dashboard/journal/premarket" : "/dashboard/journal"), timestamp: item.created_at, read: item.status === "read" }))
 
   const { data: trades, error } = await supabase
     .from("trades")
