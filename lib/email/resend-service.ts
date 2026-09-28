@@ -237,7 +237,7 @@ interface PremarketReminderEmailParams {
 
 export async function sendPremarketReminderEmail({ userEmail, firstName, sessionName, unsubscribeUrl }: PremarketReminderEmailParams) {
   if (!process.env.RESEND_FROM_EMAIL) throw new Error('Email service not configured')
-  const routineUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://jnvpro.com'}/dashboard/journal/premarket?session=${encodeURIComponent(sessionName)}`
+  const routineUrl = `${process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://jnvpro.com'}/dashboard/journal?open=premarket&session=${encodeURIComponent(sessionName)}`
   const safeName = firstName.replace(/[<>&"']/g, '')
   const response = await resend.emails.send({
     from: process.env.RESEND_FROM_EMAIL,
