@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Plus, ArrowRight, AlertTriangle, FileSpreadsheet, ChevronRight } from 'lucide-react'
+import { Plus, ArrowRight, AlertTriangle, FileSpreadsheet, ChevronRight, CalendarDays } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 type PendingImportedTrade = {
@@ -125,6 +125,26 @@ export default function JournalPage() {
             <Button className="gap-2">
               Go to Trade History
               <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
+        </div>
+      </Card>
+
+      <Card className="border border-primary/20 bg-primary/5 p-6 sm:p-8">
+        <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <CalendarDays className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-foreground">Pre-market Routine</h3>
+              <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Prepare your mindset, market bias, planned setups, and risk limits before you trade.</p>
+            </div>
+          </div>
+          <Link href="/dashboard/journal/premarket" className="shrink-0">
+            <Button variant="outline" className="w-full gap-2 sm:w-auto">
+              Add Pre-market Routine
+              <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
         </div>

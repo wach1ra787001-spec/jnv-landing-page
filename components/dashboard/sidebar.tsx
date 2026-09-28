@@ -161,17 +161,8 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
           {navItems.slice(0, 4).map((item) => {
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150",
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground",
-                )}
-              >
-                <item.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} />
+              <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150", isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground")}>
+                <item.icon className={"w-4 h-4 shrink-0"} strokeWidth={1.5} />
                 <span>{item.label}</span>
               </Link>
             )

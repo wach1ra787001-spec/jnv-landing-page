@@ -103,7 +103,7 @@ export default function PrivacyPolicyPage() {
               We may share information in the following situations:
             </p>
             <ul className="mt-3 space-y-2 list-disc pl-5 text-muted-foreground">
-              <li><strong className="text-foreground">Service Providers:</strong> We may share your data with third-party vendors and service providers that perform services for us, including payment processing (Paddle), email delivery (Resend), cloud hosting (Supabase / Vercel), and analytics.</li>
+              <li><strong className="text-foreground">Service Providers:</strong> We may share your data with third-party vendors and service providers that perform services for us, including payment processing (Paystack), email delivery (Resend), cloud hosting (Supabase / Vercel), and essential session infrastructure.</li>
               <li><strong className="text-foreground">Business Transfers:</strong> In connection with any merger, sale of company assets, or acquisition, your information may be transferred.</li>
               <li><strong className="text-foreground">Legal Obligations:</strong> We may disclose your information where required to comply with applicable law or legal process.</li>
               <li><strong className="text-foreground">With Your Consent:</strong> We may disclose your personal information for any other purpose with your consent.</li>
@@ -117,7 +117,7 @@ export default function PrivacyPolicyPage() {
 
           <Section title="4. Do We Use Cookies and Other Tracking Technologies?">
             <p className="text-muted-foreground leading-relaxed">
-              We may use cookies and similar tracking technologies to access or store information. These are used for session management, authentication, and improving the user experience. You may set your browser to refuse cookies, though some features of the Services may not function properly as a result.
+              We use essential cookies and similar technologies for authentication, secure session management, CSRF protection, and core account functionality. We do not currently use non-essential advertising or analytics cookies. Blocking essential cookies may prevent the Services from functioning correctly.
             </p>
           </Section>
 
@@ -125,7 +125,7 @@ export default function PrivacyPolicyPage() {
 
           <Section title="5. How Long Do We Keep Your Information?">
             <p className="text-muted-foreground leading-relaxed">
-              We will only keep your personal information for as long as it is necessary for the purposes set out in this Privacy Notice, unless a longer retention period is required or permitted by law. When we have no ongoing legitimate business need to process your personal information, we will either delete or anonymise it.
+              We retain information for as long as needed to provide the Services and for legitimate legal, security, fraud-prevention, dispute-resolution, accounting, and operational purposes. JnV intends to use a 30-day deletion window after a valid account-deletion workflow is implemented: during that window, the account and associated data may remain recoverable, and after it the relevant data will be permanently deleted subject to legally required records and backups that cannot immediately be overwritten. The current application does not yet implement an automated account-deletion request or 30-day purge workflow; users should contact support to request deletion while this process is being completed.
             </p>
           </Section>
 
@@ -160,7 +160,21 @@ export default function PrivacyPolicyPage() {
 
           <Divider />
 
-          <Section title="8. Do We Make Updates to This Notice?">
+          <Section title="8. How Does JnV AI Process Information?">
+            <p className="text-muted-foreground leading-relaxed">When you use an AI-powered feature, JnV AI may process the trading and performance information reasonably necessary to provide personalized coaching, trade reviews, pattern analysis, recommendations, alerts, and related functionality. This may include trading history, executed and missed trades, positions, entry and exit information, stop-loss and take-profit information, risk and position sizing, PnL, R:R, statistics, drawdown, consistency, streaks, progress tracking, strategies, playbooks, rules, tags, notes, journal entries, backtesting results, and screenshots you upload.</p>
+            <p className="mt-3 text-muted-foreground leading-relaxed">The AI feature is not intended to access unrelated information such as billing details, card credentials, passwords, authentication credentials, broker or API credentials, API keys, OAuth secrets, government identification, or unrelated account information. This is a description of intended feature access, not a guarantee that technical systems can never expose such information; JnV uses access controls and data minimization to limit processing to what is needed for the requested feature.</p>
+            <p className="mt-3 text-muted-foreground leading-relaxed">The current AI coach sends the user&apos;s request message and any context included with that request to OpenAI through its API to generate a response. OpenAI processes that information on JnV&apos;s behalf for the AI request. JnV does not sell this information or disclose it for unrelated marketing purposes.</p>
+          </Section>
+
+          <Divider />
+
+          <Section title="9. Account Deletion and User Control">
+            <p className="text-muted-foreground leading-relaxed">You may request access, correction, or deletion of information by contacting support@jnvtradingjournal.com. JnV intends to place deletion requests into a 30-day retention window before permanent deletion, subject to legal, security, accounting, dispute-resolution, and backup exceptions. The current application does not yet provide an automated deletion-request or recovery flow, so the exact access and cancellation behavior is not currently implemented.</p>
+          </Section>
+
+          <Divider />
+
+          <Section title="10. Do We Make Updates to This Notice?">
             <p className="text-muted-foreground leading-relaxed">
               We may update this Privacy Notice from time to time. The updated version will be indicated by a revised &quot;Last updated&quot; date. We will notify you of any material changes by posting the new notice on this page and, where appropriate, via email to the address associated with your account.
             </p>
@@ -168,7 +182,7 @@ export default function PrivacyPolicyPage() {
 
           <Divider />
 
-          <Section title="9. How Can You Contact Us?">
+          <Section title="11. How Can You Contact Us?">
             <p className="text-muted-foreground leading-relaxed">
               If you have questions or comments about this notice, you may contact us at:
             </p>

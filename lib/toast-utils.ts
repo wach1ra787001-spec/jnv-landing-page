@@ -67,6 +67,14 @@ export const appToast = {
     })
   },
 
+  noTradesToday: (onLinkMostRecent: () => void) => {
+    toast.error('No trades found from today', {
+      description: 'Link this routine to your most recent trade instead.',
+      action: { label: 'Link most recent trade', onClick: onLinkMostRecent },
+      duration: 10000,
+    })
+  },
+
   notesSaveFailed: () => {
     toast.error('Failed to save notes', {
       description: 'Please try again',

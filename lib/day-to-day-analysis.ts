@@ -105,6 +105,8 @@ function buildConsistencyInput(
     disciplineRating: journal?.discipline_rating,
     followedPlan: journal?.followed_plan,
     hasMeaningfulNotes: hasMeaningfulJournalNotes(journal, extraNotes),
+    hasPremarketReview: Boolean(journal?.pre_trade_notes?.trim()),
+    hasPostmarketReview: Boolean(journal?.post_trade_notes?.trim() || journal?.lessons_learned?.trim() || journal?.what_went_well?.trim()),
   }
 }
 
