@@ -8,6 +8,7 @@ import { ArrowDownRight, ArrowUpRight, ArrowLeft, Upload, Loader2, Trash2, X } f
 import { TradeNotes } from "@/components/trades/trade-notes"
 import { PremarketTradeCard } from "@/components/trades/premarket-trade-card"
 import { TradeRoutineLinks } from "@/components/trades/trade-routine-links"
+import { PostmarketTradeCard } from "@/components/trades/postmarket-trade-card"
 import { TradingViewChart, type SingleBarData } from "@/components/tradingview-chart"
 import { cn } from "@/lib/utils"
 import { appToast } from "@/lib/toast-utils"
@@ -548,6 +549,7 @@ export default function TradeDetailPage() {
 
       <TradeRoutineLinks tradeId={trade.id} />
       <PremarketTradeCard tradeId={trade.id} />
+      <PostmarketTradeCard tradeId={trade.id} />
     </div>
   )
 }
