@@ -157,7 +157,7 @@ export default function TermsOfServicePage() {
 
           <Section id="section-6" title="6. Purchases and Payment">
             <p className="text-muted-foreground leading-relaxed">
-              All purchases are processed securely through <strong className="text-foreground">Paddle</strong>, our authorised merchant of record. Paddle is responsible for billing, invoicing, and handling all payment-related queries. We accept major credit/debit cards and other payment methods as available through Paddle.
+              Payments and subscriptions are processed through <strong className="text-foreground">Paystack</strong>, our third-party payment provider. Paystack may process payment details needed for billing, recurring payments, refunds, and related transactions. JnV does not need to store raw card numbers or CVV when Paystack handles those details. Available payment methods depend on Paystack and your location.
             </p>
             <p className="mt-3 text-muted-foreground leading-relaxed">
               You agree to provide current, complete, and accurate purchase and account information for all transactions. Prices are in USD unless otherwise indicated. We reserve the right to change prices at any time.
@@ -171,13 +171,20 @@ export default function TermsOfServicePage() {
               The Services are billed on a subscription basis. You will be billed in advance on a recurring monthly or annual basis depending on the plan you select. A <strong className="text-foreground">3-day free trial</strong> is included with all plans. Your subscription automatically renews unless you cancel before the renewal date.
             </p>
             <p className="mt-3 text-muted-foreground leading-relaxed">
-              You may cancel your subscription at any time through your account settings or by contacting us. Cancellation takes effect at the end of the current billing period. We do not provide refunds for partial billing periods unless required by applicable law.
+              You may cancel your subscription at any time through your account settings or by contacting us. Cancellation takes effect at the end of the current billing period unless the applicable payment flow states otherwise. Annual subscriptions may be eligible for a refund when requested within 24 hours of purchase; eligibility is subject to verification and any applicable payment-provider requirements. Failed payments may restrict or suspend paid features until payment is completed.
             </p>
           </Section>
 
           <Divider />
 
-          <Section id="section-8" title="8. Prohibited Activities">
+          <Section id="section-8" title="8. AI Features and Trading Responsibility">
+            <p className="text-muted-foreground leading-relaxed">JnV may provide AI-powered trading analysis, coaching, trade reviews, pattern analysis, recommendations, alerts, and performance insights based on information available from your account or request. AI outputs may contain errors, omissions, or inaccurate interpretations. They are informational only, are not financial or investment advice, and do not guarantee improved profitability or trading performance.</p>
+            <p className="mt-3 text-muted-foreground leading-relaxed">JnV is a trading journal, performance-management, and analytics platform. You remain solely responsible for your trading decisions, risk management, broker activity, account settings, and financial outcomes. You should independently evaluate any AI output before acting on it.</p>
+          </Section>
+
+          <Divider />
+
+          <Section id="section-9" title="9. Prohibited Activities">
             <p className="text-muted-foreground leading-relaxed">You may not access or use the Services for any purpose other than that for which we make the Services available. The following activities are prohibited:</p>
             <ul className="mt-3 space-y-2 list-disc pl-5 text-muted-foreground">
               <li>Systematically retrieving data or content to create a database or directory without written permission</li>
@@ -227,9 +234,15 @@ export default function TermsOfServicePage() {
 
           <Divider />
 
-          <Section id="section-13" title="13. Term and Termination">
+          <Section id="section-14" title="14. Account Deletion">
+            <p className="text-muted-foreground leading-relaxed">You may request deletion of your JnV account by contacting support@jnvtradingjournal.com. JnV intends to place the account and associated data into a 30-day deletion/retention period before permanent deletion, subject to legal, security, financial, dispute-resolution, and backup exceptions. The current application does not yet implement an automated deletion-request, recovery, or 30-day purge workflow, so access and cancellation behavior during that period is not currently guaranteed.</p>
+          </Section>
+
+          <Divider />
+
+          <Section id="section-15" title="15. Term and Termination">
             <p className="text-muted-foreground leading-relaxed">
-              These Terms shall remain in full force and effect while you use the Services. We reserve the right, in our sole discretion and without notice or liability, to deny access to and use of the Services (including blocking certain IP addresses) to any person for any reason, including breach of any representation, warranty, or covenant contained in these Terms. We may terminate your use or participation in the Services or delete your account at any time, without warning.
+              These Terms remain in effect while you use the Services. We may suspend or terminate access where reasonably necessary for fraud, abuse, unauthorized access, security threats, attempts to circumvent payment controls, material violation of these Terms, or unlawful use. We may also take proportionate action to protect users and the Services. Suspension or termination may end access to paid features; data handling remains subject to the Privacy Policy and applicable retention requirements. Where appropriate, we will provide notice and an opportunity to resolve the issue.
             </p>
           </Section>
 
