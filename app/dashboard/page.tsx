@@ -96,7 +96,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       tradeIds.length > 0
         ? supabase
             .from("trade_journal")
-            .select("trade_id, discipline_rating, followed_plan, content, session_notes, lessons_learned, mistakes, what_went_well")
+            .select("trade_id, discipline_rating, followed_plan, content, session_notes, pre_trade_notes, post_trade_notes, lessons_learned, mistakes, what_went_well")
             .eq("user_id", user?.id)
             .in("trade_id", tradeIds)
         : Promise.resolve({ data: [] }),
@@ -122,6 +122,19 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const hasActiveRules = (playbookRows || []).some((playbook) => (playbook.rules?.linkedRuleIds || []).length > 0)
 
   const journalByTradeId = new Map((journalRows || []).map((row) => [row.trade_id, row]))
+  const journalDates = new Set((allTrades || []).filter((trade) => {
+    const journal = journalByTradeId.get(trade.id)
+    return journal && [journal.content, journal.session_notes, journal.pre_trade_notes, journal.post_trade_notes, journal.lessons_learned, journal.mistakes, journal.what_went_well].some((value) => typeof value === 'string' && value.trim().length > 0)
+  }).map((trade) => new Date(trade.entry_time).toISOString().slice(0, 10)))
+  const sortedJournalDates = Array.from(journalDates).sort().reverse()
+  let journalStreak = 0
+  for (let index = 0; index < sortedJournalDates.length; index += 1) {
+    const expected = new Date(`${sortedJournalDates[0]}T00:00:00Z`)
+    expected.setUTCDate(expected.getUTCDate() - index)
+    if (sortedJournalDates[index] !== expected.toISOString().slice(0, 10)) break
+    journalStreak += 1
+  }
+
   const notesByTradeId = new Map<string, string[]>()
   for (const row of tradeNotesRows || []) {
     const existing = notesByTradeId.get(row.trade_id) || []
@@ -199,7 +212,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <HeroCard 
           userName={userName}
           quote={getDailyTradingQuote(user?.id || userName)}
-          streakDays={actualTradeMetrics.current_streak}
+          streakDays={journalStreak}
           recentTrades={[...(recentTrades || [])].reverse().map((trade) => ({
             id: trade.id,
             result: Number(trade.net_pnl ?? 0) > 0 ? "win" : "loss",
