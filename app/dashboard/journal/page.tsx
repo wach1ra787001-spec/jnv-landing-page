@@ -137,13 +137,13 @@ export default function JournalPage() {
               <CalendarDays className="h-6 w-6" />
             </div>
             <div>
-              <h3 className="text-lg font-semibold text-foreground">Pre-market Routine</h3>
+              <h3 className="text-lg font-semibold text-foreground">Pre-market Plan</h3>
               <p className="mt-1 text-sm leading-relaxed text-muted-foreground">Prepare your mindset, market bias, planned setups, and risk limits before you trade.</p>
             </div>
           </div>
           <Link href="/dashboard/journal/premarket" className="shrink-0">
             <Button variant="outline" className="w-full gap-2 sm:w-auto">
-              Add Pre-market Routine
+              Add Pre-market Plan
               <ArrowRight className="h-4 w-4" />
             </Button>
           </Link>
