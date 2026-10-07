@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CheckCircle2, Circle, ChevronDown, ChevronUp, Eye, EyeOff, LockKeyhole } from "lucide-react"
+import { CheckCircle2, Circle, ChevronDown, ChevronUp, Eye, EyeOff, LockKeyhole, Wrench } from "lucide-react"
 import { BrokerLogo } from "@/components/broker-logo"
 import { BrokerConnection } from "@/types/ctrader"
 import { MT5ConnectionModal } from "@/components/mt5-connection-modal"
@@ -250,10 +250,16 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
           Connect your trading accounts to automatically import trades
         </p>
         </div>
-        <Button variant="outline" className="shrink-0 gap-2" onClick={() => router.push('/dashboard/accounts?open=new')}>
-          <Circle className="h-4 w-4" />
-          Add Manual Account
-        </Button>
+        <button type="button" onClick={() => router.push('/dashboard/accounts?open=new')} className="group flex w-full items-center gap-4 rounded-lg border border-border bg-background p-4 text-left transition-colors hover:bg-muted/50">
+        <div className="flex size-12 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary">
+          <Wrench className="size-6" aria-hidden="true" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h4 className="text-sm font-semibold text-foreground">Manual Account</h4>
+          <p className="mt-0.5 text-sm text-muted-foreground">Add an account and enter trades manually</p>
+        </div>
+        <span className="shrink-0 rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground">Add</span>
+      </button>
       </div>
 
       {syncError && (
