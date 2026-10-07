@@ -243,11 +243,17 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
   }
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-start justify-between gap-4">
+        <div>
         <h3 className="text-lg font-semibold text-foreground">Broker Integrations</h3>
         <p className="text-sm text-muted-foreground mt-1">
           Connect your trading accounts to automatically import trades
         </p>
+        </div>
+        <Button variant="outline" className="shrink-0 gap-2" onClick={() => router.push('/dashboard/accounts?open=new')}>
+          <Circle className="h-4 w-4" />
+          Add Manual Account
+        </Button>
       </div>
 
       {syncError && (
