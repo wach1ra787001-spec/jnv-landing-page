@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { CheckCircle2, Circle, ChevronDown, ChevronUp, Eye, EyeOff, LockKeyhole } from "lucide-react"
+import { CheckCircle2, Circle, ChevronDown, ChevronUp, Eye, EyeOff, LockKeyhole, Wrench } from "lucide-react"
 import { BrokerLogo } from "@/components/broker-logo"
 import { BrokerConnection } from "@/types/ctrader"
 import { MT5ConnectionModal } from "@/components/mt5-connection-modal"
@@ -245,7 +245,7 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold text-foreground">Broker Integrations</h3>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="mt-1 text-sm text-muted-foreground">
           Connect your trading accounts to automatically import trades
         </p>
       </div>
@@ -257,6 +257,22 @@ export function BrokerTab({ onConnectMT5 }: BrokerTabProps) {
       )}
 
       <div className="space-y-3">
+        <div className="relative overflow-hidden rounded-lg border border-border bg-background">
+          <div className="flex items-center gap-4 p-4 transition-colors hover:bg-muted/50">
+            <div className="shrink-0">
+              <div className="flex size-12 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                <Wrench className="size-6" aria-hidden="true" />
+              </div>
+            </div>
+            <div className="min-w-0 flex-1">
+              <h4 className="text-sm font-semibold text-foreground">Manual Account</h4>
+              <p className="mt-0.5 text-sm text-muted-foreground">Add an account and enter trades manually</p>
+            </div>
+            <div className="shrink-0">
+              <Button size="sm" onClick={() => router.push('/dashboard/accounts?open=new')}>Add</Button>
+            </div>
+          </div>
+        </div>
         {brokers.map((broker) => {
           const comingSoon = ['mt5', 'ctrader', 'tradingview', 'tradelocker', 'interactive'].includes(broker.id)
           return (

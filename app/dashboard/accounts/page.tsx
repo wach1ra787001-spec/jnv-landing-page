@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -41,6 +41,7 @@ interface Account {
 
 export default function AccountsPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { selectedAccountId, switchAccount, isSwitching, refreshAccounts } = useAccount()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
@@ -79,7 +80,8 @@ export default function AccountsPage() {
 
   useEffect(() => {
     fetchAccounts()
-  }, [])
+    if (searchParams.get('open') === 'new') setDialogOpen(true)
+  }, [searchParams])
 
   const fetchAccounts = async () => {
     try {
