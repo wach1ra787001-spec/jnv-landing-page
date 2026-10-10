@@ -11,10 +11,6 @@
     {
       "path": "/api/cron/loss-streak-emails",
       "schedule": "0 8 * * *"
-    },
-    {
-      "path": "/api/cron/premarket-reminders",
-      "schedule": "*/5 * * * *"
     }
   ]
 }
