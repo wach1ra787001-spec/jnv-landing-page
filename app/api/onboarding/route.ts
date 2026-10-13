@@ -56,6 +56,18 @@ export async function POST(request: NextRequest) {
   return NextResponse.json({ ok: true })
 }
 
+export async function PATCH(request: NextRequest) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const body = await request.json().catch(() => ({}))
+  const { data: current } = await supabase.from('profiles').select('preferences').eq('id', user.id).maybeSingle()
+  const preferences = current?.preferences && typeof current.preferences === 'object' ? current.preferences : {}
+  const { error } = await supabase.from('profiles').update({ preferences: { ...preferences, onboarding_tour_completed: body.tourCompleted === true } }).eq('id', user.id)
+  if (error) return NextResponse.json({ error: 'Could not save tour preference' }, { status: 500 })
+  return NextResponse.json({ ok: true })
+}
+
 export async function PUT() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

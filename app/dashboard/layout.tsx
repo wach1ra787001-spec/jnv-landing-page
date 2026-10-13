@@ -10,6 +10,7 @@ import { AccountProvider } from "@/components/dashboard/account-context"
 import { getUserAccounts, getSelectedAccountId } from "@/lib/get-selected-account"
 import { OnboardingPanel } from "@/components/dashboard/onboarding-panel"
 import { SessionTracker } from "@/components/dashboard/session-tracker"
+import { ProductTour } from "@/components/dashboard/product-tour"
 
 export default async function DashboardLayout({
   children,
@@ -39,6 +40,7 @@ export default async function DashboardLayout({
       <AccountProvider initialAccounts={accounts} initialSelectedAccountId={selectedAccountId}>
         <div className="flex h-screen overflow-hidden bg-background">
           <SessionTracker />
+          <ProductTour initialOpen={profile?.preferences?.onboarding_tour_completed !== true && profile?.preferences?.onboarding_complete === true} />
           <CTraderAutoSync />
 
           {/* Sidebar — overlay, does not take up layout space */}

@@ -69,11 +69,17 @@ const settingsMenus = [
 export function SettingsClient({ isAdmin }: { isAdmin: boolean }) {
   const router = useRouter()
 
+  const restartTour = () => {
+    window.dispatchEvent(new Event("jnv:restart-product-tour"))
+    router.push("/dashboard")
+  }
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-8">
         <h1 className="text-3xl font-semibold text-foreground mb-2">Settings</h1>
         <p className="text-muted-foreground">Manage your account settings and preferences</p>
+        <button type="button" onClick={restartTour} className="mt-4 text-sm font-medium text-primary underline-offset-4 hover:underline">Restart guided tour</button>
       </div>
 
       <div className="flex flex-col gap-3">
