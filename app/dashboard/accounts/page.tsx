@@ -165,7 +165,7 @@ export default function AccountsPage() {
               New Account
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[425px]">
             <DialogHeader>
               <DialogTitle>Create New Account</DialogTitle>
               <DialogDescription>Add a new trading account to start journaling</DialogDescription>
@@ -228,6 +228,17 @@ export default function AccountsPage() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label htmlFor="empty-risk-percent" className="text-sm font-medium text-foreground">Risk % per trade</label>
+                  <Input id="empty-risk-percent" required type="number" min="0.001" max="100" step="0.001" placeholder="1" value={formData.risk_percent} onChange={e => setFormData({ ...formData, risk_percent: e.target.value })} className="mt-1" />
+                </div>
+                <div>
+                  <label htmlFor="empty-risk-amount" className="text-sm font-medium text-foreground">Risk amount</label>
+                  <Input id="empty-risk-amount" required type="number" min="0.01" step="0.01" placeholder="50.00" value={formData.risk_amount} onChange={e => setFormData({ ...formData, risk_amount: e.target.value })} className="mt-1" />
+                </div>
+              </div>
+
               <Button type="submit" className="w-full" disabled={creating}>
                 {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                 Create Account
@@ -257,7 +268,7 @@ export default function AccountsPage() {
                   Create First Account
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[425px]">
+              <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[425px]">
                 <DialogHeader>
                   <DialogTitle>Create New Account</DialogTitle>
                   <DialogDescription>Add a new trading account to start journaling</DialogDescription>
@@ -405,7 +416,7 @@ export default function AccountsPage() {
         </div>
       )}
       <Dialog open={!!settingsAccount} onOpenChange={(open) => !open && setSettingsAccount(null)}>
-        <DialogContent className="sm:max-w-[425px]"><DialogHeader><DialogTitle>Account settings</DialogTitle><DialogDescription>Update risk parameters or delete this account.</DialogDescription></DialogHeader>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[425px]"><DialogHeader><DialogTitle>Account settings</DialogTitle><DialogDescription>Update risk parameters or delete this account.</DialogDescription></DialogHeader>
           <form onSubmit={saveSettings} className="space-y-4"><div><label className="text-sm font-medium">Account Name</label><Input value={settingsData.account_name} onChange={e => setSettingsData({ ...settingsData, account_name: e.target.value })} /></div><div className="grid grid-cols-2 gap-3"><div><label className="text-sm font-medium">Risk %</label><Input type="number" min="0.001" max="100" step="0.001" value={settingsData.risk_percent} onChange={e => setSettingsData({ ...settingsData, risk_percent: e.target.value })} /></div><div><label className="text-sm font-medium">Risk amount</label><Input type="number" min="0.01" step="0.01" value={settingsData.risk_amount} onChange={e => setSettingsData({ ...settingsData, risk_amount: e.target.value })} /></div></div><Button type="submit" className="w-full" disabled={savingSettings}>{savingSettings ? 'Saving…' : 'Save changes'}</Button><Button type="button" variant="destructive" className="w-full" onClick={deleteAccount}><Trash2 className="mr-2 h-4 w-4" />Delete account and trades</Button></form>
         </DialogContent>
       </Dialog>
