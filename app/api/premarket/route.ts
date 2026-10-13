@@ -22,7 +22,15 @@ export async function POST(request: Request) {
   const body = await request.json()
   const required = ["session_name", "trading_date", "market_bias", "mentally_ready"]
   if (required.some((key) => body[key] === undefined || body[key] === null || String(body[key]).trim() === "")) return NextResponse.json({ error: "Complete the required fields before saving." }, { status: 400 })
-  const { link_type: _linkType, trade_id: _tradeId, today_trade_ids: _todayTradeIds, ...routineFields } = body
+  const { link_type: _linkType, trade_id: _tradeId, today_trade_ids: _todayTradeIds, routine_id: _routineId, ...routineFields } = body
+
+  if (_routineId && _tradeId) {
+    const { data: routine } = await supabase.from("premarket_routines").select("id").eq("id", _routineId).eq("user_id", user.id).maybeSingle()
+    if (!routine) return NextResponse.json({ error: "Premarket routine not found" }, { status: 404 })
+    const { error: linkError } = await supabase.from("premarket_trade_links").upsert({ routine_id: _routineId, trade_id: _tradeId }, { onConflict: "routine_id,trade_id" })
+    if (linkError) return NextResponse.json({ error: "Could not link the premarket routine to this trade" }, { status: 500 })
+    return NextResponse.json({ routine_id: _routineId, linked_trade_count: 1 })
+  }
   const numericFields = [
     "sleep_duration",
     "energy_level",
