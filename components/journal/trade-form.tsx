@@ -33,6 +33,8 @@ export interface TradeFormValues {
   emotion_before: string
   notes: string
   account_id: string
+  tick_size: string
+  tick_value: string
   playbook_id: string
   followed_rule_ids: string[]
   followed_rules: string[]
@@ -64,6 +66,8 @@ export const DEFAULT_TRADE_FORM_VALUES: TradeFormValues = {
   emotion_before: '',
   notes: '',
   account_id: '',
+  tick_size: '',
+  tick_value: '',
   playbook_id: '',
   followed_rule_ids: [],
   followed_rules: [],
@@ -383,11 +387,16 @@ export function TradeForm({
     } else {
       priceChange = entryPrice - exitPrice
     }
+    const tickSize = Number(formData.tick_size)
+    const tickValue = Number(formData.tick_value)
+    const hasBrokerSpec = Number.isFinite(tickSize) && tickSize > 0 && Number.isFinite(tickValue) && tickValue !== 0
     const normalizedSymbol = formData.symbol.toUpperCase().replace(/[\s/_-]/g, '')
     const isGold = normalizedSymbol.includes('XAU') || normalizedSymbol.includes('GOLD')
-    const isIndex = /^(NAS100|US30|SPX500|GER40|UK100|JPN225|USTEC|US100)/.test(normalizedSymbol)
+    const isIndex = /^(NAS100|NAS100USD|US30|SPX500|US500|GER40|UK100|JPN225|USTEC|US100)/.test(normalizedSymbol)
     const contractSize = isGold ? 100 : isIndex ? 1 : 100_000
-    const pnl = priceChange * lotSize * contractSize
+    const pnl = hasBrokerSpec
+      ? (priceChange / tickSize) * tickValue * lotSize
+      : priceChange * lotSize * contractSize
 
     const accountBalance = selectedAccount?.initial_balance || 0
     const pnlPercent = accountBalance > 0 ? (pnl / accountBalance) * 100 : 0
@@ -586,9 +595,23 @@ export function TradeForm({
               <span className="hidden sm:inline">Auto Calculate</span>
             </Button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium text-foreground">Exit Price</label>
+  <div className="mb-4 rounded-lg border border-dashed border-border/70 bg-muted/20 p-3">
+  <p className="text-sm font-medium text-foreground">Broker instrument specifications</p>
+  <p className="mt-1 text-xs text-muted-foreground">For exact CFD risk and P&L, enter the symbol&apos;s tick size and tick value from your broker. Leave blank only for an estimate.</p>
+  <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+  <div>
+  <label htmlFor="tick-size" className="text-sm font-medium text-foreground">Tick size</label>
+  <Input id="tick-size" type="number" min="0" step="any" placeholder="e.g. 0.01" value={formData.tick_size} onChange={(e) => handleChange('tick_size', e.target.value)} />
+  </div>
+  <div>
+  <label htmlFor="tick-value" className="text-sm font-medium text-foreground">Tick value per lot</label>
+  <Input id="tick-value" type="number" step="any" placeholder="e.g. 1.00" value={formData.tick_value} onChange={(e) => handleChange('tick_value', e.target.value)} />
+  </div>
+  </div>
+  </div>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <div>
+  <label className="text-sm font-medium text-foreground">Exit Price</label>
               <Input
                 type="number"
                 step="0.00001"

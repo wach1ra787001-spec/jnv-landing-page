@@ -18,6 +18,7 @@ export default function AddNewTradePage() {
   const [pendingImportId, setPendingImportId] = useState<string | null>(null)
   const [pendingImportCount, setPendingImportCount] = useState(0)
   const [hasPendingImport, setHasPendingImport] = useState(false)
+  const [pendingPremarketRoutineId, setPendingPremarketRoutineId] = useState<string | null>(null)
 
   useEffect(() => {
     const loadPendingTrade = async () => {
@@ -66,10 +67,16 @@ export default function AddNewTradePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const handleSaved = (result: any) => {
+  const handleSaved = async (result: any) => {
     if (hasPendingImport && pendingImportId) {
       void fetch('/api/trades/pending-imports', { method: 'DELETE', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ id: pendingImportId }) })
   }
+    const pendingRoutineId = sessionStorage.getItem('premarket-pending-link')
+    if (pendingRoutineId && result?.id) {
+      const linkResponse = await fetch('/api/premarket', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ routine_id: pendingRoutineId, trade_id: result.id }) })
+      if (linkResponse.ok) sessionStorage.removeItem('premarket-pending-link')
+      else appToast.tradeSaveFailed('Trade saved, but the pre-market routine could not be linked.')
+    }
     appToast.tradeSaved(result.symbol, result.pnl?.toFixed(2), '', result.pnl >= 0)
     setShowTradeSaveSuccess(true)
   }

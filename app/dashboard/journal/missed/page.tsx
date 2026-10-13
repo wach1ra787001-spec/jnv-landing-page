@@ -32,7 +32,11 @@ export default function MissedTradePage() {
       const response = await fetch('/api/missed-trades', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...form, account_id: selectedAccountId }) })
       if (!response.ok) throw new Error((await response.json().catch(() => null))?.error || 'Unable to save missed trade')
       appToast.tradeSaved(form.symbol.toUpperCase(), '0', '0', true)
-      router.push('/dashboard/trade-history')
+      if (sessionStorage.getItem('premarket-pending-link') && window.confirm('Would you like to return to your pre-market routine and link it to this missed setup?')) {
+        router.push('/dashboard/journal/premarket')
+      } else {
+        router.push('/dashboard/trade-history')
+      }
     } catch (error) {
       appToast.tradeSaveFailed(error instanceof Error ? error.message : 'Unable to save missed trade')
     } finally { setSaving(false) }
