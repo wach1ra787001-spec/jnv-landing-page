@@ -319,7 +319,7 @@ export default function AccountsPage() {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3"><div><label className="text-sm font-medium text-foreground">Risk % per trade</label><Input required type="number" min="0.001" max="100" step="0.001" value={formData.risk_percent} onChange={e => setFormData({ ...formData, risk_percent: e.target.value })} className="mt-1" /></div><div><label className="text-sm font-medium text-foreground">Risk amount</label><Input required type="number" min="0.01" step="0.01" value={formData.risk_amount} onChange={e => setFormData({ ...formData, risk_amount: e.target.value })} className="mt-1" /></div></div>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><div><label htmlFor="risk-percent" className="text-sm font-medium text-foreground">Risk % per trade</label><Input id="risk-percent" required type="number" min="0.001" max="100" step="0.001" placeholder="1" value={formData.risk_percent} onChange={e => setFormData({ ...formData, risk_percent: e.target.value })} className="mt-1" /></div><div><label htmlFor="risk-amount" className="text-sm font-medium text-foreground">Risk amount</label><Input id="risk-amount" required type="number" min="0.01" step="0.01" placeholder="50.00" value={formData.risk_amount} onChange={e => setFormData({ ...formData, risk_amount: e.target.value })} className="mt-1" /></div></div>
 
                   <Button type="submit" className="w-full" disabled={creating}>
                     {creating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
