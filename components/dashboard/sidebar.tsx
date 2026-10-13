@@ -161,7 +161,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
           {navItems.slice(0, 4).map((item) => {
             const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href))
             return (
-              <Link key={item.href} href={item.href} className={cn("flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150", isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground")}>
+              <Link key={item.href} data-tour={item.label === "Log a Trade" ? "tour-log-trade" : undefined} href={item.href} className={cn("flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150", isActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground")}>
                 <item.icon className={"w-4 h-4 shrink-0"} strokeWidth={1.5} />
                 <span>{item.label}</span>
               </Link>
@@ -171,6 +171,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
           {/* Personal Area */}
           <div>
             <button
+              data-tour="tour-personal-area"
               onClick={() => setPersonalAreaOpen(!personalAreaOpen)}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150",
@@ -189,7 +190,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
               <div className="ml-4 pl-3 border-l border-border/50 space-y-0.5">
                 {personalAreaSubItems.map((sub) => {
                   const isSubActive = pathname === sub.href || pathname.startsWith(sub.href)
-                  return <Link key={sub.href} href={sub.href} className={cn("flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-150", isSubActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground")}><sub.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} /><span>{sub.label}</span></Link>
+                  return <Link key={sub.href} data-tour={sub.label === "Playbooks" ? "tour-playbooks" : sub.label === "Notes" ? "tour-notes" : undefined} href={sub.href} className={cn("flex items-center gap-3 px-3 py-2 text-sm font-medium transition-all duration-150", isSubActive ? "bg-primary/10 text-primary" : "text-sidebar-foreground/60 hover:bg-sidebar-foreground/10 hover:text-sidebar-foreground")}><sub.icon className="w-4 h-4 shrink-0" strokeWidth={1.5} /><span>{sub.label}</span></Link>
                 })}
               </div>
             )}
@@ -200,6 +201,7 @@ export function DashboardSidebar({ user, profile }: DashboardSidebarProps) {
             return (
               <Link
                 key={item.href}
+                data-tour={item.label === "Trade History" ? "tour-trade-history" : item.label === "Advanced Statistics" ? "tour-advanced-stats" : item.label === "AI Coach" ? "tour-ai-coach" : item.label === "Settings" ? "tour-settings" : undefined}
                 href={item.href}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-all duration-150",
