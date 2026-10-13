@@ -39,7 +39,10 @@ export async function POST(request: Request) {
   const tradeIds = linkType === "trade" && body.trade_id ? [body.trade_id] : linkType === "today" && Array.isArray(body.today_trade_ids) ? body.today_trade_ids : []
   if (tradeIds.length) {
     const { error: linkError } = await supabase.from("premarket_trade_links").upsert(tradeIds.map((trade_id: string) => ({ routine_id: data.id, trade_id })), { onConflict: "routine_id,trade_id" })
-    if (linkError) return NextResponse.json({ error: linkError.message }, { status: 500 })
+    if (linkError) {
+    console.error('[v0] Premarket trade link error:', linkError)
+    return NextResponse.json({ error: 'The routine was saved, but it could not be linked to that trade. Please try linking it again.' }, { status: 500 })
+  }
   }
   return NextResponse.json({ routine: data, linked_trade_count: tradeIds.length })
 }
