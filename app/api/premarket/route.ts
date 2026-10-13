@@ -22,7 +22,17 @@ export async function POST(request: Request) {
   const body = await request.json()
   const required = ["session_name", "trading_date", "market_bias", "mentally_ready"]
   if (required.some((key) => body[key] === undefined || body[key] === null || String(body[key]).trim() === "")) return NextResponse.json({ error: "Complete the required fields before saving." }, { status: 400 })
-  const payload = { ...body, user_id: user.id, routine_date: body.trading_date, trading_date: body.trading_date, completed_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+  const { link_type: _linkType, trade_id: _tradeId, today_trade_ids: _todayTradeIds, ...routineFields } = body
+  const payload = {
+    ...routineFields,
+    user_id: user.id,
+    routine_date: body.trading_date,
+    trading_date: body.trading_date,
+    mindset: body.mood || "neutral",
+    risk_limits: body.risk_limits || [body.risk_per_trade, body.max_daily_loss].filter(Boolean).join(" / ") || "Not specified",
+    completed_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  }
   const { data, error } = await supabase.from("premarket_routines").upsert(payload, { onConflict: "user_id,session_name,routine_date" }).select().single()
   if (error) { console.error('[v0] Premarket routine database error:', error); return NextResponse.json({ error: 'Failed to save trade. Please try again.' }, { status: 500 }) }
   const linkType = body.link_type
