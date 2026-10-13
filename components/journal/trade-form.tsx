@@ -398,10 +398,6 @@ export function TradeForm({
       ? (priceChange / tickSize) * tickValue * lotSize
       : priceChange * lotSize * contractSize
 
-    if (!hasBrokerSpec) {
-      appToast.success('Using an instrument estimate', 'Enter the broker tick size and tick value for exact CFD P&L.')
-    }
-
     const accountBalance = selectedAccount?.initial_balance || 0
     const pnlPercent = accountBalance > 0 ? (pnl / accountBalance) * 100 : 0
 
