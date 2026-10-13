@@ -23,6 +23,24 @@ export async function POST(request: Request) {
   const required = ["session_name", "trading_date", "market_bias", "mentally_ready"]
   if (required.some((key) => body[key] === undefined || body[key] === null || String(body[key]).trim() === "")) return NextResponse.json({ error: "Complete the required fields before saving." }, { status: 400 })
   const { link_type: _linkType, trade_id: _tradeId, today_trade_ids: _todayTradeIds, ...routineFields } = body
+  const numericFields = [
+    "sleep_duration",
+    "energy_level",
+    "stress_level",
+    "focus_level",
+    "max_trades_planned",
+    "risk_per_trade",
+    "max_daily_loss",
+    "max_trades_after_loss",
+    "minimum_rr",
+  ] as const
+  for (const field of numericFields) {
+    const value = routineFields[field]
+    if (typeof value === "string") {
+      const cleaned = value.replace(/%/g, "").trim()
+      routineFields[field] = cleaned === "" ? null : Number(cleaned)
+    }
+  }
   const payload = {
     ...routineFields,
     user_id: user.id,
