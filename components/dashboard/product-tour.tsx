@@ -42,7 +42,12 @@ export function ProductTour({ initialOpen = false }: { initialOpen?: boolean }) 
       const personalArea = document.querySelector('[data-tour="tour-personal-area"]') as HTMLButtonElement | null
       personalArea?.click()
     }
-    const frame = requestAnimationFrame(updateTarget)
+
+    const frame = requestAnimationFrame(() => {
+      const element = document.querySelector(`[data-tour="${step.target}"]`)
+      element?.scrollIntoView({ block: "center", inline: "nearest", behavior: "smooth" })
+      requestAnimationFrame(updateTarget)
+    })
     window.addEventListener("resize", updateTarget)
     window.addEventListener("scroll", updateTarget, true)
     return () => {
@@ -61,9 +66,15 @@ export function ProductTour({ initialOpen = false }: { initialOpen?: boolean }) 
 
   const tooltipStyle = useMemo(() => {
     if (!rect) return undefined
-    const left = Math.min(Math.max(16, rect.left), Math.max(16, window.innerWidth - 336))
-    const top = rect.bottom + 16 + 220 > window.innerHeight ? Math.max(16, rect.top - 236) : rect.bottom + 16
-    return { left, top }
+    const cardWidth = Math.min(384, window.innerWidth - 32)
+    const cardHeight = 250
+    const gap = 16
+    const left = Math.min(Math.max(16, rect.left), Math.max(16, window.innerWidth - cardWidth - 16))
+    const hasRoomBelow = rect.bottom + gap + cardHeight <= window.innerHeight
+    const top = hasRoomBelow
+      ? rect.bottom + gap
+      : Math.max(16, rect.top - cardHeight - gap)
+    return { left, top, width: cardWidth }
   }, [rect])
 
   if (!open) return null
