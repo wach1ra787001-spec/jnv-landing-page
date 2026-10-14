@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const body = await request.json()
   const required = ["session_name", "trading_date", "market_bias", "mentally_ready"]
   if (required.some((key) => body[key] === undefined || body[key] === null || String(body[key]).trim() === "")) return NextResponse.json({ error: "Complete the required fields before saving." }, { status: 400 })
-  const { link_type: _linkType, trade_id: _tradeId, today_trade_ids: _todayTradeIds, routine_id: _routineId, ...routineFields } = body
+  const { link_type: _linkType, trade_id: _tradeId, today_trade_ids: _todayTradeIds, routine_id: _routineId, screenshot_urls: _screenshotUrls, ...routineFields } = body
 
   if (_routineId && _tradeId) {
     const { data: routine } = await supabase.from("premarket_routines").select("id").eq("id", _routineId).eq("user_id", user.id).maybeSingle()
@@ -59,6 +59,7 @@ export async function POST(request: Request) {
     planned_setups: body.planned_setups || body.setup_strategy || "Not specified",
     risk_limits: body.risk_limits || [body.risk_per_trade, body.max_daily_loss].filter(Boolean).join(" / ") || "Not specified",
     trading_rules: body.trading_rules || body.entry_criteria || "Not specified",
+    screenshot_urls: Array.isArray(_screenshotUrls) ? _screenshotUrls.slice(0, 2) : [],
     completed_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   }
