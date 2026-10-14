@@ -195,12 +195,17 @@ export function TradeForm({
     e.preventDefault()
     setIsDragging(false)
     const files = Array.from(e.dataTransfer.files).filter((f) => f.type.startsWith('image/'))
-    setNewScreenshots((prev) => [...prev, ...files])
+    const availableSlots = Math.max(0, 3 - existingScreenshotUrls.length - newScreenshots.length)
+    setNewScreenshots((prev) => [...prev, ...files.slice(0, availableSlots)])
+    if (files.length > availableSlots) appToast.error('Screenshot limit reached', 'You can save up to 3 screenshots per trade.')
   }
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []).filter((f) => f.type.startsWith('image/'))
-    setNewScreenshots((prev) => [...prev, ...files])
+    const availableSlots = Math.max(0, 3 - existingScreenshotUrls.length - newScreenshots.length)
+    setNewScreenshots((prev) => [...prev, ...files.slice(0, availableSlots)])
+    if (files.length > availableSlots) appToast.error('Screenshot limit reached', 'You can save up to 3 screenshots per trade.')
+    e.target.value = ''
   }
 
   const removeNewScreenshot = (index: number) => {
@@ -237,7 +242,7 @@ export function TradeForm({
         if (uploadData.url) uploadedUrls.push(uploadData.url)
       }
 
-      const finalScreenshotUrls = [...existingScreenshotUrls, ...uploadedUrls]
+      const finalScreenshotUrls = [...existingScreenshotUrls, ...uploadedUrls].slice(0, 3)
       const playbook = playbooks.find((item) => item.id === formData.playbook_id)
       const playbookRulesSnapshot = (() => {
         if (!playbook) return null
@@ -773,21 +778,23 @@ export function TradeForm({
             className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
               isDragging ? 'border-primary bg-primary/10' : 'border-border/50 hover:border-primary/50'
             }`}
-            onDragOver={handleDragOver}
+            onDragOver={existingScreenshotUrls.length + newScreenshots.length < 3 ? handleDragOver : undefined}
             onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
+            onDrop={existingScreenshotUrls.length + newScreenshots.length < 3 ? handleDrop : undefined}
+            aria-disabled={existingScreenshotUrls.length + newScreenshots.length >= 3}
           >
             <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm font-medium text-foreground mb-1">Drop screenshots or click to browse</p>
-            <p className="text-xs text-muted-foreground mb-3">PNG, JPG up to 10MB</p>
+            <p className="text-xs text-muted-foreground mb-3">PNG, JPG up to 10MB · {existingScreenshotUrls.length + newScreenshots.length}/3 saved</p>
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="text-xs cursor-pointer"
               onClick={() => document.getElementById('screenshot-input')?.click()}
+              disabled={existingScreenshotUrls.length + newScreenshots.length >= 3}
             >
-              Upload Screenshot
+              {existingScreenshotUrls.length + newScreenshots.length >= 3 ? 'Screenshot limit reached' : 'Upload Screenshot'}
             </Button>
             <input
               id="screenshot-input"

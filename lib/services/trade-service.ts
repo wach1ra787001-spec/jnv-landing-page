@@ -194,7 +194,7 @@ export async function createTrade(tradeData: CreateTradeInput) {
     strategy: (tradeData.strategy || '').trim(),
     status: normalizedStatus,
     source: normalizedSource,
-    screenshot_urls: tradeData.screenshot_urls || [],
+    screenshot_urls: (tradeData.screenshot_urls || []).slice(0, 3),
     session: sessionName,
     account_id: ownedAccountId,
     playbook_name: tradeData.playbook_name || null,
