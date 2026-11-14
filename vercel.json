@@ -1,16 +1,10 @@
+
 {
-  "crons": [
+  "redirects": [
     {
-      "path": "/api/economic-calendar/sync",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/economic-calendar/update-actuals",
-      "schedule": "0 0 * * *"
-    },
-    {
-      "path": "/api/cron/loss-streak-emails",
-      "schedule": "0 8 * * *"
+      "source": "/:path*",
+      "destination": "https://maintenance.jnvtradingjournal.com/:path*",
+      "permanent": false
     }
   ]
 }
