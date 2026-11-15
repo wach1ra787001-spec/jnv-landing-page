@@ -1,10 +1,2 @@
-
 {
-  "redirects": [
-    {
-      "source": "/:path*",
-      "destination": "https://app.jnvtradingjournal.com/:path*",
-      "permanent": false
-    }
-  ]
 }
