@@ -3,7 +3,7 @@
   "redirects": [
     {
       "source": "/:path*",
-      "destination": "https://maintenance.jnvtradingjournal.com/:path*",
+      "destination": "https://app.jnvtradingjournal.com/:path*",
       "permanent": false
     }
   ]
