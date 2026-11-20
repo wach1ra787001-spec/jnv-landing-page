@@ -18,21 +18,40 @@ export default async function DashboardLayout({
   children: React.ReactNode
 }) {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect("/auth/login")
-  }
+const {
+  data: claimsData,
+  error: claimsError,
+} = await supabase.auth.getClaims()
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single()
+const claims = claimsError ? null : claimsData?.claims
+
+const userId =
+  typeof claims?.sub === 'string'
+    ? claims.sub
+    : null
+
+if (!userId) {
+  redirect('/auth/login')
+}
+
+const user = {
+  id: userId,
+  email:
+    typeof claims?.email === 'string'
+      ? claims.email
+      : null,
+}
+
+const { data: profile } = await supabase
+  .from('profiles')
+  .select('id, full_name, avatar_url, preferences')
+  .eq('id', userId)
+  .single()
 
   const [accounts, selectedAccountId] = await Promise.all([
-    getUserAccounts(supabase, user.id),
-    getSelectedAccountId(supabase, user.id),
+getUserAccounts(supabase, userId)
+getSelectedAccountId(supabase, userId)
   ])
 
   return (
