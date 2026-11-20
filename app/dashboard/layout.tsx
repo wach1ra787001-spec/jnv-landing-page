@@ -50,8 +50,8 @@ const { data: profile } = await supabase
   .single()
 
   const [accounts, selectedAccountId] = await Promise.all([
-getUserAccounts(supabase, userId)
-getSelectedAccountId(supabase, userId)
+getUserAccounts(supabase, userId),
+getSelectedAccountId(supabase, userId),
   ])
 
   return (
