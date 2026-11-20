@@ -41,10 +41,17 @@ export async function updateSession(request: NextRequest) {
 
   // IMPORTANT: If you remove getUser() and you use server-side rendering
   // with the Supabase client, your users may be randomly logged out.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+const {
+  data: claimsData,
+  error: claimsError,
+} = await supabase.auth.getClaims()
 
+const claims = claimsError ? null : claimsData?.claims
+
+const userId =
+  typeof claims?.sub === 'string'
+    ? claims.sub
+    : null
   if (request.nextUrl.pathname.startsWith('/api/')) {
     const forwardedFor = request.headers.get('x-forwarded-for')
     const realIp = request.headers.get('x-real-ip')
