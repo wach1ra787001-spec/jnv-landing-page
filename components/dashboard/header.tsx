@@ -16,7 +16,6 @@ import { LogOut, Settings, User as UserIcon, Menu } from "lucide-react"
 import { NotificationMenu } from "@/components/dashboard/notification-menu"
 import { AccountSelector } from "@/components/dashboard/account-selector"
 import { useSidebar } from "./sidebar-context"
-import type { User } from "@supabase/supabase-js"
 import Link from "next/link"
 
 interface Profile {
@@ -26,7 +25,9 @@ interface Profile {
 }
 
 interface DashboardHeaderProps {
-  user: User
+  user: {
+    email: string | null
+  }
   profile: Profile | null
 }
 
