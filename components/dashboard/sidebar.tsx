@@ -24,7 +24,6 @@ import {
 } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useSidebar } from "./sidebar-context"
-import type { User as SupabaseUser } from "@supabase/supabase-js"
 
 interface Profile {
   id: string
@@ -32,9 +31,10 @@ interface Profile {
   avatar_url: string | null
 }
 
-interface DashboardSidebarProps {
-  user: SupabaseUser
-  profile: Profile | null
+interface SidebarProps {
+  user: {
+    email: string | null
+  }
 }
 
 const personalAreaSubItems = [
