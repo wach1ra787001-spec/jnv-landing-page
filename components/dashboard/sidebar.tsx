@@ -31,10 +31,11 @@ interface Profile {
   avatar_url: string | null
 }
 
-interface SidebarProps {
+interface DashboardSidebarProps {
   user: {
     email: string | null
   }
+  profile: Profile | null
 }
 
 const personalAreaSubItems = [
