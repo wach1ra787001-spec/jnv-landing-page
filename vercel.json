@@ -1,8 +1,9 @@
+
 {
   "redirects": [
     {
-      "source": "/old-page",
-      "destination": "https://maintenance.jnvtradingjournal.com/old-page",
+      "source": "/((?!_next|favicon.ico).*)",
+      "destination": "https://maintenance.jnvtradingjournal.com",
       "permanent": false
     }
   ]
