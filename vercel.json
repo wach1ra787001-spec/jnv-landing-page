@@ -1,8 +1,8 @@
 {
   "redirects": [
     {
-      "source": "/:path*",
-      "destination": "https://maintenance.jnvtradingjournal.com/:path*",
+      "source": "/old-page",
+      "destination": "https://maintenance.jnvtradingjournal.com/old-page",
       "permanent": false
     }
   ]
