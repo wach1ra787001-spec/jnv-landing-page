@@ -1,3 +1,9 @@
 {
-  
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "https://maintenance.jnvtradingjournal.com/:path*",
+      "permanent": false
+    }
+  ]
 }
