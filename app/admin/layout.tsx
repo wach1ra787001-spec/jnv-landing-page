@@ -1,28 +1,52 @@
+
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { AdminSidebar } from '@/components/admin/admin-sidebar'
 
-export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+export const dynamic = 'force-dynamic'
+
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const supabase = await createClient()
-  const { data: authData } = await supabase.auth.getUser()
 
-  if (!authData.user) redirect('/auth/login')
+  // Verify authenticated user
+  const { data: authData, error: authError } = await supabase.auth.getUser()
 
-  // Check admin role from profiles.role column
-  const { data: profile } = await supabase
+  if (authError || !authData.user) {
+    redirect('/auth/login')
+  }
+
+  // Verify admin role
+  const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role')
     .eq('id', authData.user.id)
     .single()
 
-  const role = profile?.role
-  if (role !== 'admin' && role !== 'super_admin') redirect('/dashboard')
+  if (profileError || !profile) {
+    redirect('/dashboard')
+  }
+
+  const role = profile.role
+
+  if (role !== 'admin' && role !== 'super_admin') {
+    redirect('/dashboard')
+  }
 
   const isSuperAdmin = role === 'super_admin'
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background" style={{ padding: '20px', gap: '20px' }}>
-      {/* Sidebar — independent surface, never touches the content panel */}
+    <div
+      className="flex h-screen w-screen overflow-hidden bg-background"
+      style={{
+        padding: '20px',
+        gap: '20px',
+      }}
+    >
+      {/* Admin Sidebar */}
       <div
         className="flex-shrink-0 rounded-2xl overflow-hidden"
         style={{
@@ -33,7 +57,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminSidebar isSuperAdmin={isSuperAdmin} />
       </div>
 
-      {/* Dashboard — elevated floating panel */}
+      {/* Admin Content */}
       <main
         className="flex-1 min-w-0 overflow-y-auto rounded-2xl bg-card"
         style={{
